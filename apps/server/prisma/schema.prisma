@@ -1,15 +1,214 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
 generator client {
   provider = "prisma-client-js"
-  output   = "../generated/prisma"
 }
 
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
+}
+
+model User {
+  id               String          @id
+  full_name        String
+  email            String          @unique
+  role             String
+  avatar_url       String?
+  is_active        Boolean         @default(true)
+  created_at       DateTime        @default(now())
+  updated_at       DateTime        @updatedAt
+  Assignments      Assignment[]
+  ChatbotLogs      ChatbotLog[]
+  ClassesCreated   Class[]         @relation("CreatedClasses")
+  ClassMembers     ClassMember[]
+  ClassTeachers    ClassTeacher[]
+  FeedbackSent     Feedback[]      @relation("FeedbackFrom")
+  FeedbackReceived Feedback[]      @relation("FeedbackTo")
+  Progress         Progress[]
+  SessionHosted    Session[]
+  StudentProfile   StudentProfile?
+  Submissions      Submission[]
+  TeacherProfile   TeacherProfile?
+}
+
+model StudentProfile {
+  user_id       String @id
+  target_score  Int
+  current_level String
+  user          User   @relation(fields: [user_id], references: [id])
+}
+
+model TeacherProfile {
+  user_id        String @id
+  degree         String
+  specialization String
+  bio            String
+  user           User   @relation(fields: [user_id], references: [id])
+}
+
+model Class {
+  id          String         @id @default(uuid())
+  name        String
+  description String
+  is_group    Boolean
+  invite_code String         @unique
+  schedule    Json
+  created_by  String
+  created_at  DateTime       @default(now())
+  updated_at  DateTime       @updatedAt
+  assignments Assignment[]
+  creator     User           @relation("CreatedClasses", fields: [created_by], references: [id])
+  members     ClassMember[]
+  teachers    ClassTeacher[]
+  sessions    Session[]
+}
+
+model ClassMember {
+  id         String   @id @default(uuid())
+  class_id   String
+  student_id String
+  joined_at  DateTime @default(now())
+  status     String
+  class      Class    @relation(fields: [class_id], references: [id])
+  student    User     @relation(fields: [student_id], references: [id])
+}
+
+model ClassTeacher {
+  id         String @id @default(uuid())
+  class_id   String
+  teacher_id String
+  role       String
+  class      Class  @relation(fields: [class_id], references: [id])
+  teacher    User   @relation(fields: [teacher_id], references: [id])
+}
+
+model Session {
+  id              String    @id @default(uuid())
+  class_id        String
+  host_id         String
+  start_time      DateTime
+  end_time        DateTime?
+  is_recorded     Boolean
+  recording_url   String?
+  whiteboard_data Json?
+  metadata        Json?
+  created_at      DateTime  @default(now())
+  class           Class     @relation(fields: [class_id], references: [id])
+  host            User      @relation(fields: [host_id], references: [id])
+}
+
+model Assignment {
+  id          String              @id @default(uuid())
+  created_by  String
+  class_id    String?
+  skill       String
+  title       String
+  description String
+  is_public   Boolean
+  created_at  DateTime            @default(now())
+  class       Class?              @relation(fields: [class_id], references: [id])
+  creator     User                @relation(fields: [created_by], references: [id])
+  sections    AssignmentSection[]
+  submissions Submission[]
+}
+
+model AssignmentSection {
+  id            String          @id @default(uuid())
+  assignment_id String
+  title         String
+  material_type String
+  material_url  String?
+  material_text String?
+  order_index   Int
+  assignment    Assignment      @relation(fields: [assignment_id], references: [id])
+  groups        QuestionGroup[]
+}
+
+model QuestionGroup {
+  id            String            @id @default(uuid())
+  section_id    String
+  question_type String
+  instruction   String
+  body_text     String?
+  image_url     String?
+  list_data     Json?
+  order_index   Int
+  questions     Question[]
+  section       AssignmentSection @relation(fields: [section_id], references: [id])
+}
+
+model Question {
+  id          String               @id @default(uuid())
+  group_id    String
+  number      Int
+  prompt      String
+  options     Json?
+  answer      Json
+  metadata    Json?
+  group       QuestionGroup        @relation(fields: [group_id], references: [id])
+  submissions QuestionSubmission[]
+}
+
+model Submission {
+  id            String               @id @default(uuid())
+  assignment_id String
+  student_id    String
+  file_url      String?
+  submitted_at  DateTime             @default(now())
+  ai_score      Json?
+  feedback      String?
+  ai_logs       AiGradingLog[]
+  feedbacks     Feedback[]
+  questions     QuestionSubmission[]
+  assignment    Assignment           @relation(fields: [assignment_id], references: [id])
+  student       User                 @relation(fields: [student_id], references: [id])
+}
+
+model QuestionSubmission {
+  id            String     @id @default(uuid())
+  submission_id String
+  question_id   String
+  answer        Json
+  is_correct    Boolean
+  score         Float?
+  question      Question   @relation(fields: [question_id], references: [id])
+  submission    Submission @relation(fields: [submission_id], references: [id])
+}
+
+model AiGradingLog {
+  id            String     @id @default(uuid())
+  submission_id String
+  ai_tool_used  String
+  result        Json
+  created_at    DateTime   @default(now())
+  submission    Submission @relation(fields: [submission_id], references: [id])
+}
+
+model Feedback {
+  id            String     @id @default(uuid())
+  from_user_id  String
+  to_user_id    String
+  submission_id String
+  message       String
+  created_at    DateTime   @default(now())
+  from          User       @relation("FeedbackFrom", fields: [from_user_id], references: [id])
+  submission    Submission @relation(fields: [submission_id], references: [id])
+  to            User       @relation("FeedbackTo", fields: [to_user_id], references: [id])
+}
+
+model Progress {
+  id            String   @id @default(uuid())
+  student_id    String
+  skill         String
+  score_history Json
+  updated_at    DateTime
+  student       User     @relation(fields: [student_id], references: [id])
+}
+
+model ChatbotLog {
+  id         String   @id @default(uuid())
+  user_id    String
+  question   String
+  answer     String
+  created_at DateTime @default(now())
+  user       User     @relation(fields: [user_id], references: [id])
 }

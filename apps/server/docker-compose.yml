@@ -1,12 +1,11 @@
-
 services:
   postgres:
     image: postgres:15
     restart: always
     environment:
-      - POSTGRES_DB: ${POSTGRES_DB:-idest}
-      - POSTGRES_USER: ${POSTGRES_USER:-idest}
-      - POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-idest}
+      POSTGRES_DB: ${POSTGRES_DB:-idest}
+      POSTGRES_USER: ${POSTGRES_USER:-idest}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-idest}
     ports:
       - "5432:5432"
     networks:
