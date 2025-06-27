@@ -1,0 +1,18 @@
+{
+  "recommendations": [
+    // 📦 Core NestJS
+    "nestjs.nestjs-files",                 // NestJS file snippets
+    "dbaeumer.vscode-eslint",             // ESLint
+    "esbenp.prettier-vscode",             // Prettier
+
+    // 🧬 Prisma
+    "prisma.prisma",                      // Prisma syntax + autocomplete
+
+    // 🧠 Useful Dev Tools
+    "usernamehw.errorlens",               // Show errors inline
+    "eamodio.gitlens",                    // Git blame, history, etc.
+    "humao.rest-client",                  // Send API requests from .http files
+    "streetsidesoftware.code-spell-checker", // Typos in comments/strings
+    "shardulm94.trailing-spaces"          // Clean up trailing spaces
+  ]
+}
