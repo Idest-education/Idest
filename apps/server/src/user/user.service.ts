@@ -12,7 +12,7 @@ export class UserService {
 
   async createUser(user: userPayload, dto: CreateUserDto): Promise<ResponseDto<User | null>> {
     try {
-      const createdUser = await this.prisma.user.create({
+      await this.prisma.user.create({
         data: {
           id: user.id,
           full_name: dto.fullName,
@@ -45,7 +45,7 @@ export class UserService {
 
   async updateUser(id: string, dto: UpdateUserDto): Promise<ResponseDto<User | null>> {
     try {
-      const updatedUser = await this.prisma.user.update({
+      await this.prisma.user.update({
         where: { id },
         data: {
           full_name: dto.fullName,
@@ -55,13 +55,34 @@ export class UserService {
         },
       });
       const newUser = await this.prisma.user.findUnique({
-        where: { id: updatedUser.id },
+        where: { id: id },
       });
 
       return ResponseDto.ok(newUser, 'User updated successfully');
     } catch (error) {
       console.error('Error updating user:', error);
       return ResponseDto.fail('User update failed');
+    }
+  }
+
+
+
+  async uploadAvatar(image: string, userId: string): Promise<ResponseDto<User | null>> {
+    try {
+      // Assuming image processing and storage logic is implemented here
+      const avatarUrl = image;
+
+      await this.prisma.user.update({
+        where: { id: userId },
+        data: { avatar_url: avatarUrl },
+      });
+      const updatedUser = await this.prisma.user.findUnique({
+        where: { id: userId },
+      });
+      return ResponseDto.ok(updatedUser, 'Avatar uploaded successfully');
+    } catch (error) {
+      console.error('Error uploading avatar:', error);
+      return ResponseDto.fail('Avatar upload failed');
     }
   }
 }
