@@ -42,13 +42,13 @@ export class UserController {
     return result;
   }
 
-  //TODO: delete old image
   @Post('avatar')
   @UseInterceptors(FileInterceptor('image'), ImageInterceptor)
   async uploadAvatar(
     @User() user: userPayload,
     @Body() image: CloudinaryPayload,
   ): Promise<ResponseDto> {
+    console.log('req.user:', user);
     const result: ResponseDto = await this.userService.uploadAvatar(image.imageUrl, user.id);
     return result;
   }

@@ -22,7 +22,7 @@ export class ImageInterceptor implements NestInterceptor {
       req.body.imageUrl = result.url;
       req.body.imagePublicId = result.public_id;
 
-      const oldPublicId = req.user.avatar_url; // Assuming user avatar URL is stored in req.user.avatar_url
+      const oldPublicId = req.user.avatar; 
       if (oldPublicId) {
         await this.cloudinary.deleteImage(oldPublicId);
         console.log('Deleted old Cloudinary image:', oldPublicId);

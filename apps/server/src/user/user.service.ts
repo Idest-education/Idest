@@ -1,3 +1,4 @@
+import { CloudinaryService } from 'src/cloudinary/cloudinary.service';
 import { Injectable } from '@nestjs/common';
 import { CreateUserDto } from './dto/createUser.dto';
 import { userPayload } from 'src/common/types/userPayload.interface';
@@ -8,7 +9,7 @@ import { UpdateUserDto } from './dto/updateUser.dto';
 
 @Injectable()
 export class UserService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly prisma: PrismaService, private readonly cloudinary: CloudinaryService) {}
 
   async createUser(user: userPayload, dto: CreateUserDto): Promise<ResponseDto<User | null>> {
     try {
@@ -71,6 +72,11 @@ export class UserService {
     try {
       // Assuming image processing and storage logic is implemented here
       const avatarUrl = image;
+
+      const user = await this.getUserById(userId);
+      if(user?.avatar_url) {
+        this.cloudinary.deleteImage(user.avatar_url)
+      }
 
       await this.prisma.user.update({
         where: { id: userId },
