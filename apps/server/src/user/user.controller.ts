@@ -8,6 +8,8 @@ import { UpdateUserDto } from './dto/updateUser.dto';
 import { AuthGuard } from 'src/common/guard/auth.guard';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { ImageInterceptor } from 'src/common/interceptors/image.interceptors';
+import { Role } from 'src/common/enum/role.enum';
+import { Roles } from 'src/common/decorator/role.decorator';
 
 @Controller('user')
 @UseGuards(AuthGuard)
@@ -50,6 +52,26 @@ export class UserController {
   ): Promise<ResponseDto> {
     console.log('req.user:', user);
     const result: ResponseDto = await this.userService.uploadAvatar(image.imageUrl, user.id);
+    return result;
+  }
+
+  @Post('ban/:id')
+  @Roles(Role.ADMIN)
+  async banUser(@Param('id') banned: string, @User() banner: userPayload): Promise<ResponseDto> {
+    const result: ResponseDto = await this.userService.banUser(banned, banner);
+    return result;
+  }
+
+  @Post('unban/:id')
+  @Roles(Role.ADMIN)
+  async unbanUser(@Param('id') unbanned: string, @User() unbanner: userPayload): Promise<ResponseDto> {
+    const result: ResponseDto = await this.userService.unbanUser(unbanned, unbanner);
+    return result;
+  }
+  @Get('all')
+  @Roles(Role.ADMIN)
+  async getAllUsers(): Promise<ResponseDto> {
+    const result: ResponseDto = await this.userService.getAllUsers();
     return result;
   }
 

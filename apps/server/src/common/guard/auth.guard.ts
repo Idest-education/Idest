@@ -23,7 +23,7 @@ export class AuthGuard implements CanActivate {
     try {
       const decoded = await verifyAsync(token, jwtSecret);
       req['user'] = decoded;
-      console.log(decoded); // check if user_metadata.avatar is present
+      console.log(decoded);
       if (!decoded) {
         throw new UnauthorizedException('Invalid token payload');
       }
@@ -32,4 +32,5 @@ export class AuthGuard implements CanActivate {
       throw new UnauthorizedException(e);
     }
   }
+
 }

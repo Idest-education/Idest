@@ -15,6 +15,7 @@ export const User = createParamDecorator(
       id: request.user.id || request.user.sub || request.user.userId,
       avatar: request.user.avatar || request.user.picture || '',
       email: request.user.email || request.user.email_address || '',
+      role: request.user.role || request.user.user_role || 'user', // Default to 'user' if role is not present
     };
     return user;
   },

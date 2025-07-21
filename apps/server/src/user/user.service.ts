@@ -91,4 +91,78 @@ export class UserService {
       return ResponseDto.fail('Avatar upload failed');
     }
   }
+
+  async banUser(bannedId: string, banner: userPayload): Promise<ResponseDto<User | null>> {
+    try {
+      const bannedUser = await this.prisma.user.findUnique({
+        where: { id: bannedId },
+      });
+
+      if (!bannedUser) {
+        return ResponseDto.fail('User not found');
+      }
+
+      if( banner.id === bannedId) {
+        return ResponseDto.fail('You cannot ban yourself');
+      }
+
+      await this.prisma.user.update({
+        where: { id: bannedId },
+        data: {
+          is_active: false
+        }
+      });
+
+      return ResponseDto.ok(bannedUser, 'User banned successfully');
+    } catch (error) {
+      console.error('Error banning user:', error);
+      return ResponseDto.fail('Ban operation failed');
+    }
+  }
+  async unbanUser(unbannedId: string, unbanner: userPayload): Promise<ResponseDto<User | null>> {
+    try {
+      const unbannedUser = await this.prisma.user.findUnique({
+        where: { id: unbannedId },
+      });
+
+      if (!unbannedUser) {
+        return ResponseDto.fail('User not found');
+      }
+
+      if( unbanner.id === unbannedId) {
+        return ResponseDto.fail('You cannot unban yourself');
+      }
+
+      await this.prisma.user.update({
+        where: { id: unbannedId },
+        data: {
+          is_active: true
+        }
+      });
+
+      return ResponseDto.ok(unbannedUser, 'User unbanned successfully');
+    } catch (error) {
+      console.error('Error unbanning user:', error);
+      return ResponseDto.fail('Unban operation failed');
+    }
+  }
+  async getAllUsers(): Promise<ResponseDto<User[] | null>> {
+    try {
+      const users = await this.prisma.user.findMany();
+      return ResponseDto.ok(users, 'Users fetched successfully');
+    } catch (error) {
+      console.error('Error fetching users:', error);
+      return ResponseDto.fail('Failed to fetch users');
+    }
+  }
+  async getUserByEmail(email: string): Promise<User | null> {
+    try {
+      return await this.prisma.user.findUnique({
+        where: { email },
+      });
+    } catch (error) {
+      console.error('Error fetching user by email:', error);
+      return null;
+    }
+  }
 }
