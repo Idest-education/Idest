@@ -39,14 +39,19 @@ export class UserService {
     }
   }
 
-  async getUserById(id: string): Promise<User | null> {
+  async getUserById(id: string): Promise<ResponseDto<User | null>> {
     try {
-      return await this.prisma.user.findUnique({
+      const user = await this.prisma.user.findUnique({
         where: { id },
       });
+      console.log('user:', user);
+      if (!user) {
+        return ResponseDto.fail('User not found');
+      }
+      return ResponseDto.ok(user, 'User fetched successfully');
     } catch (error) {
       console.error('Error fetching user by ID:', error);
-      return null;
+      return ResponseDto.fail('User fetch failed');
     }
   }
 
@@ -84,8 +89,8 @@ export class UserService {
       const avatarUrl = image;
 
       const user = await this.getUserById(userId);
-      if (user?.avatar_url) {
-        this.cloudinary.deleteImage(user.avatar_url);
+      if (user.data?.avatar_url) {
+        this.cloudinary.deleteImage(user.data.avatar_url);
       }
 
       await this.prisma.user.update({

@@ -27,8 +27,10 @@ export class UserController {
   constructor(private readonly userService: UserService) {}
 
   @Get()
-  getCurrentUser(@User() user: userPayload) {
-    return this.userService.getUserById(user.id);
+  async getCurrentUser(@User() user: userPayload): Promise<ResponseDto> {
+    const result: ResponseDto = await this.userService.getUserById(user.id);
+    console.log('result:', result);
+    return result;
   }
 
   @Post()
