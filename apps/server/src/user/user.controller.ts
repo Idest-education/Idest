@@ -1,4 +1,13 @@
-import { Body, Controller, Get, Param, Patch, Post, UseGuards, UseInterceptors } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  Param,
+  Patch,
+  Post,
+  UseGuards,
+  UseInterceptors,
+} from '@nestjs/common';
 import { User } from 'src/common/decorator/currentUser.decorator';
 import { userPayload } from 'src/common/types/userPayload.interface';
 import { CreateUserDto } from './dto/createUser.dto';
@@ -10,6 +19,7 @@ import { FileInterceptor } from '@nestjs/platform-express';
 import { ImageInterceptor } from 'src/common/interceptors/image.interceptors';
 import { Role } from 'src/common/enum/role.enum';
 import { Roles } from 'src/common/decorator/role.decorator';
+import { CloudinaryPayload } from 'src/common/types/cloudinaryPayload.interface';
 
 @Controller('user')
 @UseGuards(AuthGuard)
@@ -37,10 +47,7 @@ export class UserController {
 
   @Patch(':id')
   async updateUser(@Param('id') id: string, @Body() request: UpdateUserDto) {
-    const result: ResponseDto = await this.userService.updateUser(
-      id,
-      request,
-    );
+    const result: ResponseDto = await this.userService.updateUser(id, request);
     return result;
   }
 
@@ -51,21 +58,33 @@ export class UserController {
     @Body() image: CloudinaryPayload,
   ): Promise<ResponseDto> {
     console.log('req.user:', user);
-    const result: ResponseDto = await this.userService.uploadAvatar(image.imageUrl, user.id);
+    const result: ResponseDto = await this.userService.uploadAvatar(
+      image.imageUrl,
+      user.id,
+    );
     return result;
   }
 
   @Post('ban/:id')
   @Roles(Role.ADMIN)
-  async banUser(@Param('id') banned: string, @User() banner: userPayload): Promise<ResponseDto> {
+  async banUser(
+    @Param('id') banned: string,
+    @User() banner: userPayload,
+  ): Promise<ResponseDto> {
     const result: ResponseDto = await this.userService.banUser(banned, banner);
     return result;
   }
 
   @Post('unban/:id')
   @Roles(Role.ADMIN)
-  async unbanUser(@Param('id') unbanned: string, @User() unbanner: userPayload): Promise<ResponseDto> {
-    const result: ResponseDto = await this.userService.unbanUser(unbanned, unbanner);
+  async unbanUser(
+    @Param('id') unbanned: string,
+    @User() unbanner: userPayload,
+  ): Promise<ResponseDto> {
+    const result: ResponseDto = await this.userService.unbanUser(
+      unbanned,
+      unbanner,
+    );
     return result;
   }
   @Get('all')
@@ -74,5 +93,4 @@ export class UserController {
     const result: ResponseDto = await this.userService.getAllUsers();
     return result;
   }
-
 }

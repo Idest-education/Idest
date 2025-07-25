@@ -9,9 +9,15 @@ import { UpdateUserDto } from './dto/updateUser.dto';
 
 @Injectable()
 export class UserService {
-  constructor(private readonly prisma: PrismaService, private readonly cloudinary: CloudinaryService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly cloudinary: CloudinaryService,
+  ) {}
 
-  async createUser(user: userPayload, dto: CreateUserDto): Promise<ResponseDto<User | null>> {
+  async createUser(
+    user: userPayload,
+    dto: CreateUserDto,
+  ): Promise<ResponseDto<User | null>> {
     try {
       await this.prisma.user.create({
         data: {
@@ -44,7 +50,10 @@ export class UserService {
     }
   }
 
-  async updateUser(id: string, dto: UpdateUserDto): Promise<ResponseDto<User | null>> {
+  async updateUser(
+    id: string,
+    dto: UpdateUserDto,
+  ): Promise<ResponseDto<User | null>> {
     try {
       await this.prisma.user.update({
         where: { id },
@@ -66,16 +75,17 @@ export class UserService {
     }
   }
 
-
-
-  async uploadAvatar(image: string, userId: string): Promise<ResponseDto<User | null>> {
+  async uploadAvatar(
+    image: string,
+    userId: string,
+  ): Promise<ResponseDto<User | null>> {
     try {
       // Assuming image processing and storage logic is implemented here
       const avatarUrl = image;
 
       const user = await this.getUserById(userId);
-      if(user?.avatar_url) {
-        this.cloudinary.deleteImage(user.avatar_url)
+      if (user?.avatar_url) {
+        this.cloudinary.deleteImage(user.avatar_url);
       }
 
       await this.prisma.user.update({
@@ -92,7 +102,10 @@ export class UserService {
     }
   }
 
-  async banUser(bannedId: string, banner: userPayload): Promise<ResponseDto<User | null>> {
+  async banUser(
+    bannedId: string,
+    banner: userPayload,
+  ): Promise<ResponseDto<User | null>> {
     try {
       const bannedUser = await this.prisma.user.findUnique({
         where: { id: bannedId },
@@ -102,15 +115,15 @@ export class UserService {
         return ResponseDto.fail('User not found');
       }
 
-      if( banner.id === bannedId) {
+      if (banner.id === bannedId) {
         return ResponseDto.fail('You cannot ban yourself');
       }
 
       await this.prisma.user.update({
         where: { id: bannedId },
         data: {
-          is_active: false
-        }
+          is_active: false,
+        },
       });
 
       return ResponseDto.ok(bannedUser, 'User banned successfully');
@@ -119,7 +132,10 @@ export class UserService {
       return ResponseDto.fail('Ban operation failed');
     }
   }
-  async unbanUser(unbannedId: string, unbanner: userPayload): Promise<ResponseDto<User | null>> {
+  async unbanUser(
+    unbannedId: string,
+    unbanner: userPayload,
+  ): Promise<ResponseDto<User | null>> {
     try {
       const unbannedUser = await this.prisma.user.findUnique({
         where: { id: unbannedId },
@@ -129,15 +145,15 @@ export class UserService {
         return ResponseDto.fail('User not found');
       }
 
-      if( unbanner.id === unbannedId) {
+      if (unbanner.id === unbannedId) {
         return ResponseDto.fail('You cannot unban yourself');
       }
 
       await this.prisma.user.update({
         where: { id: unbannedId },
         data: {
-          is_active: true
-        }
+          is_active: true,
+        },
       });
 
       return ResponseDto.ok(unbannedUser, 'User unbanned successfully');
@@ -162,6 +178,37 @@ export class UserService {
       });
     } catch (error) {
       console.error('Error fetching user by email:', error);
+      return null;
+    }
+  }
+
+  async getUserDetails(userId: string): Promise<{
+    full_name: string;
+    email: string;
+    avatar_url?: string;
+    role: string;
+  } | null> {
+    try {
+      const user = await this.prisma.user.findUnique({
+        where: { id: userId },
+        select: {
+          full_name: true,
+          email: true,
+          avatar_url: true,
+          role: true,
+        },
+      });
+
+      if (!user) return null;
+
+      return {
+        full_name: user.full_name,
+        email: user.email,
+        avatar_url: user.avatar_url || undefined,
+        role: user.role,
+      };
+    } catch (error) {
+      console.error(`Failed to get user details for ${userId}:`, error);
       return null;
     }
   }

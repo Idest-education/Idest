@@ -1,4 +1,4 @@
-interface CloudinaryPayload {
+export interface CloudinaryPayload {
   imageUrl: string;
   imagePublicId: string;
 }

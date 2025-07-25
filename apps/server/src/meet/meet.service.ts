@@ -5,6 +5,7 @@ import {
   ForbiddenException,
 } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
+import { UserService } from 'src/user/user.service';
 import { userPayload } from 'src/common/types/userPayload.interface';
 import { Role } from 'src/common/enum/role.enum';
 import {
@@ -20,6 +21,7 @@ const verifyAsync = promisify(JWT.verify);
 export class MeetService {
   constructor(
     private readonly prisma: PrismaService,
+    private readonly userService: UserService,
     private readonly connectedUsersManager: ConnectedUsersManager,
   ) {}
 
@@ -35,13 +37,30 @@ export class MeetService {
 
       const decoded = (await verifyAsync(token, jwtSecret)) as any;
 
+      // Extract user ID from Supabase JWT (usually in 'sub' field)
+      const userId = decoded.sub || decoded.id || decoded.userId;
+      if (!userId) {
+        throw new UnauthorizedException('User ID not found in token');
+      }
+
+      // Get user details including role from database
+      const userDetails = await this.userService.getUserDetails(userId);
+      if (!userDetails) {
+        throw new UnauthorizedException('User not found in database');
+      }
+
       return {
-        id: decoded.id || decoded.sub || decoded.userId,
-        email: decoded.email || decoded.email_address || '',
-        avatar: decoded.avatar || decoded.picture || '',
-        role: decoded.role || decoded.user_role || Role.Student,
+        id: userId,
+        email:
+          decoded.email || decoded.email_address || userDetails.email || '',
+        avatar:
+          userDetails.avatar_url || decoded.avatar || decoded.picture || '',
+        role: userDetails.role as Role,
       };
     } catch (error) {
+      if (error instanceof UnauthorizedException) {
+        throw error;
+      }
       throw new UnauthorizedException('Invalid or expired token');
     }
   }
@@ -148,32 +167,10 @@ export class MeetService {
   }
 
   /**
-   * Get user details from database
+   * Get user details from database (delegated to UserService)
    */
-  async getUserDetails(
-    userId: string,
-  ): Promise<{ full_name: string; avatar_url?: string; role: string } | null> {
-    try {
-      const user = await this.prisma.user.findUnique({
-        where: { id: userId },
-        select: {
-          full_name: true,
-          avatar_url: true,
-          role: true,
-        },
-      });
-
-      if (!user) return null;
-
-      return {
-        full_name: user.full_name,
-        avatar_url: user.avatar_url || undefined,
-        role: user.role,
-      };
-    } catch (error) {
-      console.error(`Failed to get user details for ${userId}:`, error);
-      return null;
-    }
+  async getUserDetails(userId: string) {
+    return this.userService.getUserDetails(userId);
   }
 
   /**
@@ -416,16 +413,18 @@ export class MeetService {
     sessionId: string,
     limit: number = 50,
     before?: Date,
-  ): Promise<Array<{
-    id: string;
-    content: string;
-    sentAt: Date;
-    sender: {
+  ): Promise<
+    Array<{
       id: string;
-      full_name: string;
-      avatar_url: string | null;
-    };
-  }>> {
+      content: string;
+      sentAt: Date;
+      sender: {
+        id: string;
+        full_name: string;
+        avatar_url: string | null;
+      };
+    }>
+  > {
     try {
       const messages = await this.prisma.message.findMany({
         where: {
@@ -462,16 +461,18 @@ export class MeetService {
     classId: string,
     limit: number = 50,
     before?: Date,
-  ): Promise<Array<{
-    id: string;
-    content: string;
-    sentAt: Date;
-    sender: {
+  ): Promise<
+    Array<{
       id: string;
-      full_name: string;
-      avatar_url: string | null;
-    };
-  }>> {
+      content: string;
+      sentAt: Date;
+      sender: {
+        id: string;
+        full_name: string;
+        avatar_url: string | null;
+      };
+    }>
+  > {
     try {
       const messages = await this.prisma.message.findMany({
         where: {
