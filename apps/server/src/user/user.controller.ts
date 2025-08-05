@@ -3,8 +3,8 @@ import {
   Controller,
   Get,
   Param,
-  Patch,
   Post,
+  Put,
   UseGuards,
   UseInterceptors,
 } from '@nestjs/common';
@@ -42,12 +42,13 @@ export class UserController {
     return result;
   }
   @Get(':id')
-  async getUserById(@User() user: userPayload) {
-    const result = await this.userService.getUserById(user.id);
+  @Roles(Role.TEACHER, Role.ADMIN)
+  async getUserById(@Param('id') id: string) {
+    const result = await this.userService.getUserById(id);
     return result;
   }
 
-  @Patch(':id')
+  @Put(':id')
   async updateUser(@Param('id') id: string, @Body() request: UpdateUserDto) {
     const result: ResponseDto = await this.userService.updateUser(id, request);
     return result;
