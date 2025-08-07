@@ -44,7 +44,12 @@ export class UserService {
     try {
       const user = await this.prisma.user.findUnique({
         where: { id },
+        include: {
+          StudentProfile: true,
+          TeacherProfile: true,
+        },
       });
+      console.log('userishere:', user);
       if (!user) {
         return ResponseDto.fail('User not found');
       }
@@ -222,9 +227,9 @@ export class UserService {
     dto: CreateStudentProfileDto,
   ): Promise<ResponseDto<StudentProfile | null>> {
     try {
-      const studentProfile = await this.prisma.studentProfile.update({
-        where: { user_id: user.id },
+      const studentProfile = await this.prisma.studentProfile.create({
         data: {
+          user_id: user.id,
           target_score: dto.target_score,
           current_level: dto.current_level,
         },

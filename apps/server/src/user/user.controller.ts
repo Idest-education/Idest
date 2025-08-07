@@ -53,8 +53,10 @@ export class UserController {
       user,
       request,
     );
+    console.log('result:', result);
     return result;
   }
+
   @Get(':id')
   @Roles(Role.TEACHER, Role.ADMIN)
   async getUserById(@Param('id') id: string) {
