@@ -20,6 +20,7 @@ import { ImageInterceptor } from 'src/common/interceptors/image.interceptors';
 import { Role } from 'src/common/enum/role.enum';
 import { Roles } from 'src/common/decorator/role.decorator';
 import { CloudinaryPayload } from 'src/common/types/cloudinaryPayload.interface';
+import { CreateStudentProfileDto } from './dto/createStudentProfile.dto';
 
 @Controller('user')
 @UseGuards(AuthGuard)
@@ -36,6 +37,19 @@ export class UserController {
   @Post()
   async createUser(@User() user: userPayload, @Body() request: CreateUserDto) {
     const result: ResponseDto = await this.userService.createUser(
+      user,
+      request,
+    );
+    return result;
+  }
+
+  @Post('student-profile')
+  @Roles(Role.STUDENT)
+  async createStudentProfile(
+    @User() user: userPayload,
+    @Body() request: CreateStudentProfileDto,
+  ) {
+    const result: ResponseDto = await this.userService.createStudentProfile(
       user,
       request,
     );

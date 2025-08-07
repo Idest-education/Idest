@@ -2,10 +2,11 @@ import { CloudinaryService } from 'src/cloudinary/cloudinary.service';
 import { Injectable } from '@nestjs/common';
 import { CreateUserDto } from './dto/createUser.dto';
 import { userPayload } from 'src/common/types/userPayload.interface';
-import { User } from '@prisma/client';
+import { StudentProfile, User } from '@prisma/client';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { ResponseDto } from 'src/common/dto/response.dto';
 import { UpdateUserDto } from './dto/updateUser.dto';
+import { CreateStudentProfileDto } from './dto/createStudentProfile.dto';
 
 @Injectable()
 export class UserService {
@@ -214,6 +215,27 @@ export class UserService {
     } catch (error) {
       console.error(`Failed to get user details for ${userId}:`, error);
       return null;
+    }
+  }
+  async createStudentProfile(
+    user: userPayload,
+    dto: CreateStudentProfileDto,
+  ): Promise<ResponseDto<StudentProfile | null>> {
+    try {
+      const studentProfile = await this.prisma.studentProfile.update({
+        where: { user_id: user.id },
+        data: {
+          target_score: dto.target_score,
+          current_level: dto.current_level,
+        },
+      });
+      return ResponseDto.ok(
+        studentProfile,
+        'Student profile updated successfully',
+      );
+    } catch (error) {
+      console.error('Error creating student profile:', error);
+      return ResponseDto.fail('Student profile creation failed');
     }
   }
 }

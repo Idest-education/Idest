@@ -8,28 +8,28 @@ datasource db {
 }
 
 model User {
-  id               String          @id
-  full_name        String
-  email            String          @unique
-  role             String
-  avatar_url       String?
-  is_active        Boolean         @default(true)
-  created_at       DateTime        @default(now())
-  updated_at       DateTime        @updatedAt
-  Assignments      Assignment[]
-  ChatbotLogs      ChatbotLog[]
-  ClassesCreated   Class[]         @relation("CreatedClasses")
-  ClassMembers     ClassMember[]
-  ClassTeachers    ClassTeacher[]
-  FeedbackSent     Feedback[]      @relation("FeedbackFrom")
-  FeedbackReceived Feedback[]      @relation("FeedbackTo")
-  Progress         Progress[]
-  SessionHosted    Session[]
-  StudentProfile   StudentProfile?
-  Submissions      Submission[]
-  TeacherProfile   TeacherProfile?
+  id                       String                    @id
+  full_name                String
+  email                    String                    @unique
+  role                     String
+  avatar_url               String?
+  is_active                Boolean                   @default(true)
+  created_at               DateTime                  @default(now())
+  updated_at               DateTime                  @updatedAt
+  Assignments              Assignment[]
+  ChatbotLogs              ChatbotLog[]
+  ClassesCreated           Class[]                   @relation("CreatedClasses")
+  ClassMembers             ClassMember[]
+  ClassTeachers            ClassTeacher[]
   ConversationParticipants ConversationParticipant[]
-  Messages         Message[]
+  FeedbackSent             Feedback[]                @relation("FeedbackFrom")
+  FeedbackReceived         Feedback[]                @relation("FeedbackTo")
+  Messages                 Message[]
+  Progress                 Progress[]
+  SessionHosted            Session[]
+  StudentProfile           StudentProfile?
+  Submissions              Submission[]
+  TeacherProfile           TeacherProfile?
 }
 
 model StudentProfile {
@@ -61,8 +61,8 @@ model Class {
   creator     User           @relation("CreatedClasses", fields: [created_by], references: [id])
   members     ClassMember[]
   teachers    ClassTeacher[]
-  sessions    Session[]
   messages    Message[]
+  sessions    Session[]
 }
 
 model ClassMember {
@@ -95,12 +95,10 @@ model Session {
   whiteboard_data Json?
   metadata        Json?
   created_at      DateTime  @default(now())
+  messages        Message[]
   class           Class     @relation(fields: [class_id], references: [id])
   host            User      @relation(fields: [host_id], references: [id])
-  messages        Message[]
 }
-
-
 
 model Assignment {
   id          String              @id @default(uuid())
@@ -220,46 +218,42 @@ model ChatbotLog {
 }
 
 model Conversation {
-  id             String                     @id @default(uuid())
-  isGroup        Boolean                    @default(false)
-  createdAt      DateTime                   @default(now())
-  updatedAt      DateTime                   @updatedAt
-  participants   ConversationParticipant[]
-  messages       Message[]
+  id           String                    @id @default(uuid())
+  isGroup      Boolean                   @default(false)
+  createdAt    DateTime                  @default(now())
+  updatedAt    DateTime                  @updatedAt
+  participants ConversationParticipant[]
+  messages     Message[]
 }
 
 model ConversationParticipant {
   id             String       @id @default(uuid())
-  user           User         @relation(fields: [userId], references: [id])
   userId         String
-  conversation   Conversation @relation(fields: [conversationId], references: [id])
   conversationId String
   joinedAt       DateTime     @default(now())
+  conversation   Conversation @relation(fields: [conversationId], references: [id])
+  user           User         @relation(fields: [userId], references: [id])
 
   @@unique([userId, conversationId])
 }
 
 model Message {
-  id              String       @id @default(uuid())
-  content         String
-  type            MessageType  @default(DIRECT)
-  sentAt          DateTime     @default(now())
-
-  sender          User         @relation(fields: [senderId], references: [id])
-  senderId        String
-
-  conversation    Conversation? @relation(fields: [conversationId], references: [id])
-  conversationId  String?
-
-  class           Class?        @relation(fields: [classId], references: [id])
-  classId         String?
-
-  session         Session?      @relation(fields: [sessionId], references: [id])
-  sessionId       String?
+  id             String        @id @default(uuid())
+  content        String
+  type           MessageType   @default(DIRECT)
+  sentAt         DateTime      @default(now())
+  senderId       String
+  conversationId String?
+  classId        String?
+  sessionId      String?
+  class          Class?        @relation(fields: [classId], references: [id])
+  conversation   Conversation? @relation(fields: [conversationId], references: [id])
+  sender         User          @relation(fields: [senderId], references: [id])
+  session        Session?      @relation(fields: [sessionId], references: [id])
 }
 
 enum MessageType {
-  DIRECT     // 1-on-1 or group
-  CLASSROOM  // inside a class
-  MEETING    // inside a session
+  DIRECT
+  CLASSROOM
+  MEETING
 }
