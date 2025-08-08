@@ -2,17 +2,21 @@ import { CloudinaryService } from 'src/cloudinary/cloudinary.service';
 import { Injectable } from '@nestjs/common';
 import { CreateUserDto } from './dto/createUser.dto';
 import { userPayload } from 'src/common/types/userPayload.interface';
-import { StudentProfile, User } from '@prisma/client';
+import { StudentProfile, TeacherProfile, User } from '@prisma/client';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { ResponseDto } from 'src/common/dto/response.dto';
 import { UpdateUserDto } from './dto/updateUser.dto';
 import { CreateStudentProfileDto } from './dto/createStudentProfile.dto';
+import { CreateTeacherProfileDto } from './dto/createTeacherProfile.dto';
+import { Role } from 'src/common/enum/role.enum';
+import { SupabaseService } from 'src/supabase/supabase.service';
 
 @Injectable()
 export class UserService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly cloudinary: CloudinaryService,
+    private readonly supabaseService: SupabaseService,
   ) {}
 
   async createUser(
@@ -241,6 +245,51 @@ export class UserService {
     } catch (error) {
       console.error('Error creating student profile:', error);
       return ResponseDto.fail('Student profile creation failed');
+    }
+  }
+  async createTeacherProfile(
+    dto: CreateTeacherProfileDto,
+  ): Promise<ResponseDto<TeacherProfile | null>> {
+    try {
+      const invitedUser = await this.supabaseService.inviteUserByEmail(
+        dto.email,
+        { fullName: dto.fullName, role: Role.TEACHER },
+      );
+
+      const supabaseUserId = invitedUser?.id;
+      if (!supabaseUserId) {
+        return ResponseDto.fail('Failed to create Supabase user');
+      }
+
+      const teacherProfile = await this.prisma.$transaction(async (tx) => {
+        const user = await tx.user.create({
+          data: {
+            id: supabaseUserId,
+            full_name: dto.fullName,
+            email: dto.email,
+            role: Role.TEACHER,
+            avatar_url: dto.avatar,
+            is_active: true,
+          },
+        });
+
+        return tx.teacherProfile.create({
+          data: {
+            user_id: user.id,
+            degree: dto.degree,
+            specialization: dto.specialization.join(','),
+            bio: dto.bio,
+          },
+        });
+      });
+
+      return ResponseDto.ok(
+        teacherProfile,
+        'Teacher profile created successfully',
+      );
+    } catch (error) {
+      console.error('Error creating teacher profile:', error);
+      return ResponseDto.fail('Teacher profile creation failed');
     }
   }
 }

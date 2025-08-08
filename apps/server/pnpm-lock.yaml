@@ -59,6 +59,9 @@ importers:
       '@prisma/client':
         specifier: ^6.10.1
         version: 6.10.1(prisma@6.10.1(typescript@5.8.3))(typescript@5.8.3)
+      '@supabase/supabase-js':
+        specifier: ^2.54.0
+        version: 2.54.0
       '@types/bcrypt':
         specifier: ^5.0.2
         version: 5.0.2
@@ -100,7 +103,7 @@ importers:
         version: 2.0.1
       openai:
         specifier: ^5.8.1
-        version: 5.8.1
+        version: 5.8.1(ws@8.18.3)
       passport:
         specifier: ^0.7.0
         version: 0.7.0
@@ -1085,6 +1088,28 @@ packages:
   '@socket.io/component-emitter@3.1.2':
     resolution: {integrity: sha512-9BCxFwvbGg/RsZK9tjXd8s4UcwR0MWeFQ1XEKIQVVvAGJyINdrqKMcTRyLoK8Rse1GjzLV9cwjWV1olXRWEXVA==}
 
+  '@supabase/auth-js@2.71.1':
+    resolution: {integrity: sha512-mMIQHBRc+SKpZFRB2qtupuzulaUhFYupNyxqDj5Jp/LyPvcWvjaJzZzObv6URtL/O6lPxkanASnotGtNpS3H2Q==}
+
+  '@supabase/functions-js@2.4.5':
+    resolution: {integrity: sha512-v5GSqb9zbosquTo6gBwIiq7W9eQ7rE5QazsK/ezNiQXdCbY+bH8D9qEaBIkhVvX4ZRW5rP03gEfw5yw9tiq4EQ==}
+
+  '@supabase/node-fetch@2.6.15':
+    resolution: {integrity: sha512-1ibVeYUacxWYi9i0cf5efil6adJ9WRyZBLivgjs+AUpewx1F3xPi7gLgaASI2SmIQxPoCEjAsLAzKPgMJVgOUQ==}
+    engines: {node: 4.x || >=6.0.0}
+
+  '@supabase/postgrest-js@1.19.4':
+    resolution: {integrity: sha512-O4soKqKtZIW3olqmbXXbKugUtByD2jPa8kL2m2c1oozAO11uCcGrRhkZL0kVxjBLrXHE0mdSkFsMj7jDSfyNpw==}
+
+  '@supabase/realtime-js@2.15.0':
+    resolution: {integrity: sha512-SEIWApsxyoAe68WU2/5PCCuBwa11LL4Bb8K3r2FHCt3ROpaTthmDiWEhnLMGayP05N4QeYrMk0kyTZOwid/Hjw==}
+
+  '@supabase/storage-js@2.10.4':
+    resolution: {integrity: sha512-cvL02GarJVFcNoWe36VBybQqTVRq6wQSOCvTS64C+eyuxOruFIm1utZAY0xi2qKtHJO3EjKaj8iWJKySusDmAQ==}
+
+  '@supabase/supabase-js@2.54.0':
+    resolution: {integrity: sha512-DLw83YwBfAaFiL3oWV26+sHRdeCGtxmIKccjh/Pndze3BWM4fZghzYKhk3ElOQU8Bluq4AkkCJ5bM5Szl/sfRg==}
+
   '@swc/cli@0.6.0':
     resolution: {integrity: sha512-Q5FsI3Cw0fGMXhmsg7c08i4EmXCrcl+WnAxb6LYOLHw4JFFC3yzmx9LaXZ7QMbA+JZXbigU2TirI7RAfO0Qlnw==}
     engines: {node: '>= 16.14.0'}
@@ -1278,6 +1303,9 @@ packages:
   '@types/node@22.15.33':
     resolution: {integrity: sha512-wzoocdnnpSxZ+6CjW4ADCK1jVmd1S/J3ArNWfn8FDDQtRm8dkDg7TA+mvek2wNrfCgwuZxqEOiB9B1XCJ6+dbw==}
 
+  '@types/phoenix@1.6.6':
+    resolution: {integrity: sha512-PIzZZlEppgrpoT2QgbnDU+MMzuR6BbCjllj0bM70lWoejMeNJAxCchxnv7J3XFkI8MpygtRpzXrIlmWUBclP5A==}
+
   '@types/qs@6.14.0':
     resolution: {integrity: sha512-eOunJqu0K1923aExK6y8p6fsihYEn/BYuQ4g0CxAAgFc4b/ZLN4CrsRZ55srTdqoiLzU2B2evC+apEIxprEzkQ==}
 
@@ -1304,6 +1332,9 @@ packages:
 
   '@types/validator@13.15.2':
     resolution: {integrity: sha512-y7pa/oEJJ4iGYBxOpfAKn5b9+xuihvzDVnC/OSvlVnGxVg0pOqmjiMafiJ1KVNQEaPZf9HsEp5icEwGg8uIe5Q==}
+
+  '@types/ws@8.18.1':
+    resolution: {integrity: sha512-ThVF6DCVhA8kUGy+aazFQ4kXQ7E1Ty7A3ypFOe0IcJV8O/M511G99AW24irKrW56Wt44yG9+ij8FaqoBGkuBXg==}
 
   '@types/yargs-parser@21.0.3':
     resolution: {integrity: sha512-I4q9QU9MQv4oEOz4tAHJtNz1cwuLxn2F3xcc2iV5WdqLPpUnj30aUuxt1mAxYTG+oe8CZMV/+6rU4S4gRDzqtQ==}
@@ -3605,6 +3636,9 @@ packages:
     resolution: {integrity: sha512-lbDrTLVsHhOMljPscd0yitpozq7Ga2M5Cvez5AjGg8GASBjtt6iERCAJ93yommPmz62fb45oFIXHEZ3u9bfJEA==}
     engines: {node: '>=14.16'}
 
+  tr46@0.0.3:
+    resolution: {integrity: sha512-N3WMsuqV66lT30CrXNbEjx4GEwlow3v6rr4mCcv6prnfwhS01rkgyFdjPNBYd9br7LpXV1+Emh01fHnq2Gdgrw==}
+
   tree-kill@1.2.2:
     resolution: {integrity: sha512-L0Orpi8qGpRG//Nd+H90vFB+3iHnue1zSSGmNOOCh1GLJ7rUKVwV2HvijphGQS2UmhUZewS9VgvxYIdgr+fG1A==}
     hasBin: true
@@ -3780,6 +3814,9 @@ packages:
   wcwidth@1.0.1:
     resolution: {integrity: sha512-XHPEwS0q6TaxcvG85+8EYkbiCux2XtWG2mkc47Ng2A77BQu9+DqIOJldST4HgPkuea7dvKSj5VgX3P1d4rW8Tg==}
 
+  webidl-conversions@3.0.1:
+    resolution: {integrity: sha512-2JAn3z8AR6rjK8Sm8orRC0h/bcl/DqL7tRPdGZ4I1CjdF+EaMLmYxBHyXuKL849eucPFhvBoxMsflfOb8kxaeQ==}
+
   webpack-node-externals@3.0.0:
     resolution: {integrity: sha512-LnL6Z3GGDPht/AigwRh2dvL9PQPFQ8skEpVrWZXLWBYmqcaojHNN0onvHzie6rq7EWKrrBfPYqNEzTJgiwEQDQ==}
     engines: {node: '>=6'}
@@ -3797,6 +3834,9 @@ packages:
     peerDependenciesMeta:
       webpack-cli:
         optional: true
+
+  whatwg-url@5.0.0:
+    resolution: {integrity: sha512-saE57nupxk6v3HY35+jzBwYa0rKSy0XR8JSxZPwgLr7ys0IBzhGviA1/TUGJLmSVqs8pb9AnvICXEuOHLprYTw==}
 
   which@2.0.2:
     resolution: {integrity: sha512-BLI3Tl1TW3Pvl70l3yq3Y64i+awpwXqsGBYWkkqMtnbXgrMD+yj7rhW0kuEDxzJaYXGjEW5ogapKNMEKNMjibA==}
@@ -3828,6 +3868,18 @@ packages:
 
   ws@8.17.1:
     resolution: {integrity: sha512-6XQFvXTkbfUOZOKKILFG1PDK2NDQs4azKQl26T0YS5CxqWLgXajbPZ+h4gZekJyRqFU8pvnbAbbs/3TgRPy+GQ==}
+    engines: {node: '>=10.0.0'}
+    peerDependencies:
+      bufferutil: ^4.0.1
+      utf-8-validate: '>=5.0.2'
+    peerDependenciesMeta:
+      bufferutil:
+        optional: true
+      utf-8-validate:
+        optional: true
+
+  ws@8.18.3:
+    resolution: {integrity: sha512-PEIGCY5tSlUt50cqyMXfCzX+oOPqN0vuGqWzbcJ2xvnkzkq46oOpz7dQaTDBdfICb4N14+GARUDw2XV2N4tvzg==}
     engines: {node: '>=10.0.0'}
     peerDependencies:
       bufferutil: ^4.0.1
@@ -4879,6 +4931,48 @@ snapshots:
 
   '@socket.io/component-emitter@3.1.2': {}
 
+  '@supabase/auth-js@2.71.1':
+    dependencies:
+      '@supabase/node-fetch': 2.6.15
+
+  '@supabase/functions-js@2.4.5':
+    dependencies:
+      '@supabase/node-fetch': 2.6.15
+
+  '@supabase/node-fetch@2.6.15':
+    dependencies:
+      whatwg-url: 5.0.0
+
+  '@supabase/postgrest-js@1.19.4':
+    dependencies:
+      '@supabase/node-fetch': 2.6.15
+
+  '@supabase/realtime-js@2.15.0':
+    dependencies:
+      '@supabase/node-fetch': 2.6.15
+      '@types/phoenix': 1.6.6
+      '@types/ws': 8.18.1
+      ws: 8.18.3
+    transitivePeerDependencies:
+      - bufferutil
+      - utf-8-validate
+
+  '@supabase/storage-js@2.10.4':
+    dependencies:
+      '@supabase/node-fetch': 2.6.15
+
+  '@supabase/supabase-js@2.54.0':
+    dependencies:
+      '@supabase/auth-js': 2.71.1
+      '@supabase/functions-js': 2.4.5
+      '@supabase/node-fetch': 2.6.15
+      '@supabase/postgrest-js': 1.19.4
+      '@supabase/realtime-js': 2.15.0
+      '@supabase/storage-js': 2.10.4
+    transitivePeerDependencies:
+      - bufferutil
+      - utf-8-validate
+
   '@swc/cli@0.6.0(@swc/core@1.12.7)(chokidar@4.0.3)':
     dependencies:
       '@swc/core': 1.12.7
@@ -5076,6 +5170,8 @@ snapshots:
     dependencies:
       undici-types: 6.21.0
 
+  '@types/phoenix@1.6.6': {}
+
   '@types/qs@6.14.0': {}
 
   '@types/range-parser@1.2.7': {}
@@ -5108,6 +5204,10 @@ snapshots:
   '@types/uuid@10.0.0': {}
 
   '@types/validator@13.15.2': {}
+
+  '@types/ws@8.18.1':
+    dependencies:
+      '@types/node': 22.15.33
 
   '@types/yargs-parser@21.0.3': {}
 
@@ -7089,7 +7189,9 @@ snapshots:
     dependencies:
       mimic-fn: 2.1.0
 
-  openai@5.8.1: {}
+  openai@5.8.1(ws@8.18.3):
+    optionalDependencies:
+      ws: 8.18.3
 
   optionator@0.9.4:
     dependencies:
@@ -7659,6 +7761,8 @@ snapshots:
       '@tokenizer/token': 0.3.0
       ieee754: 1.2.1
 
+  tr46@0.0.3: {}
+
   tree-kill@1.2.2: {}
 
   ts-api-utils@2.1.0(typescript@5.8.3):
@@ -7823,6 +7927,8 @@ snapshots:
     dependencies:
       defaults: 1.0.4
 
+  webidl-conversions@3.0.1: {}
+
   webpack-node-externals@3.0.0: {}
 
   webpack-sources@3.3.3: {}
@@ -7857,6 +7963,11 @@ snapshots:
       - esbuild
       - uglify-js
 
+  whatwg-url@5.0.0:
+    dependencies:
+      tr46: 0.0.3
+      webidl-conversions: 3.0.1
+
   which@2.0.2:
     dependencies:
       isexe: 2.0.0
@@ -7889,6 +8000,8 @@ snapshots:
       signal-exit: 3.0.7
 
   ws@8.17.1: {}
+
+  ws@8.18.3: {}
 
   xtend@4.0.2: {}
 

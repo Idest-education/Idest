@@ -21,6 +21,7 @@ import { Role } from 'src/common/enum/role.enum';
 import { Roles } from 'src/common/decorator/role.decorator';
 import { CloudinaryPayload } from 'src/common/types/cloudinaryPayload.interface';
 import { CreateStudentProfileDto } from './dto/createStudentProfile.dto';
+import { CreateTeacherProfileDto } from './dto/createTeacherProfile.dto';
 
 @Controller('user')
 @UseGuards(AuthGuard)
@@ -54,6 +55,14 @@ export class UserController {
       request,
     );
     console.log('result:', result);
+    return result;
+  }
+
+  @Post('teacher-profile')
+  @Roles(Role.ADMIN)
+  async createTeacherProfile(@Body() request: CreateTeacherProfileDto) {
+    const result: ResponseDto =
+      await this.userService.createTeacherProfile(request);
     return result;
   }
 
