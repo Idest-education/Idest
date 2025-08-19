@@ -7,15 +7,17 @@ import {
 import { PrismaService } from 'src/prisma/prisma.service';
 import { userPayload } from 'src/common/types/userPayload.interface';
 import { ResponseDto } from 'src/common/dto/response.dto';
-import {
-  CreateConversationDto,
-  AddParticipantDto,
-} from './dto/create-conversation.dto';
+import { CreateConversationDto } from './dto/create-conversation.dto';
+import { AddParticipantDto } from './dto/add-participant.dto';
 import { SendMessageDto } from './dto/send-message.dto';
+import { ConversationGateway } from './conversation.gateway';
 
 @Injectable()
 export class ConversationService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly conversationGateway: ConversationGateway,
+  ) {}
 
   /**
    * Create a new conversation (1-on-1 or group)
@@ -25,7 +27,7 @@ export class ConversationService {
     dto: CreateConversationDto,
   ): Promise<ResponseDto> {
     try {
-      // For 1-on-1 conversations, check if one already exists
+      // 1-1 convo
       if (!dto.isGroup && dto.participantIds.length === 1) {
         const otherUserId = dto.participantIds[0];
         const existing = await this.findExistingDirectConversation(
@@ -37,14 +39,32 @@ export class ConversationService {
         }
       }
 
-      // Create conversation
+      if (dto.classId) {
+        const existingClassConversation =
+          (await this.prisma.conversation.findFirst({
+            where: { classId: dto.classId } as any,
+            include: { participants: true },
+          })) as any;
+        if (existingClassConversation) {
+          return ResponseDto.ok(
+            existingClassConversation,
+            'Class conversation already exists',
+          );
+        }
+      }
+
       const conversation = await this.prisma.conversation.create({
         data: {
           isGroup: dto.isGroup || false,
+          ...({
+            title: dto.title,
+            createdBy: user.id,
+            ownerId: dto.ownerId || user.id,
+            classId: dto.classId,
+          } as any),
         },
       });
 
-      // Add creator as participant
       await this.prisma.conversationParticipant.create({
         data: {
           userId: user.id,
@@ -52,7 +72,6 @@ export class ConversationService {
         },
       });
 
-      // Add other participants
       const participantData = dto.participantIds.map((userId) => ({
         userId,
         conversationId: conversation.id,
@@ -63,7 +82,6 @@ export class ConversationService {
         skipDuplicates: true,
       });
 
-      // Return conversation with participants
       const fullConversation = await this.prisma.conversation.findUnique({
         where: { id: conversation.id },
         include: {
@@ -95,6 +113,8 @@ export class ConversationService {
         },
       });
 
+      this.conversationGateway.emitConversationCreated(fullConversation);
+
       return ResponseDto.ok(
         fullConversation,
         'Conversation created successfully',
@@ -108,13 +128,18 @@ export class ConversationService {
   /**
    * Get all conversations for a user
    */
-  async getUserConversations(userId: string): Promise<ResponseDto> {
+  async getUserConversations(
+    userId: string,
+    params?: { cursor?: string; limit?: number },
+  ): Promise<ResponseDto> {
     try {
+      const { cursor, limit = 50 } = params || {};
       const conversations = await this.prisma.conversation.findMany({
         where: {
           participants: {
             some: { userId },
           },
+          ...({ deleted: false } as any),
         },
         include: {
           participants: {
@@ -146,10 +171,17 @@ export class ConversationService {
           },
         },
         orderBy: { updatedAt: 'desc' },
+        take: limit,
+        ...(cursor && { cursor: { id: cursor }, skip: 1 }),
       });
 
+      const nextCursor =
+        conversations.length === limit
+          ? conversations[conversations.length - 1].id
+          : undefined;
+
       return ResponseDto.ok(
-        conversations,
+        { items: conversations, nextCursor },
         'Conversations retrieved successfully',
       );
     } catch (error) {
@@ -168,7 +200,6 @@ export class ConversationService {
     before?: Date,
   ): Promise<ResponseDto> {
     try {
-      // Check if user is participant
       const isParticipant =
         await this.prisma.conversationParticipant.findUnique({
           where: {
@@ -222,8 +253,14 @@ export class ConversationService {
       // Reverse messages to get chronological order
       conversation.messages.reverse();
 
+      const convAny: any = conversation as any;
+      const nextCursor =
+        convAny.messages.length === limit
+          ? convAny.messages[convAny.messages.length - 1].id
+          : undefined;
+
       return ResponseDto.ok(
-        conversation,
+        { conversation: convAny, nextCursor },
         'Conversation retrieved successfully',
       );
     } catch (error) {
@@ -264,13 +301,30 @@ export class ConversationService {
         );
       }
 
-      // Create message
+      // ensure conversation exists and not deleted; also decide message type
+      const conv = (await this.prisma.conversation.findUnique({
+        where: { id: conversationId },
+        select: {
+          id: true,
+          isGroup: true,
+          classId: true,
+          deleted: true,
+        } as any,
+      })) as any;
+      if (!conv || conv.deleted) {
+        throw new NotFoundException('Conversation not found');
+      }
+
+      const messageType = (conv as any).classId ? 'CLASSROOM' : 'DIRECT';
+
       const message = await this.prisma.message.create({
         data: {
           content: dto.content,
           senderId: userId,
           conversationId,
-          type: 'DIRECT',
+          type: messageType as any,
+          ...({ replyToId: dto.replyToId } as any),
+          attachments: (dto.attachments as any) || undefined,
         },
         include: {
           sender: {
@@ -289,11 +343,12 @@ export class ConversationService {
         },
       });
 
-      // Update conversation's updatedAt
       await this.prisma.conversation.update({
         where: { id: conversationId },
-        data: { updatedAt: new Date() },
+        data: { updatedAt: new Date() } as any,
       });
+
+      this.conversationGateway.emitNewMessage(conversationId, message);
 
       return ResponseDto.ok(message, 'Message sent successfully');
     } catch (error) {
@@ -314,7 +369,6 @@ export class ConversationService {
     dto: AddParticipantDto,
   ): Promise<ResponseDto> {
     try {
-      // Check if conversation exists and is a group
       const conversation = await this.prisma.conversation.findUnique({
         where: { id: conversationId },
         include: {
@@ -332,7 +386,6 @@ export class ConversationService {
         );
       }
 
-      // Check if requester is a participant
       const isParticipant = conversation.participants.some(
         (p) => p.userId === userId,
       );
@@ -340,7 +393,6 @@ export class ConversationService {
         throw new ForbiddenException('Only participants can add new members');
       }
 
-      // Check if user is already a participant
       const alreadyParticipant = conversation.participants.some(
         (p) => p.userId === dto.userId,
       );
@@ -348,7 +400,6 @@ export class ConversationService {
         throw new ConflictException('User is already a participant');
       }
 
-      // Add participant
       const participant = await this.prisma.conversationParticipant.create({
         data: {
           userId: dto.userId,
@@ -365,6 +416,11 @@ export class ConversationService {
           },
         },
       });
+
+      this.conversationGateway.emitParticipantAdded(
+        conversationId,
+        participant,
+      );
 
       return ResponseDto.ok(participant, 'Participant added successfully');
     } catch (error) {
@@ -436,14 +492,21 @@ export class ConversationService {
         });
 
       if (remainingParticipants === 0) {
-        await this.prisma.conversation.delete({
+        await this.prisma.conversation.update({
           where: { id: conversationId },
+          data: { deleted: true } as any,
         });
+        this.conversationGateway.emitConversationDeleted(conversationId);
         return ResponseDto.ok(
           null,
-          'Conversation deleted as no participants remain',
+          'Conversation marked deleted as no participants remain',
         );
       }
+
+      this.conversationGateway.emitParticipantRemoved(
+        conversationId,
+        participantId,
+      );
 
       return ResponseDto.ok(null, 'Participant removed successfully');
     } catch (error) {
@@ -466,7 +529,6 @@ export class ConversationService {
     otherUserId: string,
   ): Promise<ResponseDto> {
     try {
-      // Check if conversation already exists
       const existing = await this.findExistingDirectConversation(
         userId,
         otherUserId,
@@ -475,7 +537,6 @@ export class ConversationService {
         return ResponseDto.ok(existing, 'Direct conversation found');
       }
 
-      // Create new conversation
       const dto: CreateConversationDto = {
         isGroup: false,
         participantIds: [otherUserId],
@@ -548,7 +609,6 @@ export class ConversationService {
     before?: Date,
   ): Promise<ResponseDto> {
     try {
-      // Check if user is participant
       const isParticipant =
         await this.prisma.conversationParticipant.findUnique({
           where: {
@@ -588,6 +648,10 @@ export class ConversationService {
         messages,
         hasMore: messages.length === limit,
         total: messages.length,
+        nextCursor:
+          messages.length === limit
+            ? messages[messages.length - 1].id
+            : undefined,
       };
 
       return ResponseDto.ok(response, 'Messages retrieved successfully');

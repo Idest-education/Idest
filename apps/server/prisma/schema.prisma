@@ -30,6 +30,8 @@ model User {
   StudentProfile           StudentProfile?
   Submissions              Submission[]
   TeacherProfile           TeacherProfile?
+  ConversationsCreated     Conversation[]            @relation("ConversationCreatedBy")
+  ConversationsOwned       Conversation[]            @relation("ConversationOwner")
 }
 
 model StudentProfile {
@@ -49,7 +51,8 @@ model TeacherProfile {
 
 model Class {
   id          String         @id @default(uuid())
-  name        String
+  name        String         @unique
+  slug        String         @unique
   description String
   is_group    Boolean
   invite_code String         @unique
@@ -63,6 +66,7 @@ model Class {
   teachers    ClassTeacher[]
   messages    Message[]
   sessions    Session[]
+  conversations Conversation[]
 }
 
 model ClassMember {
@@ -106,6 +110,7 @@ model Assignment {
   class_id    String?
   skill       String
   title       String
+  slug        String              @unique
   description String
   is_public   Boolean
   created_at  DateTime            @default(now())
@@ -222,8 +227,18 @@ model Conversation {
   isGroup      Boolean                   @default(false)
   createdAt    DateTime                  @default(now())
   updatedAt    DateTime                  @updatedAt
+  title        String?
+  createdBy    String
+  ownerId      String?
+  isDeleted      Boolean                   @default(false)
+  classId      String?
   participants ConversationParticipant[]
   messages     Message[]
+  createdByUser User                      @relation("ConversationCreatedBy", fields: [createdBy], references: [id])
+  owner         User?                     @relation("ConversationOwner", fields: [ownerId], references: [id])
+  class         Class?                    @relation(fields: [classId], references: [id])
+
+  @@unique([classId])
 }
 
 model ConversationParticipant {
@@ -246,10 +261,14 @@ model Message {
   conversationId String?
   classId        String?
   sessionId      String?
+  replyToId      String?
+  attachments    Json?
   class          Class?        @relation(fields: [classId], references: [id])
   conversation   Conversation? @relation(fields: [conversationId], references: [id])
   sender         User          @relation(fields: [senderId], references: [id])
   session        Session?      @relation(fields: [sessionId], references: [id])
+  replyTo        Message?      @relation("MessageReplies", fields: [replyToId], references: [id])
+  replies        Message[]     @relation("MessageReplies")
 }
 
 enum MessageType {

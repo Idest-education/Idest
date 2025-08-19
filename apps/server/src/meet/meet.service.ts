@@ -26,46 +26,6 @@ export class MeetService {
   ) {}
 
   /**
-   * Validate JWT token and extract user payload
-   */
-  async validateToken(token: string): Promise<userPayload> {
-    try {
-      const jwtSecret = process.env.JWT_SECRET;
-      if (!jwtSecret) {
-        throw new UnauthorizedException('JWT secret not configured');
-      }
-
-      const decoded = (await verifyAsync(token, jwtSecret)) as any;
-
-      // Extract user ID from Supabase JWT (usually in 'sub' field)
-      const userId = decoded.sub || decoded.id || decoded.userId;
-      if (!userId) {
-        throw new UnauthorizedException('User ID not found in token');
-      }
-
-      // Get user details including role from database
-      const userDetails = await this.userService.getUserDetails(userId);
-      if (!userDetails) {
-        throw new UnauthorizedException('User not found in database');
-      }
-
-      return {
-        id: userId,
-        email:
-          decoded.email || decoded.email_address || userDetails.email || '',
-        avatar:
-          userDetails.avatar_url || decoded.avatar || decoded.picture || '',
-        role: userDetails.role as Role,
-      };
-    } catch (error) {
-      if (error instanceof UnauthorizedException) {
-        throw error;
-      }
-      throw new UnauthorizedException('Invalid or expired token');
-    }
-  }
-
-  /**
    * Validate if a session exists and is active
    */
   async validateSession(sessionId: string): Promise<boolean> {
@@ -124,17 +84,14 @@ export class MeetService {
         throw new NotFoundException(`Session ${sessionId} not found`);
       }
 
-      // Check if user is the session host
       if (session.host_id === userId) {
         return true;
       }
 
-      // Check if user is the class creator
       if (session.class.created_by === userId) {
         return true;
       }
 
-      // Check if user is a teacher in the class
       const isTeacher = session.class.teachers.some(
         (teacher) => teacher.teacher_id === userId,
       );
@@ -142,7 +99,6 @@ export class MeetService {
         return true;
       }
 
-      // Check if user is a member of the class
       const isMember = session.class.members.some(
         (member) => member.student_id === userId && member.status === 'active',
       );
@@ -242,7 +198,6 @@ export class MeetService {
 
       const participants = new Map<string, any>();
 
-      // Add host
       if (session.host) {
         participants.set(session.host.id, {
           userId: session.host.id,
@@ -256,7 +211,6 @@ export class MeetService {
         });
       }
 
-      // Add class creator
       if (session.class.creator) {
         participants.set(session.class.creator.id, {
           userId: session.class.creator.id,
@@ -286,7 +240,6 @@ export class MeetService {
         }
       });
 
-      // Add active class members
       session.class.members
         .filter((member) => member.status === 'active')
         .forEach((member) => {
@@ -447,7 +400,7 @@ export class MeetService {
         take: limit,
       });
 
-      return messages.reverse(); // Return in chronological order
+      return messages.reverse();
     } catch (error) {
       console.error('Failed to get meeting messages:', error);
       return [];
@@ -495,7 +448,7 @@ export class MeetService {
         take: limit,
       });
 
-      return messages.reverse(); // Return in chronological order
+      return messages.reverse();
     } catch (error) {
       console.error('Failed to get classroom messages:', error);
       return [];

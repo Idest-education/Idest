@@ -1,9 +1,9 @@
 import {
-  IsBoolean,
   IsNotEmpty,
   IsOptional,
   IsString,
   IsObject,
+  IsBoolean,
 } from 'class-validator';
 
 export class CreateClassDto {
@@ -25,4 +25,6 @@ export class CreateClassDto {
   @IsString()
   @IsOptional()
   invite_code?: string; // Auto-generated if not provided
+
+  // slug is auto-generated from name in service
 }

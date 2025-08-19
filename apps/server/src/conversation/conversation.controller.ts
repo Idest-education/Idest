@@ -13,10 +13,8 @@ import { AuthGuard } from 'src/common/guard/auth.guard';
 import { User } from 'src/common/decorator/currentUser.decorator';
 import { userPayload } from 'src/common/types/userPayload.interface';
 import { ResponseDto } from 'src/common/dto/response.dto';
-import {
-  CreateConversationDto,
-  AddParticipantDto,
-} from './dto/create-conversation.dto';
+import { CreateConversationDto } from './dto/create-conversation.dto';
+import { AddParticipantDto } from './dto/add-participant.dto';
 import { SendMessageDto } from './dto/send-message.dto';
 
 @Controller('conversation')
@@ -39,8 +37,15 @@ export class ConversationController {
    * Get all conversations for the current user
    */
   @Get()
-  async getUserConversations(@User() user: userPayload): Promise<ResponseDto> {
-    return this.conversationService.getUserConversations(user.id);
+  async getUserConversations(
+    @User() user: userPayload,
+    @Query('cursor') cursor?: string,
+    @Query('limit') limit?: string,
+  ): Promise<ResponseDto> {
+    return this.conversationService.getUserConversations(user.id, {
+      cursor,
+      limit: limit ? parseInt(limit) : 50,
+    });
   }
 
   /**
@@ -87,6 +92,7 @@ export class ConversationController {
     @User() user: userPayload,
     @Query('limit') limit?: string,
     @Query('before') before?: string,
+    @Query('cursor') cursor?: string,
   ): Promise<ResponseDto> {
     const messageLimit = limit ? parseInt(limit) : 50;
     const beforeDate = before ? new Date(before) : undefined;

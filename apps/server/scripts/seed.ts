@@ -1,4 +1,5 @@
 import { PrismaClient } from '@prisma/client';
+import { Role } from '../src/common/enum/role.enum';
 
 const prisma = new PrismaClient();
 
@@ -23,7 +24,7 @@ async function main() {
       id: 'teacher-001',
       full_name: 'Dr. Alice Smith',
       email: 'alice.smith@university.edu',
-      role: 'teacher',
+      role: Role.TEACHER,
       avatar_url:
         'https://images.unsplash.com/photo-1494790108755-2616b612b786?w=150',
       is_active: true,
@@ -35,7 +36,7 @@ async function main() {
       id: 'teacher-002',
       full_name: 'Prof. Bob Johnson',
       email: 'bob.johnson@university.edu',
-      role: 'teacher',
+      role: Role.TEACHER,
       avatar_url:
         'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150',
       is_active: true,
@@ -47,7 +48,7 @@ async function main() {
       id: 'student-001',
       full_name: 'Charlie Brown',
       email: 'charlie.brown@student.edu',
-      role: 'student',
+      role: Role.STUDENT,
       avatar_url:
         'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150',
       is_active: true,
@@ -59,7 +60,7 @@ async function main() {
       id: 'student-002',
       full_name: 'Diana Prince',
       email: 'diana.prince@student.edu',
-      role: 'student',
+      role: Role.STUDENT,
       avatar_url:
         'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=150',
       is_active: true,
@@ -71,7 +72,7 @@ async function main() {
       id: 'student-003',
       full_name: 'Eva Martinez',
       email: 'eva.martinez@student.edu',
-      role: 'student',
+      role: Role.STUDENT,
       avatar_url:
         'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=150',
       is_active: true,
@@ -83,7 +84,7 @@ async function main() {
       id: 'admin-001',
       full_name: 'Frank Administrator',
       email: 'frank.admin@university.edu',
-      role: 'admin',
+      role: Role.ADMIN,
       avatar_url:
         'https://images.unsplash.com/photo-1560250097-0b93528c311a?w=150',
       is_active: true,
@@ -98,6 +99,7 @@ async function main() {
     data: {
       id: 'class-math-101',
       name: 'Mathematics 101',
+      slug: 'mathematics-101',
       description: 'Introduction to Calculus and Linear Algebra',
       is_group: true,
       invite_code: 'MATH101',
@@ -108,13 +110,14 @@ async function main() {
         timezone: 'UTC',
       },
       created_by: teacher1.id,
-    },
+    } as any,
   });
 
   const physicsClass = await prisma.class.create({
     data: {
       id: 'class-physics-201',
       name: 'Physics 201',
+      slug: 'physics-201',
       description: 'Classical Mechanics and Thermodynamics',
       is_group: true,
       invite_code: 'PHYS201',
@@ -125,13 +128,14 @@ async function main() {
         timezone: 'UTC',
       },
       created_by: teacher2.id,
-    },
+    } as any,
   });
 
   const tutorialClass = await prisma.class.create({
     data: {
       id: 'class-tutorial-001',
       name: 'Personal Tutoring Session',
+      slug: 'personal-tutoring-session',
       description: 'One-on-one mathematics tutoring',
       is_group: false,
       invite_code: 'TUTOR001',
@@ -142,7 +146,7 @@ async function main() {
         timezone: 'UTC',
       },
       created_by: teacher1.id,
-    },
+    } as any,
   });
 
   console.log(`✅ Created ${3} test classes`);
@@ -251,7 +255,9 @@ async function main() {
     data: {
       id: 'conv-direct-001',
       isGroup: false,
-    },
+      createdBy: teacher1.id,
+      ownerId: teacher1.id,
+    } as any,
   });
 
   await prisma.conversationParticipant.createMany({
@@ -266,7 +272,10 @@ async function main() {
     data: {
       id: 'conv-group-001',
       isGroup: true,
-    },
+      title: 'Physics Study Group',
+      createdBy: student1.id,
+      ownerId: student1.id,
+    } as any,
   });
 
   await prisma.conversationParticipant.createMany({

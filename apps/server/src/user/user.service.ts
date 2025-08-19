@@ -2,7 +2,7 @@ import { CloudinaryService } from 'src/cloudinary/cloudinary.service';
 import { Injectable } from '@nestjs/common';
 import { CreateUserDto } from './dto/createUser.dto';
 import { userPayload } from 'src/common/types/userPayload.interface';
-import { StudentProfile, TeacherProfile, User } from '@prisma/client';
+import { Prisma, StudentProfile, TeacherProfile, User } from '@prisma/client';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { ResponseDto } from 'src/common/dto/response.dto';
 import { UpdateUserDto } from './dto/updateUser.dto';
@@ -21,16 +21,15 @@ export class UserService {
 
   async createUser(
     user: userPayload,
-    dto: CreateUserDto,
   ): Promise<ResponseDto<User | null>> {
     try {
       await this.prisma.user.create({
         data: {
           id: user.id,
-          full_name: dto.fullName,
+          full_name: user.full_name,
           email: user.email,
-          role: dto.role,
-          avatar_url: dto.avatar || user.avatar,
+          role: user.role,
+          avatar_url: user.avatar,
         },
       });
       const newUser = await this.prisma.user.findUnique({
@@ -176,10 +175,154 @@ export class UserService {
       return ResponseDto.fail('Unban operation failed');
     }
   }
-  async getAllUsers(): Promise<ResponseDto<User[] | null>> {
+  async getAllUsers(
+    page: number = 1,
+    limit: number = 10,
+    sortBy?: string,
+    filter?: string[],
+    sortOrder?: 'asc' | 'desc',
+  ): Promise<
+    ResponseDto<{
+      users: User[];
+      total: number;
+      page: number;
+      limit: number;
+      totalPages: number;
+      hasMore: boolean;
+    } | null>
+  > {
     try {
-      const users = await this.prisma.user.findMany();
-      return ResponseDto.ok(users, 'Users fetched successfully');
+      console.log('number 0');
+      const safePage = Number.isFinite(page) && page > 0 ? Math.floor(page) : 1;
+      const normalizedLimit =
+        Number.isFinite(limit) && limit > 0 ? Math.floor(limit) : 10;
+      const safeLimit = Math.min(100, normalizedLimit);
+      const skip = (safePage - 1) * safeLimit;
+
+      const requestedOrder: 'asc' | 'desc' =
+        sortOrder === 'asc' ? 'asc' : 'desc';
+      const sortKey = (sortBy || '').toString().toLowerCase();
+      console.log('number 1');
+
+      const orderBy = (() => {
+        switch (sortKey) {
+          case 'name':
+          case 'fullname':
+            return { full_name: requestedOrder } as const;
+          case 'role':
+            return { role: requestedOrder } as const;
+          case 'isactive':
+          case 'active':
+            return { is_active: requestedOrder } as const;
+          case 'createdat':
+          case 'datecreated':
+          case 'created':
+            return { created_at: requestedOrder } as const;
+          case 'specialization':
+            return {
+              TeacherProfile: { specialization: requestedOrder },
+            } as const;
+          default:
+            return { created_at: 'desc' as const };
+        }
+      })();
+      console.log('number 2');
+
+      // Build where clause from filters
+      const where: Prisma.UserWhereInput = (() => {
+        if (!filter || filter.length === 0) return {};
+
+        const roles: string[] = [];
+        const specializationFilters: string[] = [];
+        let search: string | undefined;
+        let isActive: boolean | undefined;
+
+        for (const raw of filter) {
+          if (!raw) continue;
+          const [keyRaw, ...rest] = raw.split(':');
+          const key = (keyRaw || '').trim().toLowerCase();
+          const value = rest.join(':').trim();
+          if (!key || !value) continue;
+
+          switch (key) {
+            case 'role':
+              roles.push(value.toUpperCase()); // Convert to uppercase to match enum values
+              break;
+            case 'q':
+            case 'search':
+              search = value;
+              break;
+            case 'active':
+            case 'isactive': {
+              const lowered = value.toLowerCase();
+              if (lowered === 'true' || lowered === 'false') {
+                isActive = lowered === 'true';
+              }
+              break;
+            }
+            case 'specialization':
+              specializationFilters.push(value);
+              break;
+            default:
+              break;
+          }
+        }
+        console.log('number 3');
+
+        const whereInput: Prisma.UserWhereInput = {};
+        if (roles.length) {
+          whereInput.role = { in: roles };
+        }
+        if (typeof isActive === 'boolean') {
+          whereInput.is_active = isActive;
+        }
+
+        const andConditions: Prisma.UserWhereInput[] = [];
+        if (search) {
+          andConditions.push({
+            OR: [
+              { full_name: { contains: search, mode: 'insensitive' } },
+              { email: { contains: search, mode: 'insensitive' } },
+            ],
+          });
+        }
+        console.log('number 4');
+
+        if (specializationFilters.length) {
+          andConditions.push({
+            TeacherProfile: {
+              is: {
+                OR: specializationFilters.map((spec) => ({
+                  specialization: { contains: spec, mode: 'insensitive' },
+                })),
+              },
+            },
+          });
+        }
+        if (andConditions.length) {
+          whereInput.AND = andConditions;
+        }
+        return whereInput;
+      })();
+      console.log('number 5');
+      const [total, users] = await this.prisma.$transaction([
+        this.prisma.user.count({ where }),
+        this.prisma.user.findMany({
+          where,
+          skip,
+          take: safeLimit,
+          orderBy,
+        }),
+      ]);
+      console.log('number 6');
+      const totalPages = Math.max(1, Math.ceil(total / safeLimit));
+      const hasMore = safePage < totalPages;
+      console.log('prob success');
+
+      return ResponseDto.ok(
+        { users, total, page: safePage, limit: safeLimit, totalPages, hasMore },
+        'Users fetched successfully',
+      );
     } catch (error) {
       console.error('Error fetching users:', error);
       return ResponseDto.fail('Failed to fetch users');

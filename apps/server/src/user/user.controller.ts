@@ -5,6 +5,7 @@ import {
   Param,
   Post,
   Put,
+  Query,
   UseGuards,
   UseInterceptors,
 } from '@nestjs/common';
@@ -16,10 +17,8 @@ import { ResponseDto } from 'src/common/dto/response.dto';
 import { UpdateUserDto } from './dto/updateUser.dto';
 import { AuthGuard } from 'src/common/guard/auth.guard';
 import { FileInterceptor } from '@nestjs/platform-express';
-import { ImageInterceptor } from 'src/common/interceptors/image.interceptors';
 import { Role } from 'src/common/enum/role.enum';
 import { Roles } from 'src/common/decorator/role.decorator';
-import { CloudinaryPayload } from 'src/common/types/cloudinaryPayload.interface';
 import { CreateStudentProfileDto } from './dto/createStudentProfile.dto';
 import { CreateTeacherProfileDto } from './dto/createTeacherProfile.dto';
 
@@ -36,11 +35,8 @@ export class UserController {
   }
 
   @Post()
-  async createUser(@User() user: userPayload, @Body() request: CreateUserDto) {
-    const result: ResponseDto = await this.userService.createUser(
-      user,
-      request,
-    );
+  async createUser(@User() user: userPayload) {
+    const result: ResponseDto = await this.userService.createUser(user);
     return result;
   }
 
@@ -79,20 +75,6 @@ export class UserController {
     return result;
   }
 
-  @Post('avatar')
-  @UseInterceptors(FileInterceptor('image'), ImageInterceptor)
-  async uploadAvatar(
-    @User() user: userPayload,
-    @Body() image: CloudinaryPayload,
-  ): Promise<ResponseDto> {
-    console.log('req.user:', user);
-    const result: ResponseDto = await this.userService.uploadAvatar(
-      image.imageUrl,
-      user.id,
-    );
-    return result;
-  }
-
   @Post('ban/:id')
   @Roles(Role.ADMIN)
   async banUser(
@@ -117,8 +99,30 @@ export class UserController {
   }
   @Get('all')
   @Roles(Role.ADMIN)
-  async getAllUsers(): Promise<ResponseDto> {
-    const result: ResponseDto = await this.userService.getAllUsers();
+  async getAllUsers(
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+    @Query('sortBy') sortBy?: string,
+    @Query('filter') filter?: string | string[],
+    @Query('sortOrder') sortOrder?: 'asc' | 'desc',
+  ): Promise<ResponseDto> {
+    const pageNum = page ? parseInt(page) : 1;
+    const limitNum = limit ? parseInt(limit) : 10;
+    const filtersArray = Array.isArray(filter)
+      ? filter
+      : filter
+        ? filter
+            .split(',')
+            .map((s) => s.trim())
+            .filter(Boolean)
+        : undefined;
+    const result: ResponseDto = await this.userService.getAllUsers(
+      pageNum,
+      limitNum,
+      sortBy,
+      filtersArray,
+      sortOrder,
+    );
     return result;
   }
 }

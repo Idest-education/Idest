@@ -21,7 +21,6 @@ export class SessionService {
     dto: CreateSessionDto,
   ): Promise<ResponseDto> {
     try {
-      // Check if user has permission to create sessions in this class
       const hasPermission = await this.checkClassPermission(
         dto.class_id,
         user.id,
@@ -77,7 +76,6 @@ export class SessionService {
     userId: string,
   ): Promise<ResponseDto> {
     try {
-      // Check if user has access to this class
       const hasAccess = await this.checkClassAccess(classId, userId);
       if (!hasAccess) {
         throw new ForbiddenException('Access denied to this class');
@@ -169,7 +167,6 @@ export class SessionService {
         throw new NotFoundException('Session not found');
       }
 
-      // Check if user has access to this session
       const hasAccess = this.checkSessionAccess(session, userId);
       if (!hasAccess) {
         throw new ForbiddenException('Access denied to this session');
@@ -208,7 +205,6 @@ export class SessionService {
         throw new NotFoundException('Session not found');
       }
 
-      // Check if user can modify this session (host, class creator, or teacher)
       const canModify = await this.checkSessionModifyPermission(
         session,
         userId,
@@ -278,7 +274,6 @@ export class SessionService {
         throw new NotFoundException('Session not found');
       }
 
-      // Only session host or class creator can delete
       if (session.host_id !== userId && session.class.created_by !== userId) {
         throw new ForbiddenException(
           'Only session host or class creator can delete sessions',
@@ -309,7 +304,6 @@ export class SessionService {
     try {
       const now = new Date();
 
-      // Get sessions where user is host
       const hostedSessions = await this.prisma.session.findMany({
         where: {
           host_id: userId,
@@ -323,7 +317,6 @@ export class SessionService {
         orderBy: { start_time: 'asc' },
       });
 
-      // Get sessions from classes where user is member or teacher
       const memberSessions = await this.prisma.session.findMany({
         where: {
           start_time: { gte: now },
@@ -377,7 +370,6 @@ export class SessionService {
         throw new NotFoundException('Session not found');
       }
 
-      // Check if user can end this session
       const canModify = await this.checkSessionModifyPermission(
         session,
         userId,
@@ -434,7 +426,6 @@ export class SessionService {
 
     if (!classData) return false;
 
-    // Creator or teacher
     return (
       classData.created_by === userId ||
       classData.teachers.some((t) => t.teacher_id === userId)
@@ -458,7 +449,6 @@ export class SessionService {
 
     if (!classData) return false;
 
-    // Creator, teacher, or active member
     return (
       classData.created_by === userId ||
       classData.teachers.some((t) => t.teacher_id === userId) ||

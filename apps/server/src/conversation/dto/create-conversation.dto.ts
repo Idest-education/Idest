@@ -14,11 +14,17 @@ export class CreateConversationDto {
   @IsArray()
   @IsString({ each: true })
   @IsNotEmpty({ each: true })
-  participantIds: string[]; // Array of user IDs to add to conversation
-}
+  participantIds: string[];
 
-export class AddParticipantDto {
   @IsString()
-  @IsNotEmpty()
-  userId: string;
+  @IsOptional()
+  title?: string;
+
+  @IsString()
+  @IsOptional()
+  classId?: string;
+
+  @IsString()
+  @IsOptional()
+  ownerId?: string;
 }

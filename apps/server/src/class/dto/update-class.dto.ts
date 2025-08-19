@@ -1,4 +1,4 @@
-import { IsBoolean, IsOptional, IsString, IsObject } from 'class-validator';
+import { IsOptional, IsString, IsObject, IsBoolean } from 'class-validator';
 
 export class UpdateClassDto {
   @IsString()

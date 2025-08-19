@@ -17,7 +17,7 @@ export class AddClassTeacherDto {
 
   @IsString()
   @IsOptional()
-  role?: string = 'teacher';
+  role?: string = 'TEACHER';
 }
 
 export class JoinClassDto {
