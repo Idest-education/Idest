@@ -3,6 +3,8 @@ import { AppModule } from './app.module';
 import { ConfigService } from '@nestjs/config';
 import { ValidationPipe } from '@nestjs/common';
 import helmet from 'helmet';
+import { AllExceptionFilter } from './common/filters/exception.filter';
+import { SuccessEnvelopeInterceptor } from './common/interceptors/response.interceptor';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
@@ -23,6 +25,8 @@ async function bootstrap() {
       forbidNonWhitelisted: true,
     }),
   );
+  app.useGlobalFilters(new AllExceptionFilter());
+  app.useGlobalInterceptors(new SuccessEnvelopeInterceptor());
 
   const corsOrigins = (
     config.get<string>('CORS_ORIGINS') || 'http://localhost:3000'
