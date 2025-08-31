@@ -1,5 +1,5 @@
 import { CloudinaryService } from 'src/cloudinary/cloudinary.service';
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException, UnprocessableEntityException } from '@nestjs/common';
 import { CreateUserDto } from './dto/createUser.dto';
 import { userPayload } from 'src/common/types/userPayload.interface';
 import { Prisma, StudentProfile, TeacherProfile, User } from '@prisma/client';
@@ -20,7 +20,7 @@ export class UserService {
     private readonly supabaseService: SupabaseService,
   ) {}
 
-  async createUser(user: userPayload): Promise<User | null> {
+  async createUser(user: userPayload): Promise<User> {
     try {
       await this.prisma.user.create({
         data: {
@@ -35,14 +35,17 @@ export class UserService {
         where: { id: user.id },
       });
 
+      if (!newUser) {
+        throw new UnprocessableEntityException(`Failed to create user`);
+      }
+
       return newUser;
     } catch (error) {
-      console.error('Error creating user:', error);
-      return null;
+      throw new UnprocessableEntityException(`Error creating user: ${error}`);
     }
   }
 
-  async getUserById(id: string): Promise<User | null> {
+  async getUserById(id: string): Promise<User> {
     try {
       const user = await this.prisma.user.findUnique({
         where: { id },
@@ -51,22 +54,27 @@ export class UserService {
           TeacherProfile: true,
         },
       });
-      console.log('userishere:', user);
       if (!user) {
-        return null;
+        throw new NotFoundException(`User with ID ${id} not found`);
       }
       return user;
     } catch (error) {
-      console.error('Error fetching user by ID:', error);
-      return null;
+      throw new UnprocessableEntityException(`Error fetching user by ID: ${error}`);
     }
   }
 
   async updateUser(
     id: string,
     dto: UpdateUserDto,
-  ): Promise<User | null> {
+  ): Promise<User> {
     try {
+      const user = await this.prisma.user.findUnique({
+        where: { id },
+      });
+      if (!user) {
+        throw new NotFoundException(`User with ID ${id} not found`);
+      }
+
       await this.prisma.user.update({
         where: { id },
         data: {
@@ -80,23 +88,29 @@ export class UserService {
         where: { id: id },
       });
 
+      if (!newUser) {
+        throw new UnprocessableEntityException(`Failed to update user`);
+      }
+
       return newUser;
     } catch (error) {
-      console.error('Error updating user:', error);
-      return null;
+      throw new UnprocessableEntityException(`Error updating user: ${error}`);
     }
   }
 
   async uploadAvatar(
     image: string,
     userId: string,
-  ): Promise<User | null> {
+  ): Promise<User> {
     try {
       // Assuming image processing and storage logic is implemented here
       const avatarUrl = image;
 
       const user = await this.getUserById(userId);
-      if (user?.avatar_url) {
+      if(!user) {
+        throw new NotFoundException(`User with ID ${userId} not found`);
+      }
+      if (user.avatar_url) {
         this.cloudinary.deleteImage(user.avatar_url);
       }
 
@@ -107,28 +121,31 @@ export class UserService {
       const updatedUser = await this.prisma.user.findUnique({
         where: { id: userId },
       });
+      if (!updatedUser) {
+        throw new UnprocessableEntityException(`Failed to update user`);
+      }
+
       return updatedUser;
     } catch (error) {
-      console.error('Error uploading avatar:', error);
-      return null;
+      throw new UnprocessableEntityException(`Error uploading avatar: ${error}`);
     }
   }
 
   async banUser(
     bannedId: string,
     banner: userPayload,
-  ): Promise<User | null> {
+  ): Promise<User> {
     try {
       const bannedUser = await this.prisma.user.findUnique({
         where: { id: bannedId },
       });
 
       if (!bannedUser) {
-        return null;
+        throw new NotFoundException(`User with ID ${bannedId} not found`);
       }
 
       if (banner.id === bannedId) {
-        return null;
+        throw new UnprocessableEntityException(`User with ID ${bannedId} cannot ban themselves`);
       }
 
       await this.prisma.user.update({
@@ -138,27 +155,30 @@ export class UserService {
         },
       });
 
+      if (!bannedUser) {
+        throw new UnprocessableEntityException(`Failed to ban user`);
+      }
+
       return bannedUser;
     } catch (error) {
-      console.error('Error banning user:', error);
-      return null;
+      throw new UnprocessableEntityException(`Error banning user: ${error}`);
     }
   }
   async unbanUser(
     unbannedId: string,
     unbanner: userPayload,
-  ): Promise<User | null> {
+  ): Promise<User> {
     try {
       const unbannedUser = await this.prisma.user.findUnique({
         where: { id: unbannedId },
       });
 
       if (!unbannedUser) {
-        return null;
+        throw new NotFoundException(`User with ID ${unbannedId} not found`);
       }
 
       if (unbanner.id === unbannedId) {
-        return null;
+        throw new UnprocessableEntityException(`User with ID ${unbannedId} cannot unban themselves`);
       }
 
       await this.prisma.user.update({
@@ -168,10 +188,13 @@ export class UserService {
         },
       });
 
+      if (!unbannedUser) {
+        throw new UnprocessableEntityException(`Failed to unban user`);
+      }
+
       return unbannedUser;
     } catch (error) {
-      console.error('Error unbanning user:', error);
-      return null;
+      throw new UnprocessableEntityException(`Error unbanning user: ${error}`);
     }
   }
   async getAllUsers(
@@ -184,7 +207,6 @@ export class UserService {
     AllUsers | null
   > {
     try {
-      console.log('number 0');
       const safePage = Number.isFinite(page) && page > 0 ? Math.floor(page) : 1;
       const normalizedLimit =
         Number.isFinite(limit) && limit > 0 ? Math.floor(limit) : 10;
@@ -194,7 +216,6 @@ export class UserService {
       const requestedOrder: 'asc' | 'desc' =
         sortOrder === 'asc' ? 'asc' : 'desc';
       const sortKey = (sortBy || '').toString().toLowerCase();
-      console.log('number 1');
 
       const orderBy = (() => {
         switch (sortKey) {
@@ -218,7 +239,6 @@ export class UserService {
             return { created_at: 'desc' as const };
         }
       })();
-      console.log('number 2');
 
       // Build where clause from filters
       const where: Prisma.UserWhereInput = (() => {
@@ -259,7 +279,6 @@ export class UserService {
               break;
           }
         }
-        console.log('number 3');
 
         const whereInput: Prisma.UserWhereInput = {};
         if (roles.length) {
@@ -278,7 +297,6 @@ export class UserService {
             ],
           });
         }
-        console.log('number 4');
 
         if (specializationFilters.length) {
           andConditions.push({
@@ -296,7 +314,6 @@ export class UserService {
         }
         return whereInput;
       })();
-      console.log('number 5');
       const [total, users] = await this.prisma.$transaction([
         this.prisma.user.count({ where }),
         this.prisma.user.findMany({
@@ -306,25 +323,25 @@ export class UserService {
           orderBy,
         }),
       ]);
-      console.log('number 6');
       const totalPages = Math.max(1, Math.ceil(total / safeLimit));
       const hasMore = safePage < totalPages;
-      console.log('prob success');
 
       return { users, total, page: safePage, limit: safeLimit, totalPages, hasMore };
     } catch (error) {
-      console.error('Error fetching users:', error);
-      return null;
+      throw new UnprocessableEntityException(`Error fetching users: ${error}`);
     }
   }
-  async getUserByEmail(email: string): Promise<User | null> {
+  async getUserByEmail(email: string): Promise<User> {
     try {
-      return await this.prisma.user.findUnique({
+      const user = await this.prisma.user.findUnique({
         where: { email },
       });
+      if (!user) {
+        throw new NotFoundException(`User with email ${email} not found`);
+      }
+      return user;
     } catch (error) {
-      console.error('Error fetching user by email:', error);
-      return null;
+      throw new UnprocessableEntityException(`Error fetching user by email: ${error}`);
     }
   }
 
@@ -333,7 +350,7 @@ export class UserService {
     email: string;
     avatar_url?: string;
     role: string;
-  } | null> {
+  }> {
     try {
       const user = await this.prisma.user.findUnique({
         where: { id: userId },
@@ -345,7 +362,9 @@ export class UserService {
         },
       });
 
-      if (!user) return null;
+      if (!user) {
+        throw new NotFoundException(`User with ID ${userId} not found`);
+      }
 
       return {
         full_name: user.full_name,
@@ -354,14 +373,13 @@ export class UserService {
         role: user.role,
       };
     } catch (error) {
-      console.error(`Failed to get user details for ${userId}:`, error);
-      return null;
+      throw new UnprocessableEntityException(`Failed to get user details for ${userId}: ${error}`);
     }
   }
   async createStudentProfile(
     user: userPayload,
     dto: CreateStudentProfileDto,
-  ): Promise<StudentProfile | null> {
+  ): Promise<StudentProfile> {
     try {
       const studentProfile = await this.prisma.studentProfile.create({
         data: {
@@ -370,15 +388,17 @@ export class UserService {
           current_level: dto.current_level,
         },
       });
+      if (!studentProfile) {
+        throw new UnprocessableEntityException(`Failed to create student profile`);
+      }
       return studentProfile;
     } catch (error) {
-      console.error('Error creating student profile:', error);
-      return null;
+      throw new UnprocessableEntityException(`Error creating student profile: ${error}`);
     }
   }
   async createTeacherProfile(
     dto: CreateTeacherProfileDto,
-  ): Promise<TeacherProfile | null> {
+  ): Promise<TeacherProfile> {
     try {
       const invitedUser = await this.supabaseService.inviteUserByEmail(
         dto.email,
@@ -387,7 +407,7 @@ export class UserService {
 
       const supabaseUserId = invitedUser?.id;
       if (!supabaseUserId) {
-        return null;
+        throw new UnprocessableEntityException(`Failed to invite user by email: ${dto.email}`);
       }
 
       const teacherProfile = await this.prisma.$transaction(async (tx) => {
@@ -412,10 +432,13 @@ export class UserService {
         });
       });
 
+      if (!teacherProfile) {
+        throw new UnprocessableEntityException(`Failed to create teacher profile`);
+      }
+
       return teacherProfile;
     } catch (error) {
-      console.error('Error creating teacher profile:', error);
-      return null;
+      throw new UnprocessableEntityException(`Error creating teacher profile: ${error}`);
     }
   }
 }

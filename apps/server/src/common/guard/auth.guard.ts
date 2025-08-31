@@ -34,8 +34,7 @@ export class AuthGuard implements CanActivate {
     const token = authHeader.split(' ')[1];
     const jwtSecret = process.env.JWT_SECRET;
     try {
-      const decoded = await verifyAsync(token, {
-        secret: jwtSecret,
+      const decoded = await verifyAsync(token, jwtSecret, {
         algorithms: ['HS256'],
         issuer: process.env.JWT_ISSUER,
       });
@@ -65,7 +64,7 @@ export class AuthGuard implements CanActivate {
       return true;
     } catch (e) {
       console.error('Auth error:', e);
-      throw new UnauthorizedException('Authentication failed');
+      throw new UnauthorizedException(`Unknown Authentication failed ${e}`);
     }
   }
 }

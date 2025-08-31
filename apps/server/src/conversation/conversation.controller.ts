@@ -10,7 +10,7 @@ import {
 } from '@nestjs/common';
 import { ConversationService } from './conversation.service';
 import { AuthGuard } from 'src/common/guard/auth.guard';
-import { User } from 'src/common/decorator/currentUser.decorator';
+import { CurrentUser } from 'src/common/decorator/currentUser.decorator';
 import { userPayload } from 'src/common/types/userPayload.interface';
 import { ResponseDto } from 'src/common/dto/response.dto';
 import { CreateConversationDto } from './dto/create-conversation.dto';
@@ -27,7 +27,7 @@ export class ConversationController {
    */
   @Post()
   async createConversation(
-    @User() user: userPayload,
+    @CurrentUser() user: userPayload,
     @Body() dto: CreateConversationDto,
   ): Promise<ResponseDto> {
     return this.conversationService.createConversation(user, dto);
@@ -38,7 +38,7 @@ export class ConversationController {
    */
   @Get()
   async getUserConversations(
-    @User() user: userPayload,
+    @CurrentUser() user: userPayload,
     @Query('cursor') cursor?: string,
     @Query('limit') limit?: string,
   ): Promise<ResponseDto> {
@@ -54,7 +54,7 @@ export class ConversationController {
   @Get('direct/:userId')
   async getOrCreateDirectConversation(
     @Param('userId') otherUserId: string,
-    @User() user: userPayload,
+    @CurrentUser() user: userPayload,
   ): Promise<ResponseDto> {
     return this.conversationService.getOrCreateDirectConversation(
       user.id,
@@ -68,7 +68,7 @@ export class ConversationController {
   @Get(':id')
   async getConversationById(
     @Param('id') conversationId: string,
-    @User() user: userPayload,
+    @CurrentUser() user: userPayload,
     @Query('limit') limit?: string,
     @Query('before') before?: string,
   ): Promise<ResponseDto> {
@@ -89,7 +89,7 @@ export class ConversationController {
   @Get(':id/messages')
   async getConversationMessages(
     @Param('id') conversationId: string,
-    @User() user: userPayload,
+    @CurrentUser() user: userPayload,
     @Query('limit') limit?: string,
     @Query('before') before?: string,
     @Query('cursor') cursor?: string,
@@ -111,7 +111,7 @@ export class ConversationController {
   @Post(':id/messages')
   async sendMessage(
     @Param('id') conversationId: string,
-    @User() user: userPayload,
+    @CurrentUser() user: userPayload,
     @Body() dto: SendMessageDto,
   ): Promise<ResponseDto> {
     return this.conversationService.sendMessage(conversationId, user.id, dto);
@@ -123,7 +123,7 @@ export class ConversationController {
   @Post(':id/participants')
   async addParticipant(
     @Param('id') conversationId: string,
-    @User() user: userPayload,
+    @CurrentUser() user: userPayload,
     @Body() dto: AddParticipantDto,
   ): Promise<ResponseDto> {
     return this.conversationService.addParticipant(
@@ -140,7 +140,7 @@ export class ConversationController {
   async removeParticipant(
     @Param('id') conversationId: string,
     @Param('participantId') participantId: string,
-    @User() user: userPayload,
+    @CurrentUser() user: userPayload,
   ): Promise<ResponseDto> {
     return this.conversationService.removeParticipant(
       conversationId,
