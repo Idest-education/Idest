@@ -41,6 +41,9 @@ export class UserService {
 
       return newUser;
     } catch (error) {
+      if (error instanceof UnprocessableEntityException) {
+        throw error;
+      }
       throw new UnprocessableEntityException(`Error creating user: ${error}`);
     }
   }
@@ -59,6 +62,9 @@ export class UserService {
       }
       return user;
     } catch (error) {
+      if (error instanceof NotFoundException) {
+        throw error;
+      }
       throw new UnprocessableEntityException(`Error fetching user by ID: ${error}`);
     }
   }
@@ -94,6 +100,9 @@ export class UserService {
 
       return newUser;
     } catch (error) {
+      if (error instanceof UnprocessableEntityException || error instanceof NotFoundException) {
+        throw error;
+      }
       throw new UnprocessableEntityException(`Error updating user: ${error}`);
     }
   }
@@ -127,6 +136,9 @@ export class UserService {
 
       return updatedUser;
     } catch (error) {
+      if (error instanceof UnprocessableEntityException || error instanceof NotFoundException) {
+        throw error;
+      }
       throw new UnprocessableEntityException(`Error uploading avatar: ${error}`);
     }
   }
@@ -161,6 +173,9 @@ export class UserService {
 
       return bannedUser;
     } catch (error) {
+      if (error instanceof UnprocessableEntityException || error instanceof NotFoundException) {
+        throw error;
+      }
       throw new UnprocessableEntityException(`Error banning user: ${error}`);
     }
   }
@@ -194,6 +209,9 @@ export class UserService {
 
       return unbannedUser;
     } catch (error) {
+      if (error instanceof UnprocessableEntityException || error instanceof NotFoundException) {
+        throw error;
+      }
       throw new UnprocessableEntityException(`Error unbanning user: ${error}`);
     }
   }
@@ -328,6 +346,9 @@ export class UserService {
 
       return { users, total, page: safePage, limit: safeLimit, totalPages, hasMore };
     } catch (error) {
+      if (error instanceof UnprocessableEntityException) {
+        throw error;
+      }
       throw new UnprocessableEntityException(`Error fetching users: ${error}`);
     }
   }
@@ -341,6 +362,9 @@ export class UserService {
       }
       return user;
     } catch (error) {
+      if (error instanceof UnprocessableEntityException || error instanceof NotFoundException) {
+        throw error;
+      }
       throw new UnprocessableEntityException(`Error fetching user by email: ${error}`);
     }
   }
@@ -373,6 +397,9 @@ export class UserService {
         role: user.role,
       };
     } catch (error) {
+      if (error instanceof UnprocessableEntityException || error instanceof NotFoundException) {
+        throw error;
+      }
       throw new UnprocessableEntityException(`Failed to get user details for ${userId}: ${error}`);
     }
   }
@@ -393,6 +420,9 @@ export class UserService {
       }
       return studentProfile;
     } catch (error) {
+      if (error instanceof UnprocessableEntityException) {
+        throw error;
+      }
       throw new UnprocessableEntityException(`Error creating student profile: ${error}`);
     }
   }
@@ -438,6 +468,9 @@ export class UserService {
 
       return teacherProfile;
     } catch (error) {
+      if (error instanceof UnprocessableEntityException) {
+        throw error;
+      }
       throw new UnprocessableEntityException(`Error creating teacher profile: ${error}`);
     }
   }
