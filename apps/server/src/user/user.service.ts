@@ -10,6 +10,7 @@ import { CreateStudentProfileDto } from './dto/createStudentProfile.dto';
 import { CreateTeacherProfileDto } from './dto/createTeacherProfile.dto';
 import { Role } from 'src/common/enum/role.enum';
 import { SupabaseService } from 'src/supabase/supabase.service';
+import { AllUsers } from './types/allUsers.type';
 
 @Injectable()
 export class UserService {
@@ -19,9 +20,7 @@ export class UserService {
     private readonly supabaseService: SupabaseService,
   ) {}
 
-  async createUser(
-    user: userPayload,
-  ): Promise<ResponseDto<User | null>> {
+  async createUser(user: userPayload): Promise<User | null> {
     try {
       await this.prisma.user.create({
         data: {
@@ -36,14 +35,14 @@ export class UserService {
         where: { id: user.id },
       });
 
-      return ResponseDto.ok(newUser, 'User created successfully');
+      return newUser;
     } catch (error) {
       console.error('Error creating user:', error);
-      return ResponseDto.fail('User creation failed');
+      return null;
     }
   }
 
-  async getUserById(id: string): Promise<ResponseDto<User | null>> {
+  async getUserById(id: string): Promise<User | null> {
     try {
       const user = await this.prisma.user.findUnique({
         where: { id },
@@ -54,19 +53,19 @@ export class UserService {
       });
       console.log('userishere:', user);
       if (!user) {
-        return ResponseDto.fail('User not found');
+        return null;
       }
-      return ResponseDto.ok(user, 'User fetched successfully');
+      return user;
     } catch (error) {
       console.error('Error fetching user by ID:', error);
-      return ResponseDto.fail('User fetch failed');
+      return null;
     }
   }
 
   async updateUser(
     id: string,
     dto: UpdateUserDto,
-  ): Promise<ResponseDto<User | null>> {
+  ): Promise<User | null> {
     try {
       await this.prisma.user.update({
         where: { id },
@@ -81,24 +80,24 @@ export class UserService {
         where: { id: id },
       });
 
-      return ResponseDto.ok(newUser, 'User updated successfully');
+      return newUser;
     } catch (error) {
       console.error('Error updating user:', error);
-      return ResponseDto.fail('User update failed');
+      return null;
     }
   }
 
   async uploadAvatar(
     image: string,
     userId: string,
-  ): Promise<ResponseDto<User | null>> {
+  ): Promise<User | null> {
     try {
       // Assuming image processing and storage logic is implemented here
       const avatarUrl = image;
 
       const user = await this.getUserById(userId);
-      if (user.data?.avatar_url) {
-        this.cloudinary.deleteImage(user.data.avatar_url);
+      if (user?.avatar_url) {
+        this.cloudinary.deleteImage(user.avatar_url);
       }
 
       await this.prisma.user.update({
@@ -108,28 +107,28 @@ export class UserService {
       const updatedUser = await this.prisma.user.findUnique({
         where: { id: userId },
       });
-      return ResponseDto.ok(updatedUser, 'Avatar uploaded successfully');
+      return updatedUser;
     } catch (error) {
       console.error('Error uploading avatar:', error);
-      return ResponseDto.fail('Avatar upload failed');
+      return null;
     }
   }
 
   async banUser(
     bannedId: string,
     banner: userPayload,
-  ): Promise<ResponseDto<User | null>> {
+  ): Promise<User | null> {
     try {
       const bannedUser = await this.prisma.user.findUnique({
         where: { id: bannedId },
       });
 
       if (!bannedUser) {
-        return ResponseDto.fail('User not found');
+        return null;
       }
 
       if (banner.id === bannedId) {
-        return ResponseDto.fail('You cannot ban yourself');
+        return null;
       }
 
       await this.prisma.user.update({
@@ -139,27 +138,27 @@ export class UserService {
         },
       });
 
-      return ResponseDto.ok(bannedUser, 'User banned successfully');
+      return bannedUser;
     } catch (error) {
       console.error('Error banning user:', error);
-      return ResponseDto.fail('Ban operation failed');
+      return null;
     }
   }
   async unbanUser(
     unbannedId: string,
     unbanner: userPayload,
-  ): Promise<ResponseDto<User | null>> {
+  ): Promise<User | null> {
     try {
       const unbannedUser = await this.prisma.user.findUnique({
         where: { id: unbannedId },
       });
 
       if (!unbannedUser) {
-        return ResponseDto.fail('User not found');
+        return null;
       }
 
       if (unbanner.id === unbannedId) {
-        return ResponseDto.fail('You cannot unban yourself');
+        return null;
       }
 
       await this.prisma.user.update({
@@ -169,10 +168,10 @@ export class UserService {
         },
       });
 
-      return ResponseDto.ok(unbannedUser, 'User unbanned successfully');
+      return unbannedUser;
     } catch (error) {
       console.error('Error unbanning user:', error);
-      return ResponseDto.fail('Unban operation failed');
+      return null;
     }
   }
   async getAllUsers(
@@ -182,14 +181,7 @@ export class UserService {
     filter?: string[],
     sortOrder?: 'asc' | 'desc',
   ): Promise<
-    ResponseDto<{
-      users: User[];
-      total: number;
-      page: number;
-      limit: number;
-      totalPages: number;
-      hasMore: boolean;
-    } | null>
+    AllUsers | null
   > {
     try {
       console.log('number 0');
@@ -319,13 +311,10 @@ export class UserService {
       const hasMore = safePage < totalPages;
       console.log('prob success');
 
-      return ResponseDto.ok(
-        { users, total, page: safePage, limit: safeLimit, totalPages, hasMore },
-        'Users fetched successfully',
-      );
+      return { users, total, page: safePage, limit: safeLimit, totalPages, hasMore };
     } catch (error) {
       console.error('Error fetching users:', error);
-      return ResponseDto.fail('Failed to fetch users');
+      return null;
     }
   }
   async getUserByEmail(email: string): Promise<User | null> {
@@ -372,7 +361,7 @@ export class UserService {
   async createStudentProfile(
     user: userPayload,
     dto: CreateStudentProfileDto,
-  ): Promise<ResponseDto<StudentProfile | null>> {
+  ): Promise<StudentProfile | null> {
     try {
       const studentProfile = await this.prisma.studentProfile.create({
         data: {
@@ -381,18 +370,15 @@ export class UserService {
           current_level: dto.current_level,
         },
       });
-      return ResponseDto.ok(
-        studentProfile,
-        'Student profile updated successfully',
-      );
+      return studentProfile;
     } catch (error) {
       console.error('Error creating student profile:', error);
-      return ResponseDto.fail('Student profile creation failed');
+      return null;
     }
   }
   async createTeacherProfile(
     dto: CreateTeacherProfileDto,
-  ): Promise<ResponseDto<TeacherProfile | null>> {
+  ): Promise<TeacherProfile | null> {
     try {
       const invitedUser = await this.supabaseService.inviteUserByEmail(
         dto.email,
@@ -401,7 +387,7 @@ export class UserService {
 
       const supabaseUserId = invitedUser?.id;
       if (!supabaseUserId) {
-        return ResponseDto.fail('Failed to create Supabase user');
+        return null;
       }
 
       const teacherProfile = await this.prisma.$transaction(async (tx) => {
@@ -426,13 +412,10 @@ export class UserService {
         });
       });
 
-      return ResponseDto.ok(
-        teacherProfile,
-        'Teacher profile created successfully',
-      );
+      return teacherProfile;
     } catch (error) {
       console.error('Error creating teacher profile:', error);
-      return ResponseDto.fail('Teacher profile creation failed');
+      return null;
     }
   }
 }

@@ -1198,7 +1198,7 @@ export class ClassService {
       });
       if (!existing) return code;
     }
-    // Fallback 
+    // Fallback
     return `${Date.now()}`.slice(-8).toUpperCase();
   }
 

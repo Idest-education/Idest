@@ -29,14 +29,20 @@ export class UserController {
 
   @Get()
   async getCurrentUser(@User() user: userPayload): Promise<ResponseDto> {
-    const result: ResponseDto = await this.userService.getUserById(user.id);
-    console.log('result:', result);
-    return result;
+    const result = await this.userService.getUserById(user.id);
+    if (!result) {
+      return ResponseDto.fail('User not found');
+    }
+    return ResponseDto.ok(result, 'User fetched successfully');
   }
 
   @Post()
   async createUser(@User() user: userPayload) {
-    const result: ResponseDto = await this.userService.createUser(user);
+    const result = await this.userService.createUser(user);
+    if (!result) {
+      return ResponseDto.fail('User creation failed');
+    }
+    return ResponseDto.ok(result, 'User created successfully');
     return result;
   }
 
@@ -46,19 +52,26 @@ export class UserController {
     @User() user: userPayload,
     @Body() request: CreateStudentProfileDto,
   ) {
-    const result: ResponseDto = await this.userService.createStudentProfile(
+    const result = await this.userService.createStudentProfile(
       user,
       request,
     );
-    console.log('result:', result);
+    if (!result) {
+      return ResponseDto.fail('Student profile creation failed');
+    }
+    return ResponseDto.ok(result, 'Student profile created successfully');
     return result;
   }
 
   @Post('teacher-profile')
   @Roles(Role.ADMIN)
   async createTeacherProfile(@Body() request: CreateTeacherProfileDto) {
-    const result: ResponseDto =
+    const result =
       await this.userService.createTeacherProfile(request);
+    if (!result) {
+      return ResponseDto.fail('Teacher profile creation failed');
+    }
+    return ResponseDto.ok(result, 'Teacher profile created successfully');
     return result;
   }
 
@@ -66,13 +79,19 @@ export class UserController {
   @Roles(Role.TEACHER, Role.ADMIN)
   async getUserById(@Param('id') id: string) {
     const result = await this.userService.getUserById(id);
-    return result;
+    if (!result) {
+      return ResponseDto.fail('User not found');
+    }
+    return ResponseDto.ok(result, 'User fetched successfully');
   }
 
   @Put(':id')
   async updateUser(@Param('id') id: string, @Body() request: UpdateUserDto) {
-    const result: ResponseDto = await this.userService.updateUser(id, request);
-    return result;
+    const result = await this.userService.updateUser(id, request);
+    if (!result) {
+      return ResponseDto.fail('User update failed');
+    }
+    return ResponseDto.ok(result, 'User updated successfully');
   }
 
   @Post('ban/:id')
@@ -81,8 +100,11 @@ export class UserController {
     @Param('id') banned: string,
     @User() banner: userPayload,
   ): Promise<ResponseDto> {
-    const result: ResponseDto = await this.userService.banUser(banned, banner);
-    return result;
+    const result = await this.userService.banUser(banned, banner);
+    if (!result) {
+      return ResponseDto.fail('User not found');
+    }
+    return ResponseDto.ok(result, 'User banned successfully');
   }
 
   @Post('unban/:id')
@@ -91,11 +113,14 @@ export class UserController {
     @Param('id') unbanned: string,
     @User() unbanner: userPayload,
   ): Promise<ResponseDto> {
-    const result: ResponseDto = await this.userService.unbanUser(
+    const result = await this.userService.unbanUser(
       unbanned,
       unbanner,
     );
-    return result;
+    if (!result) {
+      return ResponseDto.fail('User not found');
+    }
+    return ResponseDto.ok(result, 'User unbanned successfully');
   }
   @Get('all')
   @Roles(Role.ADMIN)
@@ -116,13 +141,16 @@ export class UserController {
             .map((s) => s.trim())
             .filter(Boolean)
         : undefined;
-    const result: ResponseDto = await this.userService.getAllUsers(
+    const result = await this.userService.getAllUsers(
       pageNum,
       limitNum,
       sortBy,
       filtersArray,
       sortOrder,
     );
-    return result;
+    if (!result) {
+      return ResponseDto.fail('Users not found');
+    }
+    return ResponseDto.ok(result, 'Users fetched successfully');
   }
 }
