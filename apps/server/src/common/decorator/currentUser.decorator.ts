@@ -1,12 +1,11 @@
-import { createParamDecorator, ExecutionContext } from '@nestjs/common';
+import { createParamDecorator, ExecutionContext, UnauthorizedException } from '@nestjs/common';
 import { userPayload } from '../types/userPayload.interface';
-import { Role } from '../enum/role.enum';
 
 export const User = createParamDecorator(
   (data: unknown, ctx: ExecutionContext) => {
     const request = ctx.switchToHttp().getRequest();
     if (!request.user) {
-      throw new Error(
+      throw new UnauthorizedException(
         'User not found in request. Make sure AuthGuard is applied.',
       );
     }
@@ -16,7 +15,7 @@ export const User = createParamDecorator(
       avatar: request.user.avatar_url || '',
       email: request.user.email || '',
       full_name: request.user.full_name || '',
-      role: request.user.role || Role.STUDENT,
+      role: request.user.role,
     };
     return user;
   },
