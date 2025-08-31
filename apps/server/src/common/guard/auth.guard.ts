@@ -30,11 +30,15 @@ export class AuthGuard implements CanActivate {
     const authHeader = req.headers['authorization'];
     if (!authHeader) throw new UnauthorizedException('Authorization is Required');
     if (!authHeader.startsWith('Bearer '))
-      throw new UnauthorizedException('Authorization Tampered');
+      throw new UnauthorizedException('Authorization JWT Tampered');
     const token = authHeader.split(' ')[1];
     const jwtSecret = process.env.JWT_SECRET;
     try {
-      const decoded = await verifyAsync(token, jwtSecret);
+      const decoded = await verifyAsync(token, {
+        secret: jwtSecret,
+        algorithms: ['HS256'],
+        issuer: process.env.JWT_ISSUER,
+      });
       if (!decoded || !decoded.sub) {
         throw new UnauthorizedException('Invalid token payload');
       }
@@ -50,6 +54,8 @@ export class AuthGuard implements CanActivate {
           is_active: true,
         },
       });
+      if(!user) throw new UnauthorizedException('User not found');
+      if(!user.is_active) throw new UnauthorizedException('User is banned or not active');
       req['user'] = {
         ...decoded,
         role: user?.role,
