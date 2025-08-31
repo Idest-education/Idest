@@ -77,6 +77,8 @@ model ClassMember {
   status     String
   class      Class    @relation(fields: [class_id], references: [id])
   student    User     @relation(fields: [student_id], references: [id])
+  @@index([class_id, student_id])
+
 }
 
 model ClassTeacher {
@@ -86,6 +88,7 @@ model ClassTeacher {
   role       String
   class      Class  @relation(fields: [class_id], references: [id])
   teacher    User   @relation(fields: [teacher_id], references: [id])
+  @@index([class_id, teacher_id])
 }
 
 model Session {
@@ -250,6 +253,7 @@ model ConversationParticipant {
   user           User         @relation(fields: [userId], references: [id])
 
   @@unique([userId, conversationId])
+  @@index([conversationId, userId])
 }
 
 model Message {
@@ -269,6 +273,8 @@ model Message {
   session        Session?      @relation(fields: [sessionId], references: [id])
   replyTo        Message?      @relation("MessageReplies", fields: [replyToId], references: [id])
   replies        Message[]     @relation("MessageReplies")
+
+  @@index([conversationId, sentAt])
 }
 
 enum MessageType {
