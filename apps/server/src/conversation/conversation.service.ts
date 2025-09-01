@@ -7,6 +7,7 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { userPayload } from 'src/common/types/userPayload.interface';
+import { MessageType } from '@prisma/client';
 import { CreateConversationDto } from './dto/create-conversation.dto';
 import { AddParticipantDto } from './dto/add-participant.dto';
 import { SendMessageDto } from './dto/send-message.dto';
@@ -354,14 +355,16 @@ export class ConversationService {
         throw new NotFoundException('Conversation not found');
       }
 
-      const messageType = conv.classId ? 'CLASSROOM' : 'DIRECT';
+      const messageType = conv.classId
+        ? MessageType.CLASSROOM
+        : MessageType.DIRECT;
 
       const message = await this.prisma.message.create({
         data: {
           content: dto.content,
           senderId: userId,
           conversationId,
-          type: messageType as any,
+          type: messageType,
           replyToId: dto.replyToId,
           attachments: dto.attachments || undefined,
         },
