@@ -20,6 +20,10 @@ import {
   MessagesListDto,
 } from './dto/conversation-response.dto';
 import { ConversationGateway } from './conversation.gateway';
+import {
+  checkClassAccess,
+  getClassConversationParticipants,
+} from './conversation.util';
 
 @Injectable()
 export class ConversationService {
@@ -49,6 +53,15 @@ export class ConversationService {
       }
 
       if (dto.classId) {
+        const hasClassAccess = await checkClassAccess(
+          this.prisma,
+          dto.classId,
+          user.id,
+        );
+        if (!hasClassAccess) {
+          throw new ForbiddenException('Access denied to this class');
+        }
+
         const existingClassConversation =
           await this.prisma.conversation.findFirst({
             where: {
@@ -98,17 +111,34 @@ export class ConversationService {
         },
       });
 
-      await this.prisma.conversationParticipant.create({
-        data: {
+      let participantData: { userId: string; conversationId: string }[] = [];
+
+      if (dto.classId) {
+        // For class conversations, add all class members as participants
+        participantData = await getClassConversationParticipants(
+          this.prisma,
+          dto.classId,
+          conversation.id,
+        );
+      } else {
+        // For non-class conversations, use the provided participant list
+        participantData.push({
           userId: user.id,
           conversationId: conversation.id,
-        },
-      });
+        });
+        participantData.push(
+          ...dto.participantIds.map((userId) => ({
+            userId,
+            conversationId: conversation.id,
+          })),
+        );
 
-      const participantData = dto.participantIds.map((userId) => ({
-        userId,
-        conversationId: conversation.id,
-      }));
+        // Remove duplicates
+        participantData = participantData.filter(
+          (participant, index, self) =>
+            index === self.findIndex((p) => p.userId === participant.userId),
+        );
+      }
 
       await this.prisma.conversationParticipant.createMany({
         data: participantData,
@@ -295,6 +325,19 @@ export class ConversationService {
 
       if (!conversation) {
         throw new NotFoundException('Conversation not found');
+      }
+
+      if (conversation.classId) {
+        const hasClassAccess = await checkClassAccess(
+          this.prisma,
+          conversation.classId,
+          userId,
+        );
+        if (!hasClassAccess) {
+          throw new ForbiddenException(
+            'Access denied to this class conversation',
+          );
+        }
       }
 
       // Reverse messages to get chronological order
