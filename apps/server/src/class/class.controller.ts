@@ -25,6 +25,7 @@ import { BulkStudentIdsDto } from './dto/bulk-members.dto';
 import { RolesGuard } from 'src/common/guard/role.guard';
 import { Roles } from 'src/common/decorator/role.decorator';
 import { Role } from 'src/common/enum/role.enum';
+import { ClassCountDto, ClassResponseDto, FullClassResponseDto, UserClassesResponseDto, UserSummaryDto, PaginatedClassResponseDto } from './dto/class-response.dto';
 
 @Controller('class')
 @UseGuards(AuthGuard, RolesGuard)
@@ -39,7 +40,7 @@ export class ClassController {
   async createClass(
     @CurrentUser() user: userPayload,
     @Body() dto: CreateClassDto,
-  ): Promise<ResponseDto> {
+  ): Promise<ClassResponseDto> {
     console.log('createClass route called:', { user, dto });
     return this.classService.createClass(user, dto);
   }
@@ -48,7 +49,7 @@ export class ClassController {
    * Get all classes for the current user
    */
   @Get()
-  async getUserClasses(@CurrentUser() user: userPayload): Promise<ResponseDto> {
+  async getUserClasses(@CurrentUser() user: userPayload): Promise<UserClassesResponseDto> {
     console.log('getUserClasses route called:', { user });
     return this.classService.getUserClasses(user.id);
   }
@@ -62,7 +63,7 @@ export class ClassController {
     @Param('id') classId: string,
     @CurrentUser() user: userPayload,
     @Body() dto: UpdateClassDto,
-  ): Promise<ResponseDto> {
+  ): Promise<ClassResponseDto> {
     console.log('updateClass route called:', { classId, user, dto });
     return this.classService.updateClass(classId, user.id, dto);
   }
@@ -75,7 +76,7 @@ export class ClassController {
   async deleteClass(
     @Param('id') classId: string,
     @CurrentUser() user: userPayload,
-  ): Promise<ResponseDto> {
+  ): Promise<void> {
     console.log('deleteClass route called:', { classId, user });
     return this.classService.deleteClass(classId, user.id);
   }
@@ -89,7 +90,7 @@ export class ClassController {
     @Param('id') classId: string,
     @CurrentUser() user: userPayload,
     @Body() dto: AddClassMemberDto,
-  ): Promise<ResponseDto> {
+  ): Promise<ClassResponseDto> {
     console.log('addStudent route called:', { classId, user, dto });
     return this.classService.addStudent(classId, user.id, dto);
   }
@@ -103,7 +104,7 @@ export class ClassController {
     @Param('id') classId: string,
     @Param('studentId') studentId: string,
     @CurrentUser() user: userPayload,
-  ): Promise<ResponseDto> {
+  ): Promise<boolean> {
     console.log('removeStudent route called:', { classId, studentId, user });
     return this.classService.removeStudent(classId, user.id, studentId);
   }
@@ -117,7 +118,7 @@ export class ClassController {
     @Param('id') classId: string,
     @CurrentUser() user: userPayload,
     @Body() dto: AddClassTeacherDto,
-  ): Promise<ResponseDto> {
+  ): Promise<ClassResponseDto> {
     console.log('addTeacher route called:', { classId, user, dto });
     return this.classService.addTeacher(classId, user.id, dto);
   }
@@ -131,7 +132,7 @@ export class ClassController {
     @Param('id') classId: string,
     @Param('teacherId') teacherId: string,
     @CurrentUser() user: userPayload,
-  ): Promise<ResponseDto> {
+  ): Promise<ClassResponseDto> {
     console.log('removeTeacher route called:', { classId, teacherId, user });
     return this.classService.removeTeacher(classId, user.id, teacherId);
   }
@@ -143,7 +144,7 @@ export class ClassController {
   async joinClass(
     @CurrentUser() user: userPayload,
     @Body() dto: JoinClassDto,
-  ): Promise<ResponseDto> {
+  ): Promise<ClassResponseDto> {
     console.log('joinClass route called:', { user, dto });
     return this.classService.joinClass(user.id, dto.invite_code);
   }
@@ -155,7 +156,7 @@ export class ClassController {
   async leaveClass(
     @Param('id') classId: string,
     @CurrentUser() user: userPayload,
-  ): Promise<ResponseDto> {
+  ): Promise<boolean> {
     console.log('leaveClass route called:', { classId, user });
     return this.classService.leaveClass(classId, user.id);
   }
@@ -167,7 +168,7 @@ export class ClassController {
   async getClassMembers(
     @Param('id') classId: string,
     @CurrentUser() user: userPayload,
-  ): Promise<ResponseDto> {
+  ): Promise<UserSummaryDto[]> {
     console.log('getClassMembers route called:', { classId, user });
     return this.classService.getClassMembers(classId, user.id);
   }
@@ -179,7 +180,7 @@ export class ClassController {
   async getClassTeachers(
     @Param('id') classId: string,
     @CurrentUser() user: userPayload,
-  ): Promise<ResponseDto> {
+  ): Promise<UserSummaryDto[]> {
     console.log('getClassTeachers route called:', { classId, user });
     return this.classService.getClassTeachers(classId, user.id);
   }
@@ -191,23 +192,11 @@ export class ClassController {
   async getClassStatistics(
     @Param('id') classId: string,
     @CurrentUser() user: userPayload,
-  ): Promise<ResponseDto> {
+  ): Promise<ClassCountDto> {
     console.log('getClassStatistics route called:', { classId, user });
     return this.classService.getClassStatistics(classId, user.id);
   }
 
-  /**
-   * Get class sessions
-   */
-  @Get(':id/sessions')
-  async getClassSessions(
-    @Param('id') classId: string,
-    @CurrentUser() user: userPayload,
-  ): Promise<ResponseDto> {
-    console.log('getClassSessions route called:', { classId, user });
-    // Delegate to session service via class service method to keep imports simple
-    return this.classService.getClassSessions(classId, user.id);
-  }
 
   /**
    * Search classes
@@ -216,7 +205,7 @@ export class ClassController {
   async searchClasses(
     @CurrentUser() user: userPayload,
     @Query('q') q?: string,
-  ): Promise<ResponseDto> {
+  ): Promise<ClassResponseDto[]> {
     console.log('searchClasses route called:', { user, q });
     return this.classService.searchClasses(user.id, q || '');
   }
@@ -228,7 +217,7 @@ export class ClassController {
   async getClassBySlug(
     @Param('slug') slug: string,
     @CurrentUser() user: userPayload,
-  ): Promise<ResponseDto> {
+  ): Promise<FullClassResponseDto> {
     console.log('getClassBySlug route called:', { slug, user });
     return this.classService.getClassBySlug(slug, user.id);
   }
@@ -246,7 +235,7 @@ export class ClassController {
     sortBy: 'name' | 'created_at' | 'updated_at' = 'updated_at',
     @Query('sortOrder') sortOrder: 'asc' | 'desc' = 'desc',
     @Query('creatorId') creatorId?: string,
-  ): Promise<ResponseDto> {
+  ): Promise<PaginatedClassResponseDto> {
     console.log('getAllClasses route called:', {
       page,
       pageSize,
@@ -274,7 +263,7 @@ export class ClassController {
    * Get public classes
    */
   @Get('public')
-  async getPublicClasses(): Promise<ResponseDto> {
+  async getPublicClasses(): Promise<ClassResponseDto[]> {
     console.log('getPublicClasses route called');
     return this.classService.getPublicClasses();
   }
@@ -287,7 +276,7 @@ export class ClassController {
   async regenerateInviteCode(
     @Param('id') classId: string,
     @CurrentUser() user: userPayload,
-  ): Promise<ResponseDto> {
+  ): Promise<string> {
     console.log('regenerateInviteCode route called:', { classId, user });
     return this.classService.regenerateInviteCode(classId, user.id);
   }
@@ -296,7 +285,7 @@ export class ClassController {
    * Validate invite code
    */
   @Get('validate-code/:code')
-  async validateInviteCode(@Param('code') code: string): Promise<ResponseDto> {
+  async validateInviteCode(@Param('code') code: string): Promise<{ valid: boolean; class: ClassResponseDto | null }> {
     console.log('validateInviteCode route called:', { code });
     return this.classService.validateInviteCode(code);
   }
@@ -310,7 +299,7 @@ export class ClassController {
     @Param('id') classId: string,
     @CurrentUser() user: userPayload,
     @Body() dto: UpdateClassDto,
-  ): Promise<ResponseDto> {
+  ): Promise<ClassResponseDto> {
     console.log('updateClassSettings route called:', { classId, user, dto });
     return this.classService.updateClassSettings(classId, user.id, dto);
   }
@@ -324,7 +313,7 @@ export class ClassController {
     @Param('id') classId: string,
     @CurrentUser() user: userPayload,
     @Body() dto: BulkStudentIdsDto,
-  ): Promise<ResponseDto> {
+  ): Promise<UserSummaryDto[]> {
     console.log('bulkAddStudents route called:', { classId, user, dto });
     return this.classService.bulkAddStudents(classId, user.id, dto);
   }
@@ -338,7 +327,7 @@ export class ClassController {
     @Param('id') classId: string,
     @CurrentUser() user: userPayload,
     @Body() dto: BulkStudentIdsDto,
-  ): Promise<ResponseDto> {
+  ): Promise<{ count: number }> {
     console.log('bulkRemoveStudents route called:', { classId, user, dto });
     return this.classService.bulkRemoveStudents(classId, user.id, dto);
   }
@@ -350,7 +339,7 @@ export class ClassController {
   async getClassById(
     @Param('id') classId: string,
     @CurrentUser() user: userPayload,
-  ): Promise<ResponseDto> {
+  ): Promise<FullClassResponseDto> {
     console.log('getClassById route called:', { classId, user });
     return this.classService.getClassById(classId, user.id);
   }

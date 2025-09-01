@@ -4,6 +4,7 @@ import {
   ForbiddenException,
   ConflictException,
   UnprocessableEntityException,
+  InternalServerErrorException,
 } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { userPayload } from 'src/common/types/userPayload.interface';
@@ -13,6 +14,9 @@ import { UpdateClassDto } from './dto/update-class.dto';
 import { AddClassMemberDto, AddClassTeacherDto } from './dto/class-member.dto';
 import { Role } from 'src/common/enum/role.enum';
 import { BulkStudentIdsDto } from './dto/bulk-members.dto';
+import { ClassCountDto, ClassResponseDto, FullClassResponseDto, PaginatedClassResponseDto, UserClassesResponseDto, UserSummaryDto } from './dto/class-response.dto';
+import { checkClassAccess, checkClassAccessById, checkClassManagementPermission, generateUniqueInviteCode, generateUniqueSlug, mapUsersToDto, toFullClassResponseDto } from './class.util';
+import { SessionResponseDto } from 'src/session/dto/session-response.dto';
 
 @Injectable()
 export class ClassService {
@@ -24,7 +28,7 @@ export class ClassService {
   async createClass(
     user: userPayload,
     dto: CreateClassDto,
-  ): Promise<ResponseDto> {
+  ): Promise<ClassResponseDto> {
     try {
       // Unique Class Name
       const existingByName = await this.prisma.class.findFirst({
@@ -36,7 +40,7 @@ export class ClassService {
       }
 
       const inviteCode =
-        dto.invite_code || (await this.generateUniqueInviteCode());
+        dto.invite_code || (await generateUniqueInviteCode());
       const existingClass = await this.prisma.class.findUnique({
         where: { invite_code: inviteCode },
       });
@@ -45,7 +49,7 @@ export class ClassService {
         throw new ConflictException('Invite code already exists');
       }
 
-      const slug = await this.generateUniqueSlug(dto.name);
+      const slug = await generateUniqueSlug(dto.name);
 
       const newClass = await this.prisma.class.create({
         data: {
@@ -56,7 +60,7 @@ export class ClassService {
           invite_code: inviteCode,
           schedule: dto.schedule || {},
           created_by: user.id,
-        } as any,
+        },
         include: {
           creator: {
             select: {
@@ -64,8 +68,10 @@ export class ClassService {
               full_name: true,
               email: true,
               role: true,
+              avatar_url: true,
             },
           },
+
           _count: {
             select: {
               members: true,
@@ -76,23 +82,23 @@ export class ClassService {
         },
       });
 
-      return ResponseDto.ok(newClass, 'Class created successfully');
+      return newClass;
     } catch (error) {
       console.error('Error creating class:', error);
       if (error instanceof ConflictException) {
         throw error;
       }
-      throw new Error('Failed to create class');
+      throw new InternalServerErrorException('Failed to create class');
     }
   }
 
   /**
    * Get class by slug with full details
    */
-  async getClassBySlug(slug: string, userId: string): Promise<ResponseDto> {
+  async getClassBySlug(slug: string, userId: string): Promise<FullClassResponseDto> {
     try {
       const classData = await this.prisma.class.findFirst({
-        where: { slug } as any,
+        where: { slug },
         include: {
           creator: {
             select: {
@@ -111,6 +117,7 @@ export class ClassService {
                   full_name: true,
                   email: true,
                   avatar_url: true,
+                  role: true,
                 },
               },
             },
@@ -123,6 +130,7 @@ export class ClassService {
                   full_name: true,
                   email: true,
                   avatar_url: true,
+                  role: true,
                 },
               },
             },
@@ -131,7 +139,7 @@ export class ClassService {
             orderBy: { created_at: 'desc' },
             include: {
               host: {
-                select: { id: true, full_name: true },
+                select: { id: true, full_name: true, email: true },
               },
             },
           },
@@ -149,12 +157,12 @@ export class ClassService {
         throw new NotFoundException('Class not found');
       }
 
-      const hasAccess = this.checkClassAccess(classData, userId);
+      const hasAccess = checkClassAccess(classData, userId);
       if (!hasAccess) {
         throw new ForbiddenException('Access denied to this class');
       }
 
-      return ResponseDto.ok(classData, 'Class details retrieved successfully');
+      return toFullClassResponseDto(classData);
     } catch (error) {
       console.error('Error getting class by slug:', error);
       if (
@@ -163,14 +171,14 @@ export class ClassService {
       ) {
         throw error;
       }
-      throw new Error('Failed to retrieve class');
+      throw new InternalServerErrorException('Failed to retrieve class');
     }
   }
 
   /**
    * Get all classes for a user (as creator, teacher, or student)
    */
-  async getUserClasses(userId: string): Promise<ResponseDto> {
+  async getUserClasses(userId: string): Promise<UserClassesResponseDto> {
     try {
       // Get classes where user is creator
       const createdClasses = await this.prisma.class.findMany({
@@ -223,22 +231,23 @@ export class ClassService {
       });
 
       const classes = {
-        created: createdClasses,
-        teaching: teachingClasses,
-        enrolled: studentClasses,
+        created: createdClasses.map(toFullClassResponseDto),
+        teaching: teachingClasses.map(toFullClassResponseDto),
+        enrolled: studentClasses.map(toFullClassResponseDto),
       };
 
-      return ResponseDto.ok(classes, 'Classes retrieved successfully');
+
+      return classes;
     } catch (error) {
       console.error('Error getting user classes:', error);
-      throw new Error('Failed to retrieve classes');
+      throw new InternalServerErrorException('Failed to retrieve classes');
     }
   }
 
   /**
    * Get class by ID with full details
    */
-  async getClassById(classId: string, userId: string): Promise<ResponseDto> {
+  async getClassById(classId: string, userId: string): Promise<FullClassResponseDto> {
     try {
       const classData = await this.prisma.class.findUnique({
         where: { id: classId },
@@ -299,12 +308,12 @@ export class ClassService {
       }
 
       // Check if user has access to this class
-      const hasAccess = this.checkClassAccess(classData, userId);
+      const hasAccess = checkClassAccess(classData, userId);
       if (!hasAccess) {
         throw new ForbiddenException('Access denied to this class');
       }
 
-      return ResponseDto.ok(classData, 'Class details retrieved successfully');
+      return toFullClassResponseDto(classData);
     } catch (error) {
       console.error('Error getting class:', error);
       if (
@@ -313,7 +322,7 @@ export class ClassService {
       ) {
         throw error;
       }
-      throw new Error('Failed to retrieve class');
+      throw new InternalServerErrorException('Failed to retrieve class');
     }
   }
 
@@ -324,7 +333,7 @@ export class ClassService {
     classId: string,
     userId: string,
     dto: UpdateClassDto,
-  ): Promise<ResponseDto> {
+  ): Promise<FullClassResponseDto> {
     try {
       const classData = await this.prisma.class.findUnique({
         where: { id: classId },
@@ -347,7 +356,7 @@ export class ClassService {
         },
       });
 
-      return ResponseDto.ok(updatedClass, 'Class updated successfully');
+      return toFullClassResponseDto(updatedClass);
     } catch (error) {
       console.error('Error updating class:', error);
       if (
@@ -356,7 +365,7 @@ export class ClassService {
       ) {
         throw error;
       }
-      throw new Error('Failed to update class');
+      throw new InternalServerErrorException('Failed to update class');
     }
   }
 
@@ -367,10 +376,10 @@ export class ClassService {
     classId: string,
     userId: string,
     dto: AddClassMemberDto,
-  ): Promise<ResponseDto> {
+  ): Promise<FullClassResponseDto> {
     try {
       // Check if user is creator or teacher
-      const hasPermission = await this.checkClassManagementPermission(
+      const hasPermission = await checkClassManagementPermission(
         classId,
         userId,
       );
@@ -409,7 +418,7 @@ export class ClassService {
         },
       });
 
-      return ResponseDto.ok(classMember, 'Student added successfully');
+      return toFullClassResponseDto(classMember);
     } catch (error) {
       console.error('Error adding student:', error);
       if (
@@ -419,7 +428,7 @@ export class ClassService {
       ) {
         throw error;
       }
-      throw new Error('Failed to add student');
+      throw new InternalServerErrorException('Failed to add student');
     }
   }
 
@@ -430,7 +439,7 @@ export class ClassService {
     classId: string,
     userId: string,
     dto: AddClassTeacherDto,
-  ): Promise<ResponseDto> {
+  ): Promise<FullClassResponseDto> {
     try {
       const classData = await this.prisma.class.findUnique({
         where: { id: classId },
@@ -473,7 +482,7 @@ export class ClassService {
         },
       });
 
-      return ResponseDto.ok(classTeacher, 'Teacher added successfully');
+      return toFullClassResponseDto(classTeacher);
     } catch (error) {
       console.error('Error adding teacher:', error);
       if (
@@ -483,7 +492,7 @@ export class ClassService {
       ) {
         throw error;
       }
-      throw new Error('Failed to add teacher');
+      throw new InternalServerErrorException('Failed to add teacher');
     }
   }
 
@@ -494,7 +503,7 @@ export class ClassService {
     classId: string,
     userId: string,
     teacherId: string,
-  ): Promise<ResponseDto> {
+  ): Promise<FullClassResponseDto> {
     try {
       const classData = await this.prisma.class.findUnique({
         where: { id: classId },
@@ -516,7 +525,7 @@ export class ClassService {
         where: { id: existingTeacher.id },
       });
 
-      return ResponseDto.ok(null, 'Teacher removed successfully');
+      return toFullClassResponseDto(classData);
     } catch (error) {
       console.error('Error removing teacher:', error);
       if (
@@ -525,21 +534,21 @@ export class ClassService {
       ) {
         throw error;
       }
-      throw new Error('Failed to remove teacher');
+      throw new InternalServerErrorException('Failed to remove teacher');
     }
   }
 
   /**
    * Join class by invite code
    */
-  async joinClass(userId: string, inviteCode: string): Promise<ResponseDto> {
+  async joinClass(userId: string, inviteCode: string): Promise<FullClassResponseDto> {
     try {
       const classData = await this.prisma.class.findUnique({
         where: { invite_code: inviteCode },
       });
 
       if (!classData) {
-        return ResponseDto.fail('Class Not Found');
+        throw new NotFoundException('Class not found');
       }
 
       const existingMember = await this.prisma.classMember.findFirst({
@@ -550,7 +559,7 @@ export class ClassService {
       });
 
       if (existingMember) {
-        return ResponseDto.fail('You are already a member of this class');
+        throw new ConflictException('You are already a member of this class');
       }
 
       const classMember = await this.prisma.classMember.create({
@@ -569,7 +578,7 @@ export class ClassService {
         },
       });
 
-      return ResponseDto.ok(classMember, 'Successfully joined the class');
+      return toFullClassResponseDto(classMember);
     } catch (error) {
       console.error('Error joining class:', error);
       if (
@@ -578,23 +587,23 @@ export class ClassService {
       ) {
         throw error;
       }
-      throw new Error('Failed to join class');
+      throw new InternalServerErrorException('Failed to join class');
     }
   }
 
   /**
    * Leave class (student or teacher)
    */
-  async leaveClass(classId: string, userId: string): Promise<ResponseDto> {
+  async leaveClass(classId: string, userId: string): Promise<boolean> {
     try {
       const classData = await this.prisma.class.findUnique({
         where: { id: classId },
       });
 
-      if (!classData) return ResponseDto.fail('Class not found');
+      if (!classData) throw new NotFoundException('Class not found');
 
       if (classData.created_by === userId) {
-        return ResponseDto.fail('Class creator cannot leave the class');
+        throw new ForbiddenException('Class creator cannot leave the class');
       }
 
       const member = await this.prisma.classMember.findFirst({
@@ -602,7 +611,7 @@ export class ClassService {
       });
       if (member) {
         await this.prisma.classMember.delete({ where: { id: member.id } });
-        return ResponseDto.ok(null, 'Left class successfully');
+        return true;
       }
 
       const teacher = await this.prisma.classTeacher.findFirst({
@@ -610,7 +619,7 @@ export class ClassService {
       });
       if (teacher) {
         await this.prisma.classTeacher.delete({ where: { id: teacher.id } });
-        return ResponseDto.ok(null, 'Left class successfully');
+        return true;
       }
 
       throw new NotFoundException('You are not a member of this class');
@@ -622,7 +631,7 @@ export class ClassService {
       ) {
         throw error;
       }
-      throw new Error('Failed to leave class');
+      throw new InternalServerErrorException('Failed to leave class');
     }
   }
 
@@ -633,9 +642,9 @@ export class ClassService {
     classId: string,
     userId: string,
     studentId: string,
-  ): Promise<ResponseDto> {
+  ): Promise<boolean> {
     try {
-      const hasPermission = await this.checkClassManagementPermission(
+      const hasPermission = await checkClassManagementPermission(
         classId,
         userId,
       );
@@ -660,7 +669,7 @@ export class ClassService {
         where: { id: classMember.id },
       });
 
-      return ResponseDto.ok(null, 'Student removed successfully');
+      return true
     } catch (error) {
       console.error('Error removing student:', error);
       if (
@@ -669,16 +678,16 @@ export class ClassService {
       ) {
         throw error;
       }
-      throw new Error('Failed to remove student');
+      throw new InternalServerErrorException('Failed to remove student');
     }
   }
 
   /**
    * Get class members (students)
    */
-  async getClassMembers(classId: string, userId: string): Promise<ResponseDto> {
+  async getClassMembers(classId: string, userId: string): Promise<UserSummaryDto[]> {
     try {
-      const hasAccess = await this.checkClassAccessById(classId, userId);
+      const hasAccess = await checkClassAccessById(classId, userId);
       if (!hasAccess)
         throw new ForbiddenException('Access denied to this class');
 
@@ -698,11 +707,11 @@ export class ClassService {
         orderBy: { joined_at: 'asc' },
       });
 
-      return ResponseDto.ok(members, 'Class members retrieved successfully');
+      return mapUsersToDto(members);
     } catch (error) {
       console.error('Error getting class members:', error);
       if (error instanceof ForbiddenException) throw error;
-      throw new Error('Failed to retrieve class members');
+      throw new InternalServerErrorException('Failed to retrieve class members');
     }
   }
 
@@ -712,9 +721,9 @@ export class ClassService {
   async getClassTeachers(
     classId: string,
     userId: string,
-  ): Promise<ResponseDto> {
+  ): Promise<UserSummaryDto[]> {
     try {
-      const hasAccess = await this.checkClassAccessById(classId, userId);
+      const hasAccess = await checkClassAccessById(classId, userId);
       if (!hasAccess)
         throw new ForbiddenException('Access denied to this class');
 
@@ -733,11 +742,11 @@ export class ClassService {
         },
       });
 
-      return ResponseDto.ok(teachers, 'Class teachers retrieved successfully');
+      return mapUsersToDto(teachers);
     } catch (error) {
       console.error('Error getting class teachers:', error);
       if (error instanceof ForbiddenException) throw error;
-      throw new Error('Failed to retrieve class teachers');
+      throw new InternalServerErrorException('Failed to retrieve class teachers');
     }
   }
 
@@ -747,9 +756,9 @@ export class ClassService {
   async getClassStatistics(
     classId: string,
     userId: string,
-  ): Promise<ResponseDto> {
+  ): Promise<ClassCountDto> {
     try {
-      const hasAccess = await this.checkClassAccessById(classId, userId);
+      const hasAccess = await checkClassAccessById(classId, userId);
       if (!hasAccess)
         throw new ForbiddenException('Access denied to this class');
 
@@ -761,55 +770,23 @@ export class ClassService {
           this.prisma.assignment.count({ where: { class_id: classId } }),
         ]);
 
-      return ResponseDto.ok(
-        {
-          members: memberCount,
-          teachers: teacherCount,
-          sessions: sessionCount,
-          assignments: assignmentCount,
-        },
-        'Class statistics retrieved successfully',
-      );
+      return {
+        members: memberCount,
+        teachers: teacherCount,
+        sessions: sessionCount,
+      };
     } catch (error) {
       console.error('Error getting class statistics:', error);
       if (error instanceof ForbiddenException) throw error;
-      throw new Error('Failed to retrieve class statistics');
+      throw new InternalServerErrorException('Failed to retrieve class statistics');
     }
   }
 
-  /**
-   * Get class sessions
-   */
-  async getClassSessions(
-    classId: string,
-    userId: string,
-  ): Promise<ResponseDto> {
-    try {
-      const hasAccess = await this.checkClassAccessById(classId, userId);
-      if (!hasAccess)
-        throw new ForbiddenException('Access denied to this class');
-
-      const sessions = await this.prisma.session.findMany({
-        where: { class_id: classId },
-        include: {
-          host: { select: { id: true, full_name: true, email: true } },
-          class: { select: { id: true, name: true } },
-        },
-        orderBy: { start_time: 'desc' },
-      });
-
-      return ResponseDto.ok(sessions, 'Sessions retrieved successfully');
-    } catch (error) {
-      console.error('Error getting class sessions:', error);
-      if (error instanceof ForbiddenException) throw error;
-      throw new Error('Failed to retrieve sessions');
-    }
-  }
 
   /**
    * Search classes by name/description the user can see (own, teaching, enrolled, or public classes)
    */
-  async searchClasses(userId: string, q: string): Promise<ResponseDto> {
+  async searchClasses(userId: string, q: string): Promise<ClassResponseDto[]> {
     try {
       const query = q?.trim();
       const whereClause: any = {
@@ -841,23 +818,31 @@ export class ClassService {
           is_group: true,
           invite_code: true,
           created_by: true,
+          creator: {
+            select: {
+              id: true,
+              full_name: true,
+              email: true,
+              role: true,
+            },
+          },
           _count: { select: { members: true, teachers: true, sessions: true } },
         },
         orderBy: { updated_at: 'desc' },
-        take: 50,
+        take: 10,
       });
 
-      return ResponseDto.ok(results, 'Classes search results');
+      return results;
     } catch (error) {
       console.error('Error searching classes:', error);
-      throw new Error('Failed to search classes');
+      throw new InternalServerErrorException('Failed to search classes');
     }
   }
 
   /**
    * Get public classes
    */
-  async getPublicClasses(): Promise<ResponseDto> {
+  async getPublicClasses(): Promise<ClassResponseDto[]> {
     try {
       const results = await this.prisma.class.findMany({
         where: { is_group: true },
@@ -866,15 +851,24 @@ export class ClassService {
           name: true,
           description: true,
           is_group: true,
+          created_by: true,
+          creator: {
+            select: {
+              id: true,
+              full_name: true,
+              email: true,
+              role: true,
+            },
+          },
           _count: { select: { members: true, teachers: true, sessions: true } },
         },
         orderBy: { updated_at: 'desc' },
         take: 50,
       });
-      return ResponseDto.ok(results, 'Public classes retrieved');
+      return results;
     } catch (error) {
       console.error('Error getting public classes:', error);
-      throw new Error('Failed to retrieve public classes');
+      throw new InternalServerErrorException('Failed to retrieve public classes');
     }
   }
 
@@ -888,7 +882,7 @@ export class ClassService {
     sortBy?: 'name' | 'created_at' | 'updated_at';
     sortOrder?: 'asc' | 'desc';
     creatorId?: string;
-  }): Promise<ResponseDto> {
+  }): Promise<PaginatedClassResponseDto> {
     const {
       page,
       pageSize,
@@ -936,17 +930,18 @@ export class ClassService {
       );
 
       console.log('items: ', items);
-
-      return ResponseDto.ok({
-        page,
-        pageSize,
+      const response: PaginatedClassResponseDto = {
+        data: items,
         total,
         totalPages: Math.ceil(total / pageSize),
-        items,
-      });
+        page,
+        pageSize,
+      };
+
+      return response
     } catch (error) {
       console.error('Error getting all classes:', error);
-      throw new Error('Failed to retrieve classes');
+      throw new InternalServerErrorException('Failed to retrieve classes');
     }
   }
 
@@ -956,9 +951,9 @@ export class ClassService {
   async regenerateInviteCode(
     classId: string,
     userId: string,
-  ): Promise<ResponseDto> {
+  ): Promise<string> {
     try {
-      const hasPermission = await this.checkClassManagementPermission(
+      const hasPermission = await checkClassManagementPermission(
         classId,
         userId,
       );
@@ -968,7 +963,7 @@ export class ClassService {
         );
       }
 
-      const newCode = await this.generateUniqueInviteCode();
+      const newCode = await generateUniqueInviteCode();
 
       const updated = await this.prisma.class.update({
         where: { id: classId },
@@ -976,27 +971,27 @@ export class ClassService {
         select: { id: true, invite_code: true },
       });
 
-      return ResponseDto.ok(updated, 'Invite code regenerated');
+      return updated.invite_code;
     } catch (error) {
       console.error('Error regenerating invite code:', error);
       if (error instanceof ForbiddenException) throw error;
-      throw new Error('Failed to regenerate invite code');
+      throw new InternalServerErrorException('Failed to regenerate invite code');
     }
   }
 
   /**
    * Validate invite code
    */
-  async validateInviteCode(code: string): Promise<ResponseDto> {
+  async validateInviteCode(code: string): Promise<{ valid: boolean, class: ClassResponseDto | null }> {
     try {
       const existing = await this.prisma.class.findUnique({
         where: { invite_code: code },
-        select: { id: true, name: true, description: true, is_group: true },
+        select: { id: true, name: true, description: true, is_group: true, created_by: true, creator: { select: { id: true, full_name: true, email: true, role: true } }, _count: { select: { members: true, teachers: true, sessions: true } } },
       });
-      return ResponseDto.ok({ valid: !!existing, class: existing || null });
+      return { valid: !!existing, class: existing || null };
     } catch (error) {
       console.error('Error validating invite code:', error);
-      throw new Error('Failed to validate invite code');
+      throw new InternalServerErrorException('Failed to validate invite code');
     }
   }
 
@@ -1007,9 +1002,9 @@ export class ClassService {
     classId: string,
     userId: string,
     dto: UpdateClassDto,
-  ): Promise<ResponseDto> {
+  ): Promise<ClassResponseDto> {
     try {
-      const hasPermission = await this.checkClassManagementPermission(
+      const hasPermission = await checkClassManagementPermission(
         classId,
         userId,
       );
@@ -1030,11 +1025,11 @@ export class ClassService {
         },
       });
 
-      return ResponseDto.ok(updated, 'Class settings updated successfully');
+      return updated;
     } catch (error) {
       console.error('Error updating class settings:', error);
       if (error instanceof ForbiddenException) throw error;
-      throw new Error('Failed to update class settings');
+      throw new InternalServerErrorException('Failed to update class settings');
     }
   }
 
@@ -1045,9 +1040,9 @@ export class ClassService {
     classId: string,
     userId: string,
     dto: BulkStudentIdsDto,
-  ): Promise<ResponseDto> {
+  ): Promise<UserSummaryDto[]> {
     try {
-      const hasPermission = await this.checkClassManagementPermission(
+      const hasPermission = await checkClassManagementPermission(
         classId,
         userId,
       );
@@ -1059,7 +1054,7 @@ export class ClassService {
 
       const uniqueIds = Array.from(new Set(dto.student_ids));
       if (uniqueIds.length === 0) {
-        return ResponseDto.ok([], 'No students to add');
+        return [];
       }
 
       // Filter
@@ -1071,7 +1066,7 @@ export class ClassService {
       const toCreate = uniqueIds.filter((id) => !existingSet.has(id));
 
       if (toCreate.length === 0) {
-        return ResponseDto.ok([], 'All students already in class');
+        return [];
       }
 
       const created = await this.prisma.$transaction(
@@ -1096,11 +1091,11 @@ export class ClassService {
         ),
       );
 
-      return ResponseDto.ok(created, 'Students added successfully');
+      return created.map(c => c.student);
     } catch (error) {
       console.error('Error bulk adding students:', error);
       if (error instanceof ForbiddenException) throw error;
-      throw new Error('Failed to bulk add students');
+      throw new InternalServerErrorException('Failed to bulk add students');
     }
   }
 
@@ -1111,9 +1106,9 @@ export class ClassService {
     classId: string,
     userId: string,
     dto: BulkStudentIdsDto,
-  ): Promise<ResponseDto> {
+  ): Promise<{ count: number }> {
     try {
-      const hasPermission = await this.checkClassManagementPermission(
+      const hasPermission = await checkClassManagementPermission(
         classId,
         userId,
       );
@@ -1125,28 +1120,25 @@ export class ClassService {
 
       const uniqueIds = Array.from(new Set(dto.student_ids));
       if (uniqueIds.length === 0) {
-        return ResponseDto.ok(0, 'No students to remove');
+        return { count: 0 };
       }
 
       const deleted = await this.prisma.classMember.deleteMany({
         where: { class_id: classId, student_id: { in: uniqueIds } },
       });
 
-      return ResponseDto.ok(
-        { count: deleted.count },
-        'Students removed successfully',
-      );
+      return { count: deleted.count };
     } catch (error) {
       console.error('Error bulk removing students:', error);
       if (error instanceof ForbiddenException) throw error;
-      throw new Error('Failed to bulk remove students');
+      throw new InternalServerErrorException('Failed to bulk remove students');
     }
   }
 
   /**
    * Delete class (only creator)
    */
-  async deleteClass(classId: string, userId: string): Promise<ResponseDto> {
+  async deleteClass(classId: string, userId: string): Promise<void> {
     try {
       const classData = await this.prisma.class.findUnique({
         where: { id: classId },
@@ -1164,7 +1156,7 @@ export class ClassService {
         where: { id: classId },
       });
 
-      return ResponseDto.ok(null, 'Class deleted successfully');
+      return;
     } catch (error) {
       console.error('Error deleting class:', error);
       if (
@@ -1173,122 +1165,9 @@ export class ClassService {
       ) {
         throw error;
       }
-      throw new Error('Failed to delete class');
+      throw new InternalServerErrorException('Failed to delete class');
     }
   }
 
-  /**
-   * Helper: Generate unique invite code
-   */
-  private async generateUniqueInviteCode(): Promise<string> {
-    const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-    const length = 8;
-    const generate = () =>
-      Array.from({ length }, () =>
-        alphabet.charAt(Math.floor(Math.random() * alphabet.length)),
-      ).join('');
 
-    // Loop until we have a unique code
-    // Guard against extremely rare infinite loops by capping attempts
-    for (let attempt = 0; attempt < 20; attempt++) {
-      const code = generate();
-      const existing = await this.prisma.class.findUnique({
-        where: { invite_code: code },
-        select: { id: true },
-      });
-      if (!existing) return code;
-    }
-    // Fallback
-    return `${Date.now()}`.slice(-8).toUpperCase();
-  }
-
-  /**
-   * Generate a unique slug for a class name by replacing spaces with hyphens
-   * and appending an incrementing number if needed.
-   */
-  private async generateUniqueSlug(name: string): Promise<string> {
-    const base = this.slugify(name);
-    let attempt = 0;
-    while (true) {
-      const candidate = attempt === 0 ? base : `${base}-${attempt + 1}`;
-      const exists = await this.prisma.class.findFirst({
-        where: { slug: candidate } as any,
-        select: { id: true },
-      });
-      if (!exists) return candidate;
-      attempt += 1;
-    }
-  }
-
-  private slugify(input: string): string {
-    return input
-      .trim()
-      .toLowerCase()
-      .replace(/\s+/g, '-')
-      .replace(/[^a-z0-9\-]/g, '')
-      .replace(/-+/g, '-')
-      .replace(/^-|-$/g, '');
-  }
-
-  /**
-   * Helper: Check if user has access to class
-   */
-  private checkClassAccess(classData: any, userId: string): boolean {
-    // Creator
-    if (classData.created_by === userId) return true;
-
-    // Teacher
-    if (classData.teachers.some((t: any) => t.teacher_id === userId))
-      return true;
-
-    // Active student
-    if (
-      classData.members.some(
-        (m: any) => m.student_id === userId && m.status === 'active',
-      )
-    )
-      return true;
-
-    return false;
-  }
-
-  /**
-   * Helper: Check access by class id
-   */
-  private async checkClassAccessById(
-    classId: string,
-    userId: string,
-  ): Promise<boolean> {
-    const classData = await this.prisma.class.findUnique({
-      where: { id: classId },
-      include: { teachers: true, members: true },
-    });
-    if (!classData) return false;
-    return this.checkClassAccess(classData, userId);
-  }
-
-  /**
-   * Helper: Check if user can manage class (creator or teacher)
-   */
-  private async checkClassManagementPermission(
-    classId: string,
-    userId: string,
-  ): Promise<boolean> {
-    const classData = await this.prisma.class.findUnique({
-      where: { id: classId },
-      include: {
-        teachers: true,
-      },
-    });
-
-    if (!classData) return false;
-
-    // Creator
-    if (classData.created_by === userId) return true;
-
-    // Teacher
-    if (classData.teachers.some((t) => t.teacher_id === userId)) return true;
-
-    return false;
-  }
 }
