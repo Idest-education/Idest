@@ -51,7 +51,10 @@ export class ConversationService {
       if (dto.classId) {
         const existingClassConversation =
           await this.prisma.conversation.findFirst({
-            where: { classId: dto.classId },
+            where: {
+              classId: dto.classId,
+              isDeleted: false,
+            },
             include: {
               participants: {
                 include: {
@@ -255,8 +258,11 @@ export class ConversationService {
         throw new ForbiddenException('Access denied to this conversation');
       }
 
-      const conversation = await this.prisma.conversation.findUnique({
-        where: { id: conversationId },
+      const conversation = await this.prisma.conversation.findFirst({
+        where: {
+          id: conversationId,
+          isDeleted: false,
+        },
         include: {
           participants: {
             include: {
@@ -414,8 +420,11 @@ export class ConversationService {
     dto: AddParticipantDto,
   ): Promise<ConversationParticipantDto> {
     try {
-      const conversation = await this.prisma.conversation.findUnique({
-        where: { id: conversationId },
+      const conversation = await this.prisma.conversation.findFirst({
+        where: {
+          id: conversationId,
+          isDeleted: false,
+        },
         include: {
           participants: true,
         },
@@ -490,8 +499,11 @@ export class ConversationService {
     participantId: string,
   ): Promise<boolean> {
     try {
-      const conversation = await this.prisma.conversation.findUnique({
-        where: { id: conversationId },
+      const conversation = await this.prisma.conversation.findFirst({
+        where: {
+          id: conversationId,
+          isDeleted: false,
+        },
         include: {
           participants: true,
         },
@@ -603,6 +615,7 @@ export class ConversationService {
     const conversation = await this.prisma.conversation.findFirst({
       where: {
         isGroup: false,
+        isDeleted: false,
         participants: {
           every: {
             userId: { in: [userId1, userId2] },
