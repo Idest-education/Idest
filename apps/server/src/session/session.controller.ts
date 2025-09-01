@@ -12,9 +12,9 @@ import { SessionService } from './session.service';
 import { AuthGuard } from 'src/common/guard/auth.guard';
 import { CurrentUser } from 'src/common/decorator/currentUser.decorator';
 import { userPayload } from 'src/common/types/userPayload.interface';
-import { ResponseDto } from 'src/common/dto/response.dto';
 import { CreateSessionDto } from './dto/create-session.dto';
 import { UpdateSessionDto } from './dto/update-session.dto';
+import { SessionResponseDto } from './dto/session-response.dto';
 
 @Controller('session')
 @UseGuards(AuthGuard)
@@ -28,7 +28,7 @@ export class SessionController {
   async createSession(
     @CurrentUser() user: userPayload,
     @Body() dto: CreateSessionDto,
-  ): Promise<ResponseDto> {
+  ): Promise<SessionResponseDto> {
     return this.sessionService.createSession(user, dto);
   }
 
@@ -38,7 +38,7 @@ export class SessionController {
   @Get('upcoming')
   async getUserUpcomingSessions(
     @CurrentUser() user: userPayload,
-  ): Promise<ResponseDto> {
+  ): Promise<SessionResponseDto[]> {
     return this.sessionService.getUserUpcomingSessions(user.id);
   }
 
@@ -49,7 +49,7 @@ export class SessionController {
   async getSessionById(
     @Param('id') sessionId: string,
     @CurrentUser() user: userPayload,
-  ): Promise<ResponseDto> {
+  ): Promise<SessionResponseDto> {
     return this.sessionService.getSessionById(sessionId, user.id);
   }
 
@@ -61,7 +61,7 @@ export class SessionController {
     @Param('id') sessionId: string,
     @CurrentUser() user: userPayload,
     @Body() dto: UpdateSessionDto,
-  ): Promise<ResponseDto> {
+  ): Promise<SessionResponseDto> {
     return this.sessionService.updateSession(sessionId, user.id, dto);
   }
 
@@ -72,7 +72,7 @@ export class SessionController {
   async endSession(
     @Param('id') sessionId: string,
     @CurrentUser() user: userPayload,
-  ): Promise<ResponseDto> {
+  ): Promise<SessionResponseDto> {
     return this.sessionService.endSession(sessionId, user.id);
   }
 
@@ -83,7 +83,7 @@ export class SessionController {
   async deleteSession(
     @Param('id') sessionId: string,
     @CurrentUser() user: userPayload,
-  ): Promise<ResponseDto> {
+  ): Promise<boolean> {
     return this.sessionService.deleteSession(sessionId, user.id);
   }
 
@@ -94,7 +94,7 @@ export class SessionController {
   async getClassSessions(
     @Param('classId') classId: string,
     @CurrentUser() user: userPayload,
-  ): Promise<ResponseDto> {
+  ): Promise<SessionResponseDto[]> {
     return this.sessionService.getClassSessions(classId, user.id);
   }
 }

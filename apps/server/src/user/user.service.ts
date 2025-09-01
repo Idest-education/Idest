@@ -1,5 +1,5 @@
 import { CloudinaryService } from 'src/cloudinary/cloudinary.service';
-import { Injectable, NotFoundException, UnprocessableEntityException } from '@nestjs/common';
+import { Injectable, InternalServerErrorException, NotFoundException, UnprocessableEntityException } from '@nestjs/common';
 import { CreateUserDto } from './dto/createUser.dto';
 import { userPayload } from 'src/common/types/userPayload.interface';
 import { Prisma, StudentProfile, TeacherProfile, User } from '@prisma/client';
@@ -44,7 +44,7 @@ export class UserService {
       if (error instanceof UnprocessableEntityException) {
         throw error;
       }
-      throw new UnprocessableEntityException(`Error creating user: ${error}`);
+      throw new InternalServerErrorException(`Error creating user: ${error}`);
     }
   }
 
@@ -65,7 +65,7 @@ export class UserService {
       if (error instanceof NotFoundException) {
         throw error;
       }
-      throw new UnprocessableEntityException(`Error fetching user by ID: ${error}`);
+      throw new InternalServerErrorException(`Error fetching user by ID: ${error}`);
     }
   }
 
@@ -103,7 +103,7 @@ export class UserService {
       if (error instanceof UnprocessableEntityException || error instanceof NotFoundException) {
         throw error;
       }
-      throw new UnprocessableEntityException(`Error updating user: ${error}`);
+      throw new InternalServerErrorException(`Error updating user: ${error}`);
     }
   }
 
@@ -139,7 +139,7 @@ export class UserService {
       if (error instanceof UnprocessableEntityException || error instanceof NotFoundException) {
         throw error;
       }
-      throw new UnprocessableEntityException(`Error uploading avatar: ${error}`);
+      throw new InternalServerErrorException(`Error uploading avatar: ${error}`);
     }
   }
 
@@ -176,7 +176,7 @@ export class UserService {
       if (error instanceof UnprocessableEntityException || error instanceof NotFoundException) {
         throw error;
       }
-      throw new UnprocessableEntityException(`Error banning user: ${error}`);
+      throw new InternalServerErrorException(`Error banning user: ${error}`);
     }
   }
   async unbanUser(
@@ -212,7 +212,7 @@ export class UserService {
       if (error instanceof UnprocessableEntityException || error instanceof NotFoundException) {
         throw error;
       }
-      throw new UnprocessableEntityException(`Error unbanning user: ${error}`);
+      throw new InternalServerErrorException(`Error unbanning user: ${error}`);
     }
   }
   async getAllUsers(
@@ -349,7 +349,7 @@ export class UserService {
       if (error instanceof UnprocessableEntityException) {
         throw error;
       }
-      throw new UnprocessableEntityException(`Error fetching users: ${error}`);
+      throw new InternalServerErrorException(`Error fetching users: ${error}`);
     }
   }
   async getUserByEmail(email: string): Promise<User> {
@@ -400,7 +400,7 @@ export class UserService {
       if (error instanceof UnprocessableEntityException || error instanceof NotFoundException) {
         throw error;
       }
-      throw new UnprocessableEntityException(`Failed to get user details for ${userId}: ${error}`);
+      throw new InternalServerErrorException(`Failed to get user details for ${userId}: ${error}`);
     }
   }
   async createStudentProfile(
@@ -423,7 +423,7 @@ export class UserService {
       if (error instanceof UnprocessableEntityException) {
         throw error;
       }
-      throw new UnprocessableEntityException(`Error creating student profile: ${error}`);
+      throw new InternalServerErrorException(`Error creating student profile: ${error}`);
     }
   }
   async createTeacherProfile(
@@ -471,7 +471,7 @@ export class UserService {
       if (error instanceof UnprocessableEntityException) {
         throw error;
       }
-      throw new UnprocessableEntityException(`Error creating teacher profile: ${error}`);
+      throw new InternalServerErrorException(`Error creating teacher profile: ${error}`);
     }
   }
 }

@@ -2,12 +2,16 @@ import {
   Injectable,
   NotFoundException,
   ForbiddenException,
+  UnprocessableEntityException,
+  InternalServerErrorException,
 } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { userPayload } from 'src/common/types/userPayload.interface';
 import { ResponseDto } from 'src/common/dto/response.dto';
 import { CreateSessionDto } from './dto/create-session.dto';
 import { UpdateSessionDto } from './dto/update-session.dto';
+import { Session } from '@prisma/client';
+import { SessionResponseDto } from './dto/session-response.dto';
 
 @Injectable()
 export class SessionService {
@@ -19,7 +23,7 @@ export class SessionService {
   async createSession(
     user: userPayload,
     dto: CreateSessionDto,
-  ): Promise<ResponseDto> {
+  ): Promise<SessionResponseDto> {
     try {
       const hasPermission = await this.checkClassPermission(
         dto.class_id,
@@ -31,40 +35,40 @@ export class SessionService {
         );
       }
 
-      const session = await this.prisma.session.create({
-        data: {
-          class_id: dto.class_id,
-          host_id: user.id,
-          start_time: new Date(dto.start_time),
-          end_time: dto.end_time ? new Date(dto.end_time) : null,
-          is_recorded: dto.is_recorded || false,
-          metadata: dto.metadata || {},
-        },
-        include: {
-          class: {
-            select: {
-              id: true,
-              name: true,
-              description: true,
+      const session: SessionResponseDto =
+        await this.prisma.session.create({
+          data: {
+            class_id: dto.class_id,
+            host_id: user.id,
+            start_time: new Date(dto.start_time),
+            end_time: dto.end_time ? new Date(dto.end_time) : null,
+            is_recorded: dto.is_recorded || false,
+            metadata: dto.metadata || {},
+          },
+          include: {
+            class: {
+              select: {
+                id: true,
+                name: true,
+              },
+            },
+            host: {
+              select: {
+                id: true,
+                full_name: true,
+                email: true,
+              },
             },
           },
-          host: {
-            select: {
-              id: true,
-              full_name: true,
-              email: true,
-            },
-          },
-        },
-      });
+        });
 
-      return ResponseDto.ok(session, 'Session created successfully');
+      return session;
     } catch (error) {
       console.error('Error creating session:', error);
       if (error instanceof ForbiddenException) {
         throw error;
       }
-      throw new Error('Failed to create session');
+      throw new InternalServerErrorException('Failed to create session');
     }
   }
 
@@ -74,14 +78,14 @@ export class SessionService {
   async getClassSessions(
     classId: string,
     userId: string,
-  ): Promise<ResponseDto> {
+  ): Promise<SessionResponseDto[]> {
     try {
       const hasAccess = await this.checkClassAccess(classId, userId);
       if (!hasAccess) {
         throw new ForbiddenException('Access denied to this class');
       }
 
-      const sessions = await this.prisma.session.findMany({
+      const sessions: SessionResponseDto[] = await this.prisma.session.findMany({
         where: { class_id: classId },
         include: {
           host: {
@@ -101,13 +105,13 @@ export class SessionService {
         orderBy: { start_time: 'desc' },
       });
 
-      return ResponseDto.ok(sessions, 'Sessions retrieved successfully');
+      return sessions;
     } catch (error) {
       console.error('Error getting class sessions:', error);
       if (error instanceof ForbiddenException) {
         throw error;
       }
-      throw new Error('Failed to retrieve sessions');
+      throw new InternalServerErrorException('Failed to retrieve sessions');
     }
   }
 
@@ -117,7 +121,7 @@ export class SessionService {
   async getSessionById(
     sessionId: string,
     userId: string,
-  ): Promise<ResponseDto> {
+  ): Promise<SessionResponseDto> {
     try {
       const session = await this.prisma.session.findUnique({
         where: { id: sessionId },
@@ -172,7 +176,7 @@ export class SessionService {
         throw new ForbiddenException('Access denied to this session');
       }
 
-      return ResponseDto.ok(session, 'Session details retrieved successfully');
+      return session;
     } catch (error) {
       console.error('Error getting session:', error);
       if (
@@ -181,7 +185,7 @@ export class SessionService {
       ) {
         throw error;
       }
-      throw new Error('Failed to retrieve session');
+      throw new InternalServerErrorException('Failed to retrieve session');
     }
   }
 
@@ -192,7 +196,7 @@ export class SessionService {
     sessionId: string,
     userId: string,
     dto: UpdateSessionDto,
-  ): Promise<ResponseDto> {
+  ): Promise<SessionResponseDto> {
     try {
       const session = await this.prisma.session.findUnique({
         where: { id: sessionId },
@@ -245,7 +249,7 @@ export class SessionService {
         },
       });
 
-      return ResponseDto.ok(updatedSession, 'Session updated successfully');
+      return updatedSession;
     } catch (error) {
       console.error('Error updating session:', error);
       if (
@@ -254,14 +258,14 @@ export class SessionService {
       ) {
         throw error;
       }
-      throw new Error('Failed to update session');
+      throw new InternalServerErrorException('Failed to update session');
     }
   }
 
   /**
    * Delete session
    */
-  async deleteSession(sessionId: string, userId: string): Promise<ResponseDto> {
+  async deleteSession(sessionId: string, userId: string): Promise<boolean> {
     try {
       const session = await this.prisma.session.findUnique({
         where: { id: sessionId },
@@ -284,7 +288,7 @@ export class SessionService {
         where: { id: sessionId },
       });
 
-      return ResponseDto.ok(null, 'Session deleted successfully');
+      return true;
     } catch (error) {
       console.error('Error deleting session:', error);
       if (
@@ -293,18 +297,18 @@ export class SessionService {
       ) {
         throw error;
       }
-      throw new Error('Failed to delete session');
+      throw new InternalServerErrorException('Failed to delete session');
     }
   }
 
   /**
    * Get user's upcoming sessions
    */
-  async getUserUpcomingSessions(userId: string): Promise<ResponseDto> {
+  async getUserUpcomingSessions(userId: string): Promise<SessionResponseDto[]> {
     try {
       const now = new Date();
 
-      const hostedSessions = await this.prisma.session.findMany({
+      const hostedSessions: SessionResponseDto[] = await this.prisma.session.findMany({
         where: {
           host_id: userId,
           start_time: { gte: now },
@@ -313,11 +317,14 @@ export class SessionService {
           class: {
             select: { id: true, name: true },
           },
+          host: {
+            select: { id: true, full_name: true, email: true },
+          },
         },
         orderBy: { start_time: 'asc' },
       });
 
-      const memberSessions = await this.prisma.session.findMany({
+      const memberSessions: SessionResponseDto[] = await this.prisma.session.findMany({
         where: {
           start_time: { gte: now },
           class: {
@@ -333,7 +340,7 @@ export class SessionService {
             select: { id: true, name: true },
           },
           host: {
-            select: { id: true, full_name: true },
+            select: { id: true, full_name: true, email: true },
           },
         },
         orderBy: { start_time: 'asc' },
@@ -346,20 +353,17 @@ export class SessionService {
           index === self.findIndex((s) => s.id === session.id),
       );
 
-      return ResponseDto.ok(
-        uniqueSessions,
-        'Upcoming sessions retrieved successfully',
-      );
+      return uniqueSessions;
     } catch (error) {
       console.error('Error getting upcoming sessions:', error);
-      throw new Error('Failed to retrieve upcoming sessions');
+      throw new UnprocessableEntityException('Failed to retrieve upcoming sessions');
     }
   }
 
   /**
    * End a session (set end time to now)
    */
-  async endSession(sessionId: string, userId: string): Promise<ResponseDto> {
+  async endSession(sessionId: string, userId: string): Promise<SessionResponseDto> {
     try {
       const session = await this.prisma.session.findUnique({
         where: { id: sessionId },
@@ -392,12 +396,12 @@ export class SessionService {
             select: { id: true, name: true },
           },
           host: {
-            select: { id: true, full_name: true },
+            select: { id: true, full_name: true, email: true },
           },
         },
       });
 
-      return ResponseDto.ok(updatedSession, 'Session ended successfully');
+      return updatedSession;
     } catch (error) {
       console.error('Error ending session:', error);
       if (
@@ -406,7 +410,7 @@ export class SessionService {
       ) {
         throw error;
       }
-      throw new Error('Failed to end session');
+      throw new InternalServerErrorException('Failed to end session');
     }
   }
 
