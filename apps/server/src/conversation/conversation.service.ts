@@ -3,13 +3,21 @@ import {
   NotFoundException,
   ForbiddenException,
   ConflictException,
+  InternalServerErrorException,
 } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { userPayload } from 'src/common/types/userPayload.interface';
-import { ResponseDto } from 'src/common/dto/response.dto';
 import { CreateConversationDto } from './dto/create-conversation.dto';
 import { AddParticipantDto } from './dto/add-participant.dto';
 import { SendMessageDto } from './dto/send-message.dto';
+import {
+  ConversationDto,
+  ConversationsListDto,
+  ConversationWithMessagesDto,
+  MessageDto,
+  ConversationParticipantDto,
+  MessagesListDto,
+} from './dto/conversation-response.dto';
 import { ConversationGateway } from './conversation.gateway';
 
 @Injectable()
@@ -25,7 +33,7 @@ export class ConversationService {
   async createConversation(
     user: userPayload,
     dto: CreateConversationDto,
-  ): Promise<ResponseDto> {
+  ): Promise<ConversationDto> {
     try {
       // 1-1 convo
       if (!dto.isGroup && dto.participantIds.length === 1) {
@@ -35,33 +43,54 @@ export class ConversationService {
           otherUserId,
         );
         if (existing) {
-          return ResponseDto.ok(existing, 'Direct conversation already exists');
+          return existing;
         }
       }
 
       if (dto.classId) {
         const existingClassConversation =
-          (await this.prisma.conversation.findFirst({
-            where: { classId: dto.classId } as any,
-            include: { participants: true },
-          })) as any;
+          await this.prisma.conversation.findFirst({
+            where: { classId: dto.classId },
+            include: {
+              participants: {
+                include: {
+                  user: {
+                    select: {
+                      id: true,
+                      full_name: true,
+                      email: true,
+                      avatar_url: true,
+                    },
+                  },
+                },
+              },
+              messages: {
+                take: 10,
+                orderBy: { sentAt: 'desc' },
+                include: {
+                  sender: {
+                    select: {
+                      id: true,
+                      full_name: true,
+                      avatar_url: true,
+                    },
+                  },
+                },
+              },
+            },
+          });
         if (existingClassConversation) {
-          return ResponseDto.ok(
-            existingClassConversation,
-            'Class conversation already exists',
-          );
+          return existingClassConversation as ConversationDto;
         }
       }
 
       const conversation = await this.prisma.conversation.create({
         data: {
           isGroup: dto.isGroup || false,
-          ...({
-            title: dto.title,
-            createdBy: user.id,
-            ownerId: dto.ownerId || user.id,
-            classId: dto.classId,
-          } as any),
+          title: dto.title,
+          createdBy: user.id,
+          ownerId: dto.ownerId || user.id,
+          classId: dto.classId,
         },
       });
 
@@ -113,15 +142,24 @@ export class ConversationService {
         },
       });
 
+      if (!fullConversation) {
+        throw new InternalServerErrorException('Failed to create conversation');
+      }
+
       this.conversationGateway.emitConversationCreated(fullConversation);
 
-      return ResponseDto.ok(
-        fullConversation,
-        'Conversation created successfully',
-      );
+      return fullConversation as ConversationDto;
     } catch (error) {
       console.error('Error creating conversation:', error);
-      throw new Error('Failed to create conversation');
+      if (
+        error instanceof ConflictException ||
+        error instanceof ForbiddenException ||
+        error instanceof NotFoundException ||
+        error instanceof InternalServerErrorException
+      ) {
+        throw error;
+      }
+      throw new InternalServerErrorException('Failed to create conversation');
     }
   }
 
@@ -131,7 +169,7 @@ export class ConversationService {
   async getUserConversations(
     userId: string,
     params?: { cursor?: string; limit?: number },
-  ): Promise<ResponseDto> {
+  ): Promise<ConversationsListDto> {
     try {
       const { cursor, limit = 50 } = params || {};
       const conversations = await this.prisma.conversation.findMany({
@@ -139,7 +177,7 @@ export class ConversationService {
           participants: {
             some: { userId },
           },
-          ...({ deleted: false } as any),
+          isDeleted: false,
         },
         include: {
           participants: {
@@ -180,13 +218,15 @@ export class ConversationService {
           ? conversations[conversations.length - 1].id
           : undefined;
 
-      return ResponseDto.ok(
-        { items: conversations, nextCursor },
-        'Conversations retrieved successfully',
-      );
+      return {
+        items: conversations as ConversationDto[],
+        nextCursor,
+      };
     } catch (error) {
       console.error('Error getting user conversations:', error);
-      throw new Error('Failed to retrieve conversations');
+      throw new InternalServerErrorException(
+        'Failed to retrieve conversations',
+      );
     }
   }
 
@@ -198,7 +238,7 @@ export class ConversationService {
     userId: string,
     limit: number = 50,
     before?: Date,
-  ): Promise<ResponseDto> {
+  ): Promise<ConversationWithMessagesDto> {
     try {
       const isParticipant =
         await this.prisma.conversationParticipant.findUnique({
@@ -253,16 +293,15 @@ export class ConversationService {
       // Reverse messages to get chronological order
       conversation.messages.reverse();
 
-      const convAny: any = conversation as any;
       const nextCursor =
-        convAny.messages.length === limit
-          ? convAny.messages[convAny.messages.length - 1].id
+        conversation.messages.length === limit
+          ? conversation.messages[conversation.messages.length - 1].id
           : undefined;
 
-      return ResponseDto.ok(
-        { conversation: convAny, nextCursor },
-        'Conversation retrieved successfully',
-      );
+      return {
+        conversation: conversation as ConversationDto,
+        nextCursor,
+      };
     } catch (error) {
       console.error('Error getting conversation:', error);
       if (
@@ -271,7 +310,7 @@ export class ConversationService {
       ) {
         throw error;
       }
-      throw new Error('Failed to retrieve conversation');
+      throw new InternalServerErrorException('Failed to retrieve conversation');
     }
   }
 
@@ -282,7 +321,7 @@ export class ConversationService {
     conversationId: string,
     userId: string,
     dto: SendMessageDto,
-  ): Promise<ResponseDto> {
+  ): Promise<MessageDto> {
     try {
       // Check if user is participant
       const isParticipant =
@@ -302,20 +341,20 @@ export class ConversationService {
       }
 
       // ensure conversation exists and not deleted; also decide message type
-      const conv = (await this.prisma.conversation.findUnique({
+      const conv = await this.prisma.conversation.findUnique({
         where: { id: conversationId },
         select: {
           id: true,
           isGroup: true,
           classId: true,
-          deleted: true,
-        } as any,
-      })) as any;
-      if (!conv || conv.deleted) {
+          isDeleted: true,
+        },
+      });
+      if (!conv || conv.isDeleted) {
         throw new NotFoundException('Conversation not found');
       }
 
-      const messageType = (conv as any).classId ? 'CLASSROOM' : 'DIRECT';
+      const messageType = conv.classId ? 'CLASSROOM' : 'DIRECT';
 
       const message = await this.prisma.message.create({
         data: {
@@ -323,8 +362,8 @@ export class ConversationService {
           senderId: userId,
           conversationId,
           type: messageType as any,
-          ...({ replyToId: dto.replyToId } as any),
-          attachments: (dto.attachments as any) || undefined,
+          replyToId: dto.replyToId,
+          attachments: dto.attachments || undefined,
         },
         include: {
           sender: {
@@ -345,18 +384,21 @@ export class ConversationService {
 
       await this.prisma.conversation.update({
         where: { id: conversationId },
-        data: { updatedAt: new Date() } as any,
+        data: { updatedAt: new Date() },
       });
 
       this.conversationGateway.emitNewMessage(conversationId, message);
 
-      return ResponseDto.ok(message, 'Message sent successfully');
+      return message as MessageDto;
     } catch (error) {
       console.error('Error sending message:', error);
-      if (error instanceof ForbiddenException) {
+      if (
+        error instanceof ForbiddenException ||
+        error instanceof NotFoundException
+      ) {
         throw error;
       }
-      throw new Error('Failed to send message');
+      throw new InternalServerErrorException('Failed to send message');
     }
   }
 
@@ -367,7 +409,7 @@ export class ConversationService {
     conversationId: string,
     userId: string,
     dto: AddParticipantDto,
-  ): Promise<ResponseDto> {
+  ): Promise<ConversationParticipantDto> {
     try {
       const conversation = await this.prisma.conversation.findUnique({
         where: { id: conversationId },
@@ -422,7 +464,7 @@ export class ConversationService {
         participant,
       );
 
-      return ResponseDto.ok(participant, 'Participant added successfully');
+      return participant as ConversationParticipantDto;
     } catch (error) {
       console.error('Error adding participant:', error);
       if (
@@ -432,7 +474,7 @@ export class ConversationService {
       ) {
         throw error;
       }
-      throw new Error('Failed to add participant');
+      throw new InternalServerErrorException('Failed to add participant');
     }
   }
 
@@ -443,7 +485,7 @@ export class ConversationService {
     conversationId: string,
     userId: string,
     participantId: string,
-  ): Promise<ResponseDto> {
+  ): Promise<boolean> {
     try {
       const conversation = await this.prisma.conversation.findUnique({
         where: { id: conversationId },
@@ -494,13 +536,10 @@ export class ConversationService {
       if (remainingParticipants === 0) {
         await this.prisma.conversation.update({
           where: { id: conversationId },
-          data: { deleted: true } as any,
+          data: { isDeleted: true },
         });
         this.conversationGateway.emitConversationDeleted(conversationId);
-        return ResponseDto.ok(
-          null,
-          'Conversation marked deleted as no participants remain',
-        );
+        return true;
       }
 
       this.conversationGateway.emitParticipantRemoved(
@@ -508,7 +547,7 @@ export class ConversationService {
         participantId,
       );
 
-      return ResponseDto.ok(null, 'Participant removed successfully');
+      return true;
     } catch (error) {
       console.error('Error removing participant:', error);
       if (
@@ -517,7 +556,7 @@ export class ConversationService {
       ) {
         throw error;
       }
-      throw new Error('Failed to remove participant');
+      throw new InternalServerErrorException('Failed to remove participant');
     }
   }
 
@@ -527,14 +566,14 @@ export class ConversationService {
   async getOrCreateDirectConversation(
     userId: string,
     otherUserId: string,
-  ): Promise<ResponseDto> {
+  ): Promise<ConversationDto> {
     try {
       const existing = await this.findExistingDirectConversation(
         userId,
         otherUserId,
       );
       if (existing) {
-        return ResponseDto.ok(existing, 'Direct conversation found');
+        return existing;
       }
 
       const dto: CreateConversationDto = {
@@ -545,7 +584,9 @@ export class ConversationService {
       return this.createConversation({ id: userId } as userPayload, dto);
     } catch (error) {
       console.error('Error getting or creating direct conversation:', error);
-      throw new Error('Failed to get or create conversation');
+      throw new InternalServerErrorException(
+        'Failed to get or create conversation',
+      );
     }
   }
 
@@ -555,8 +596,8 @@ export class ConversationService {
   private async findExistingDirectConversation(
     userId1: string,
     userId2: string,
-  ) {
-    return this.prisma.conversation.findFirst({
+  ): Promise<ConversationDto | null> {
+    const conversation = await this.prisma.conversation.findFirst({
       where: {
         isGroup: false,
         participants: {
@@ -597,6 +638,8 @@ export class ConversationService {
         },
       },
     });
+
+    return conversation as ConversationDto | null;
   }
 
   /**
@@ -607,7 +650,7 @@ export class ConversationService {
     userId: string,
     limit: number = 50,
     before?: Date,
-  ): Promise<ResponseDto> {
+  ): Promise<MessagesListDto> {
     try {
       const isParticipant =
         await this.prisma.conversationParticipant.findUnique({
@@ -644,8 +687,8 @@ export class ConversationService {
       // Return in chronological order
       messages.reverse();
 
-      const response = {
-        messages,
+      return {
+        messages: messages as MessageDto[],
         hasMore: messages.length === limit,
         total: messages.length,
         nextCursor:
@@ -653,14 +696,12 @@ export class ConversationService {
             ? messages[messages.length - 1].id
             : undefined,
       };
-
-      return ResponseDto.ok(response, 'Messages retrieved successfully');
     } catch (error) {
       console.error('Error getting conversation messages:', error);
       if (error instanceof ForbiddenException) {
         throw error;
       }
-      throw new Error('Failed to retrieve messages');
+      throw new InternalServerErrorException('Failed to retrieve messages');
     }
   }
 }

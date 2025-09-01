@@ -12,10 +12,17 @@ import { ConversationService } from './conversation.service';
 import { AuthGuard } from 'src/common/guard/auth.guard';
 import { CurrentUser } from 'src/common/decorator/currentUser.decorator';
 import { userPayload } from 'src/common/types/userPayload.interface';
-import { ResponseDto } from 'src/common/dto/response.dto';
 import { CreateConversationDto } from './dto/create-conversation.dto';
 import { AddParticipantDto } from './dto/add-participant.dto';
 import { SendMessageDto } from './dto/send-message.dto';
+import {
+  ConversationDto,
+  ConversationsListDto,
+  ConversationWithMessagesDto,
+  MessageDto,
+  ConversationParticipantDto,
+  MessagesListDto,
+} from './dto/conversation-response.dto';
 
 @Controller('conversation')
 @UseGuards(AuthGuard)
@@ -29,7 +36,7 @@ export class ConversationController {
   async createConversation(
     @CurrentUser() user: userPayload,
     @Body() dto: CreateConversationDto,
-  ): Promise<ResponseDto> {
+  ): Promise<ConversationDto> {
     return this.conversationService.createConversation(user, dto);
   }
 
@@ -41,7 +48,7 @@ export class ConversationController {
     @CurrentUser() user: userPayload,
     @Query('cursor') cursor?: string,
     @Query('limit') limit?: string,
-  ): Promise<ResponseDto> {
+  ): Promise<ConversationsListDto> {
     return this.conversationService.getUserConversations(user.id, {
       cursor,
       limit: limit ? parseInt(limit) : 50,
@@ -55,7 +62,7 @@ export class ConversationController {
   async getOrCreateDirectConversation(
     @Param('userId') otherUserId: string,
     @CurrentUser() user: userPayload,
-  ): Promise<ResponseDto> {
+  ): Promise<ConversationDto> {
     return this.conversationService.getOrCreateDirectConversation(
       user.id,
       otherUserId,
@@ -71,7 +78,7 @@ export class ConversationController {
     @CurrentUser() user: userPayload,
     @Query('limit') limit?: string,
     @Query('before') before?: string,
-  ): Promise<ResponseDto> {
+  ): Promise<ConversationWithMessagesDto> {
     const messageLimit = limit ? parseInt(limit) : 50;
     const beforeDate = before ? new Date(before) : undefined;
 
@@ -93,7 +100,7 @@ export class ConversationController {
     @Query('limit') limit?: string,
     @Query('before') before?: string,
     @Query('cursor') cursor?: string,
-  ): Promise<ResponseDto> {
+  ): Promise<MessagesListDto> {
     const messageLimit = limit ? parseInt(limit) : 50;
     const beforeDate = before ? new Date(before) : undefined;
 
@@ -113,7 +120,7 @@ export class ConversationController {
     @Param('id') conversationId: string,
     @CurrentUser() user: userPayload,
     @Body() dto: SendMessageDto,
-  ): Promise<ResponseDto> {
+  ): Promise<MessageDto> {
     return this.conversationService.sendMessage(conversationId, user.id, dto);
   }
 
@@ -125,7 +132,7 @@ export class ConversationController {
     @Param('id') conversationId: string,
     @CurrentUser() user: userPayload,
     @Body() dto: AddParticipantDto,
-  ): Promise<ResponseDto> {
+  ): Promise<ConversationParticipantDto> {
     return this.conversationService.addParticipant(
       conversationId,
       user.id,
@@ -141,7 +148,7 @@ export class ConversationController {
     @Param('id') conversationId: string,
     @Param('participantId') participantId: string,
     @CurrentUser() user: userPayload,
-  ): Promise<ResponseDto> {
+  ): Promise<boolean> {
     return this.conversationService.removeParticipant(
       conversationId,
       user.id,
