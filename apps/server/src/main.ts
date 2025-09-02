@@ -5,6 +5,8 @@ import { ValidationPipe } from '@nestjs/common';
 import helmet from 'helmet';
 import { AllExceptionFilter } from './common/filters/exception.filter';
 import { SuccessEnvelopeInterceptor } from './common/interceptors/response.interceptor';
+import { SwaggerModule } from '@nestjs/swagger';
+import { DocumentBuilder } from '@nestjs/swagger';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
@@ -38,6 +40,18 @@ async function bootstrap() {
   app.use(helmet());
 
   const port = Number(config.get<string>('PORT')) || 8000;
+
+  // Swagger config
+  const swaggerConfig = new DocumentBuilder()
+    .setTitle('Idest')
+    .setDescription('Idest API Documentation')
+    .setVersion('1.0')
+    .addBearerAuth()
+    .build();
+
+  const document = SwaggerModule.createDocument(app, swaggerConfig);
+  SwaggerModule.setup('api', app, document);
+
   await app.listen(port);
 }
 bootstrap();

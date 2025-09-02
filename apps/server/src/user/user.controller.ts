@@ -22,54 +22,188 @@ import { Role } from 'src/common/enum/role.enum';
 import { Roles } from 'src/common/decorator/role.decorator';
 import { CreateStudentProfileDto } from './dto/createStudentProfile.dto';
 import { CreateTeacherProfileDto } from './dto/createTeacherProfile.dto';
-import { AllUsers } from './types/allUsers.type';
+import { AllUsers, AllUsersDto } from './types/allUsers.type';
+import {
+  UserResponseDto,
+  StudentProfileResponseDto,
+  TeacherProfileResponseDto,
+} from './dto/user-response.dto';
+import {
+  ApiBearerAuth,
+  ApiOkResponse,
+  ApiOperation,
+  ApiTags,
+  ApiNotFoundResponse,
+  ApiUnprocessableEntityResponse,
+  ApiBody,
+  ApiParam,
+  ApiQuery,
+  ApiInternalServerErrorResponse,
+  ApiForbiddenResponse,
+  ApiUnauthorizedResponse,
+} from '@nestjs/swagger';
 
 @Controller('user')
+@ApiTags('User')
+@ApiBearerAuth()
 @UseGuards(AuthGuard)
 export class UserController {
   constructor(private readonly userService: UserService) {}
 
   @Get()
+  @ApiOperation({
+    summary: 'Get current user',
+    description:
+      "Retrieves the current authenticated user's information including their profile details.",
+  })
+  @ApiOkResponse({
+    description: 'Successfully retrieved current user information',
+    type: UserResponseDto,
+  })
+  @ApiNotFoundResponse({ description: 'User not found' })
+  @ApiUnauthorizedResponse({ description: 'Authentication required' })
+  @ApiInternalServerErrorResponse({ description: 'Internal server error' })
   async getCurrentUser(@CurrentUser() user: userPayload): Promise<User> {
     return await this.userService.getUserById(user.id);
   }
 
   @Post()
+  @ApiOperation({
+    summary: 'Create user',
+    description:
+      "Creates a new user account using the authenticated user's information from the **Supabase JWT token**.",
+  })
+  @ApiOkResponse({
+    description: 'User successfully created',
+    type: UserResponseDto,
+  })
+  @ApiBody({ type: CreateUserDto })
+  @ApiUnprocessableEntityResponse({
+    description:
+      'Failed to create user - validation errors or user already exists',
+  })
+  @ApiUnauthorizedResponse({ description: 'Authentication required' })
+  @ApiInternalServerErrorResponse({ description: 'Internal server error' })
   async createUser(@CurrentUser() user: userPayload) {
     return await this.userService.createUser(user);
   }
 
   @Post('student-profile')
   @Roles(Role.STUDENT)
+  @ApiOperation({
+    summary: 'Create student profile',
+    description:
+      'Creates a student profile with target score and current level. Only accessible by users with STUDENT role.',
+  })
+  @ApiOkResponse({
+    description: 'Student profile successfully created',
+    type: StudentProfileResponseDto,
+  })
+  @ApiBody({ type: CreateStudentProfileDto })
+  @ApiUnprocessableEntityResponse({
+    description: 'Failed to create student profile',
+  })
+  @ApiForbiddenResponse({
+    description: 'Access denied - STUDENT role required',
+  })
+  @ApiUnauthorizedResponse({ description: 'Authentication required' })
+  @ApiInternalServerErrorResponse({ description: 'Internal server error' })
   async createStudentProfile(
     @CurrentUser() user: userPayload,
     @Body() request: CreateStudentProfileDto,
   ) {
-    return await this.userService.createStudentProfile(
-      user,
-      request,
-    );
+    return await this.userService.createStudentProfile(user, request);
   }
 
   @Post('teacher-profile')
   @Roles(Role.ADMIN)
+  @ApiOperation({
+    summary: 'Create teacher profile',
+    description:
+      'Creates a teacher profile and invites the teacher via email. Only accessible by users with ADMIN role.',
+  })
+  @ApiOkResponse({
+    description: 'Teacher profile successfully created and invitation sent',
+    type: TeacherProfileResponseDto,
+  })
+  @ApiBody({ type: CreateTeacherProfileDto })
+  @ApiUnprocessableEntityResponse({
+    description: 'Failed to create teacher profile or send invitation',
+  })
+  @ApiForbiddenResponse({ description: 'Access denied - ADMIN role required' })
+  @ApiUnauthorizedResponse({ description: 'Authentication required' })
+  @ApiInternalServerErrorResponse({ description: 'Internal server error' })
   async createTeacherProfile(@Body() request: CreateTeacherProfileDto) {
     return await this.userService.createTeacherProfile(request);
   }
 
   @Get(':id')
   @Roles(Role.TEACHER, Role.ADMIN)
+  @ApiOperation({
+    summary: 'Get user by ID',
+    description:
+      'Retrieves a specific user by their ID. Only accessible by users with TEACHER or ADMIN roles.',
+  })
+  @ApiParam({ name: 'id', description: 'User ID', example: 'uuid-string' })
+  @ApiOkResponse({
+    description: 'Successfully retrieved user information',
+    type: UserResponseDto,
+  })
+  @ApiNotFoundResponse({ description: 'User not found' })
+  @ApiForbiddenResponse({
+    description: 'Access denied - TEACHER or ADMIN role required',
+  })
+  @ApiUnauthorizedResponse({ description: 'Authentication required' })
+  @ApiInternalServerErrorResponse({ description: 'Internal server error' })
   async getUserById(@Param('id') id: string) {
     return await this.userService.getUserById(id);
   }
 
   @Put(':id')
+  @ApiOperation({
+    summary: 'Update user',
+    description:
+      'Updates user information by ID. Can update name, role, avatar, and active status.',
+  })
+  @ApiParam({ name: 'id', description: 'User ID', example: 'uuid-string' })
+  @ApiBody({ type: UpdateUserDto })
+  @ApiOkResponse({
+    description: 'User successfully updated',
+    type: UserResponseDto,
+  })
+  @ApiNotFoundResponse({ description: 'User not found' })
+  @ApiUnprocessableEntityResponse({
+    description: 'Failed to update user',
+  })
+  @ApiUnauthorizedResponse({ description: 'Authentication required' })
+  @ApiInternalServerErrorResponse({ description: 'Internal server error' })
   async updateUser(@Param('id') id: string, @Body() request: UpdateUserDto) {
     return await this.userService.updateUser(id, request);
   }
 
   @Post('ban/:id')
   @Roles(Role.ADMIN)
+  @ApiOperation({
+    summary: 'Ban user',
+    description:
+      'Bans a user by setting their active status to false. Only accessible by users with ADMIN role.',
+  })
+  @ApiParam({
+    name: 'id',
+    description: 'ID of user to ban',
+    example: 'uuid-string',
+  })
+  @ApiOkResponse({
+    description: 'User successfully banned',
+    schema: { type: 'boolean', example: true },
+  })
+  @ApiNotFoundResponse({ description: 'User not found' })
+  @ApiUnprocessableEntityResponse({
+    description: 'Cannot ban yourself or failed to ban user',
+  })
+  @ApiForbiddenResponse({ description: 'Access denied - ADMIN role required' })
+  @ApiUnauthorizedResponse({ description: 'Authentication required' })
+  @ApiInternalServerErrorResponse({ description: 'Internal server error' })
   async banUser(
     @Param('id') banned: string,
     @CurrentUser() banner: userPayload,
@@ -79,17 +213,80 @@ export class UserController {
 
   @Post('unban/:id')
   @Roles(Role.ADMIN)
+  @ApiOperation({
+    summary: 'Unban user',
+    description:
+      'Unbans a user by setting their active status to true. Only accessible by users with ADMIN role.',
+  })
+  @ApiParam({
+    name: 'id',
+    description: 'ID of user to unban',
+    example: 'uuid-string',
+  })
+  @ApiOkResponse({
+    description: 'User successfully unbanned',
+    schema: { type: 'boolean', example: true },
+  })
+  @ApiNotFoundResponse({ description: 'User not found' })
+  @ApiUnprocessableEntityResponse({
+    description: 'Cannot unban yourself or failed to unban user',
+  })
+  @ApiForbiddenResponse({ description: 'Access denied - ADMIN role required' })
+  @ApiUnauthorizedResponse({ description: 'Authentication required' })
+  @ApiInternalServerErrorResponse({ description: 'Internal server error' })
   async unbanUser(
     @Param('id') unbanned: string,
     @CurrentUser() unbanner: userPayload,
   ): Promise<boolean> {
-    return await this.userService.unbanUser(
-      unbanned,
-      unbanner,
-    );
+    return await this.userService.unbanUser(unbanned, unbanner);
   }
+
   @Get('all')
   @Roles(Role.ADMIN)
+  @ApiOperation({
+    summary: 'Get all users',
+    description:
+      'Retrieves a paginated list of all users with filtering and sorting options. Only accessible by users with ADMIN role.',
+  })
+  @ApiQuery({
+    name: 'page',
+    required: false,
+    description: 'Page number',
+    example: 1,
+  })
+  @ApiQuery({
+    name: 'limit',
+    required: false,
+    description: 'Items per page (max 100)',
+    example: 10,
+  })
+  @ApiQuery({
+    name: 'sortBy',
+    required: false,
+    description: 'Field to sort by',
+    example: 'name',
+    enum: ['name', 'role', 'active', 'created', 'specialization'],
+  })
+  @ApiQuery({
+    name: 'sortOrder',
+    required: false,
+    description: 'Sort order',
+    enum: ['asc', 'desc'],
+  })
+  @ApiQuery({
+    name: 'filter',
+    required: false,
+    description:
+      'Filters in format key:value. Multiple filters can be comma-separated. Examples: role:STUDENT, search:john, active:true, specialization:math',
+    example: 'role:STUDENT,active:true',
+  })
+  @ApiOkResponse({
+    description: 'Successfully retrieved users list',
+    type: AllUsersDto,
+  })
+  @ApiForbiddenResponse({ description: 'Access denied - ADMIN role required' })
+  @ApiUnauthorizedResponse({ description: 'Authentication required' })
+  @ApiInternalServerErrorResponse({ description: 'Internal server error' })
   async getAllUsers(
     @Query('page') page?: string,
     @Query('limit') limit?: string,
