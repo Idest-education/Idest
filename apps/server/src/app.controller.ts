@@ -9,4 +9,9 @@ export class AppController {
   getHello(): string {
     return this.appService.getHello();
   }
+
+  @Get('jwt')
+  async getDevJwt(): Promise<{ access_token: string }> {
+    return this.appService.getDevJwt();
+  }
 }
