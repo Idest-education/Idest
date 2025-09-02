@@ -73,7 +73,7 @@ export class UserController {
   async banUser(
     @Param('id') banned: string,
     @CurrentUser() banner: userPayload,
-  ): Promise<User> {
+  ): Promise<boolean> {
     return await this.userService.banUser(banned, banner);
   }
 
@@ -82,7 +82,7 @@ export class UserController {
   async unbanUser(
     @Param('id') unbanned: string,
     @CurrentUser() unbanner: userPayload,
-  ): Promise<User> {
+  ): Promise<boolean> {
     return await this.userService.unbanUser(
       unbanned,
       unbanner,

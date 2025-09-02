@@ -4,7 +4,6 @@ import { CreateUserDto } from './dto/createUser.dto';
 import { userPayload } from 'src/common/types/userPayload.interface';
 import { Prisma, StudentProfile, TeacherProfile, User } from '@prisma/client';
 import { PrismaService } from 'src/prisma/prisma.service';
-import { ResponseDto } from 'src/common/dto/response.dto';
 import { UpdateUserDto } from './dto/updateUser.dto';
 import { CreateStudentProfileDto } from './dto/createStudentProfile.dto';
 import { CreateTeacherProfileDto } from './dto/createTeacherProfile.dto';
@@ -146,7 +145,7 @@ export class UserService {
   async banUser(
     bannedId: string,
     banner: userPayload,
-  ): Promise<User> {
+  ): Promise<boolean> {
     try {
       const bannedUser = await this.prisma.user.findUnique({
         where: { id: bannedId },
@@ -171,7 +170,7 @@ export class UserService {
         throw new UnprocessableEntityException(`Failed to ban user`);
       }
 
-      return bannedUser;
+      return true;
     } catch (error) {
       if (error instanceof UnprocessableEntityException || error instanceof NotFoundException) {
         throw error;
@@ -182,7 +181,7 @@ export class UserService {
   async unbanUser(
     unbannedId: string,
     unbanner: userPayload,
-  ): Promise<User> {
+  ): Promise<boolean> {
     try {
       const unbannedUser = await this.prisma.user.findUnique({
         where: { id: unbannedId },
@@ -207,7 +206,7 @@ export class UserService {
         throw new UnprocessableEntityException(`Failed to unban user`);
       }
 
-      return unbannedUser;
+      return true;
     } catch (error) {
       if (error instanceof UnprocessableEntityException || error instanceof NotFoundException) {
         throw error;
