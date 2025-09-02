@@ -180,7 +180,12 @@ export class ConversationService {
         throw new InternalServerErrorException('Failed to create conversation');
       }
 
-      this.conversationGateway.emitConversationCreated(fullConversation);
+      // emit conversation created
+      this.conversationGateway
+        .emitConversationCreated(fullConversation)
+        .catch((error) =>
+          console.error('Failed to emit conversation created:', error),
+        );
 
       return fullConversation as ConversationDto;
     } catch (error) {
@@ -439,7 +444,10 @@ export class ConversationService {
         data: { updatedAt: new Date() },
       });
 
-      this.conversationGateway.emitNewMessage(conversationId, message);
+      // emit new message event
+      this.conversationGateway
+        .emitNewMessage(conversationId, message)
+        .catch((error) => console.error('Failed to emit new message:', error));
 
       return message as MessageDto;
     } catch (error) {
@@ -514,10 +522,12 @@ export class ConversationService {
         },
       });
 
-      this.conversationGateway.emitParticipantAdded(
-        conversationId,
-        participant,
-      );
+      // emit participant added event
+      this.conversationGateway
+        .emitParticipantAdded(conversationId, participant)
+        .catch((error) =>
+          console.error('Failed to emit participant added:', error),
+        );
 
       return participant as ConversationParticipantDto;
     } catch (error) {
@@ -596,14 +606,21 @@ export class ConversationService {
           where: { id: conversationId },
           data: { isDeleted: true },
         });
-        this.conversationGateway.emitConversationDeleted(conversationId);
+        // emit conversation deleted event
+        this.conversationGateway
+          .emitConversationDeleted(conversationId)
+          .catch((error) =>
+            console.error('Failed to emit conversation deleted:', error),
+          );
         return true;
       }
 
-      this.conversationGateway.emitParticipantRemoved(
-        conversationId,
-        participantId,
-      );
+      // emit participant removed event
+      this.conversationGateway
+        .emitParticipantRemoved(conversationId, participantId)
+        .catch((error) =>
+          console.error('Failed to emit participant removed:', error),
+        );
 
       return true;
     } catch (error) {
