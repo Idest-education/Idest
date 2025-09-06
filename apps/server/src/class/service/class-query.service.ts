@@ -271,7 +271,7 @@ export class ClassQueryService {
     userId: string,
   ): Promise<UserSummaryDto[]> {
     try {
-      const hasAccess = await checkClassAccessById(classId, userId);
+      const hasAccess = await checkClassAccessById(classId, userId, this.prisma);
       if (!hasAccess)
         throw new ForbiddenException('Access denied to this class');
 
@@ -309,7 +309,7 @@ export class ClassQueryService {
     userId: string,
   ): Promise<UserSummaryDto[]> {
     try {
-      const hasAccess = await checkClassAccessById(classId, userId);
+      const hasAccess = await checkClassAccessById(classId, userId, this.prisma);
       if (!hasAccess)
         throw new ForbiddenException('Access denied to this class');
 
@@ -346,7 +346,7 @@ export class ClassQueryService {
     userId: string,
   ): Promise<ClassCountDto> {
     try {
-      const hasAccess = await checkClassAccessById(classId, userId);
+      const hasAccess = await checkClassAccessById(classId, userId, this.prisma);
       if (!hasAccess)
         throw new ForbiddenException('Access denied to this class');
 

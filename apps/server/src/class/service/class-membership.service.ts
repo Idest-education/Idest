@@ -34,6 +34,7 @@ export class ClassMembershipService {
       const hasPermission = await checkClassManagementPermission(
         classId,
         userId,
+        this.prisma,
       );
       if (!hasPermission) {
         throw new ForbiddenException(
@@ -52,25 +53,82 @@ export class ClassMembershipService {
         throw new ConflictException('Student is already in this class');
       }
 
-      const classMember = await this.prisma.classMember.create({
+      await this.prisma.classMember.create({
         data: {
           class_id: classId,
           student_id: dto.student_id,
           status: dto.status || 'active',
         },
+      });
+
+      // Fetch the complete class data after adding the student
+      const updatedClass = await this.prisma.class.findUnique({
+        where: { id: classId },
         include: {
-          student: {
+          creator: {
             select: {
               id: true,
               full_name: true,
               email: true,
+              role: true,
               avatar_url: true,
+            },
+          },
+          members: {
+            include: {
+              student: {
+                select: {
+                  id: true,
+                  full_name: true,
+                  email: true,
+                  avatar_url: true,
+                  role: true,
+                },
+              },
+            },
+          },
+          teachers: {
+            include: {
+              teacher: {
+                select: {
+                  id: true,
+                  full_name: true,
+                  email: true,
+                  avatar_url: true,
+                  role: true,
+                },
+              },
+            },
+          },
+          sessions: {
+            select: {
+              id: true,
+              start_time: true,
+              end_time: true,
+              host: {
+                select: {
+                  id: true,
+                  full_name: true,
+                  email: true,
+                },
+              },
+            },
+          },
+          _count: {
+            select: {
+              members: true,
+              teachers: true,
+              sessions: true,
             },
           },
         },
       });
 
-      return toFullClassResponseDto(classMember);
+      if (!updatedClass) {
+        throw new NotFoundException('Class not found');
+      }
+
+      return toFullClassResponseDto(updatedClass);
     } catch (error) {
       console.error('Error adding student:', error);
       if (
@@ -80,7 +138,7 @@ export class ClassMembershipService {
       ) {
         throw error;
       }
-      throw new InternalServerErrorException('Failed to add student');
+      throw new InternalServerErrorException(`Failed to add student ${error}`);
     }
   }
 
@@ -116,25 +174,82 @@ export class ClassMembershipService {
         throw new ConflictException('Teacher is already in this class');
       }
 
-      const classTeacher = await this.prisma.classTeacher.create({
+      await this.prisma.classTeacher.create({
         data: {
           class_id: classId,
           teacher_id: dto.teacher_id,
           role: dto.role || 'teacher',
         },
+      });
+
+      // Fetch the complete class data after adding the teacher
+      const updatedClass = await this.prisma.class.findUnique({
+        where: { id: classId },
         include: {
-          teacher: {
+          creator: {
             select: {
               id: true,
               full_name: true,
               email: true,
+              role: true,
               avatar_url: true,
+            },
+          },
+          members: {
+            include: {
+              student: {
+                select: {
+                  id: true,
+                  full_name: true,
+                  email: true,
+                  avatar_url: true,
+                  role: true,
+                },
+              },
+            },
+          },
+          teachers: {
+            include: {
+              teacher: {
+                select: {
+                  id: true,
+                  full_name: true,
+                  email: true,
+                  avatar_url: true,
+                  role: true,
+                },
+              },
+            },
+          },
+          sessions: {
+            select: {
+              id: true,
+              start_time: true,
+              end_time: true,
+              host: {
+                select: {
+                  id: true,
+                  full_name: true,
+                  email: true,
+                },
+              },
+            },
+          },
+          _count: {
+            select: {
+              members: true,
+              teachers: true,
+              sessions: true,
             },
           },
         },
       });
 
-      return toFullClassResponseDto(classTeacher);
+      if (!updatedClass) {
+        throw new NotFoundException('Class not found');
+      }
+
+      return toFullClassResponseDto(updatedClass);
     } catch (error) {
       console.error('Error adding teacher:', error);
       if (
@@ -177,7 +292,74 @@ export class ClassMembershipService {
         where: { id: existingTeacher.id },
       });
 
-      return toFullClassResponseDto(classData);
+      // Fetch the complete class data after removing the teacher
+      const updatedClass = await this.prisma.class.findUnique({
+        where: { id: classId },
+        include: {
+          creator: {
+            select: {
+              id: true,
+              full_name: true,
+              email: true,
+              role: true,
+              avatar_url: true,
+            },
+          },
+          members: {
+            include: {
+              student: {
+                select: {
+                  id: true,
+                  full_name: true,
+                  email: true,
+                  avatar_url: true,
+                  role: true,
+                },
+              },
+            },
+          },
+          teachers: {
+            include: {
+              teacher: {
+                select: {
+                  id: true,
+                  full_name: true,
+                  email: true,
+                  avatar_url: true,
+                  role: true,
+                },
+              },
+            },
+          },
+          sessions: {
+            select: {
+              id: true,
+              start_time: true,
+              end_time: true,
+              host: {
+                select: {
+                  id: true,
+                  full_name: true,
+                  email: true,
+                },
+              },
+            },
+          },
+          _count: {
+            select: {
+              members: true,
+              teachers: true,
+              sessions: true,
+            },
+          },
+        },
+      });
+
+      if (!updatedClass) {
+        throw new NotFoundException('Class not found');
+      }
+
+      return toFullClassResponseDto(updatedClass);
     } catch (error) {
       console.error('Error removing teacher:', error);
       if (
@@ -217,23 +399,82 @@ export class ClassMembershipService {
         throw new ConflictException('You are already a member of this class');
       }
 
-      const classMember = await this.prisma.classMember.create({
+      await this.prisma.classMember.create({
         data: {
           class_id: classData.id,
           student_id: userId,
           status: 'active',
         },
+      });
+
+      // Fetch the complete class data after joining
+      const updatedClass = await this.prisma.class.findUnique({
+        where: { id: classData.id },
         include: {
-          class: {
-            select: { id: true, name: true, description: true },
+          creator: {
+            select: {
+              id: true,
+              full_name: true,
+              email: true,
+              role: true,
+              avatar_url: true,
+            },
           },
-          student: {
-            select: { id: true, full_name: true, email: true },
+          members: {
+            include: {
+              student: {
+                select: {
+                  id: true,
+                  full_name: true,
+                  email: true,
+                  avatar_url: true,
+                  role: true,
+                },
+              },
+            },
+          },
+          teachers: {
+            include: {
+              teacher: {
+                select: {
+                  id: true,
+                  full_name: true,
+                  email: true,
+                  avatar_url: true,
+                  role: true,
+                },
+              },
+            },
+          },
+          sessions: {
+            select: {
+              id: true,
+              start_time: true,
+              end_time: true,
+              host: {
+                select: {
+                  id: true,
+                  full_name: true,
+                  email: true,
+                },
+              },
+            },
+          },
+          _count: {
+            select: {
+              members: true,
+              teachers: true,
+              sessions: true,
+            },
           },
         },
       });
 
-      return toFullClassResponseDto(classMember);
+      if (!updatedClass) {
+        throw new NotFoundException('Class not found');
+      }
+
+      return toFullClassResponseDto(updatedClass);
     } catch (error) {
       console.error('Error joining class:', error);
       if (
@@ -302,6 +543,7 @@ export class ClassMembershipService {
       const hasPermission = await checkClassManagementPermission(
         classId,
         userId,
+        this.prisma,
       );
       if (!hasPermission) {
         throw new ForbiddenException(
@@ -349,6 +591,7 @@ export class ClassMembershipService {
       const hasPermission = await checkClassManagementPermission(
         classId,
         userId,
+        this.prisma,
       );
       if (!hasPermission) {
         throw new ForbiddenException(
@@ -415,6 +658,7 @@ export class ClassMembershipService {
       const hasPermission = await checkClassManagementPermission(
         classId,
         userId,
+        this.prisma,
       );
       if (!hasPermission) {
         throw new ForbiddenException(

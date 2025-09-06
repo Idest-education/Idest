@@ -473,4 +473,31 @@ export class UserService {
       throw new InternalServerErrorException(`Error creating teacher profile: ${error}`);
     }
   }
+  async createTeacherProfileWithAccountId(
+    teacherId: string,
+    dto: CreateTeacherProfileDto
+  ){
+    try {
+      const teacherProfile = await this.prisma.teacherProfile.create({
+        data: {
+          user_id: teacherId,
+          degree: dto.degree,
+          specialization: dto.specialization.join(','),
+          bio: dto.bio,
+        },
+      });
+      if (!teacherProfile) {
+        throw new UnprocessableEntityException(`Failed to create teacher profile`);
+      }
+      return teacherProfile;
+    } catch (error) {
+      if (error instanceof UnprocessableEntityException) {
+        throw error;
+      }
+      throw new InternalServerErrorException(`Error creating teacher profile: ${error}`);
+    }
+  }
+
 }
+
+

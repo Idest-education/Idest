@@ -41,7 +41,8 @@ export class ClassCRUDService {
         throw new ConflictException('Class name already exists');
       }
 
-      const inviteCode = dto.invite_code || (await generateUniqueInviteCode());
+      const inviteCode =
+        dto.invite_code || (await generateUniqueInviteCode(this.prisma));
       const existingClass = await this.prisma.class.findUnique({
         where: { invite_code: inviteCode },
       });
@@ -50,7 +51,7 @@ export class ClassCRUDService {
         throw new ConflictException('Invite code already exists');
       }
 
-      const slug = await generateUniqueSlug(dto.name);
+      const slug = await generateUniqueSlug(dto.name, this.prisma);
 
       const newClass = await this.prisma.class.create({
         data: {
@@ -143,6 +144,7 @@ export class ClassCRUDService {
       const hasPermission = await checkClassManagementPermission(
         classId,
         userId,
+        this.prisma,
       );
       if (!hasPermission) {
         throw new ForbiddenException(
@@ -150,7 +152,7 @@ export class ClassCRUDService {
         );
       }
 
-      const newCode = await generateUniqueInviteCode();
+      const newCode = await generateUniqueInviteCode(this.prisma);
 
       const updated = await this.prisma.class.update({
         where: { id: classId },
@@ -180,6 +182,7 @@ export class ClassCRUDService {
       const hasPermission = await checkClassManagementPermission(
         classId,
         userId,
+        this.prisma,
       );
       if (!hasPermission) {
         throw new ForbiddenException(

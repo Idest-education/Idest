@@ -1,4 +1,4 @@
-import { FullClassResponseDto, UserSummaryDto } from "./dto/class-response.dto";
+import { FullClassResponseDto, UserSummaryDto } from './dto/class-response.dto';
 
 export function toFullClassResponseDto(classData: any): FullClassResponseDto {
   return {
@@ -45,9 +45,10 @@ export function toFullClassResponseDto(classData: any): FullClassResponseDto {
   };
 }
 
-
-export function mapUsersToDto(relations: { student?: any; teacher?: any }[]): UserSummaryDto[] {
-  return relations.map(r => {
+export function mapUsersToDto(
+  relations: { student?: any; teacher?: any }[],
+): UserSummaryDto[] {
+  return relations.map((r) => {
     const user = r.student ?? r.teacher; // pick whichever exists
     return {
       id: user.id,
@@ -59,118 +60,121 @@ export function mapUsersToDto(relations: { student?: any; teacher?: any }[]): Us
   });
 }
 
+/**
+ * Helper: Generate unique invite code
+ */
+export async function generateUniqueInviteCode(prisma: any): Promise<string> {
+  const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+  const length = 8;
+  const generate = () =>
+    Array.from({ length }, () =>
+      alphabet.charAt(Math.floor(Math.random() * alphabet.length)),
+    ).join('');
 
-  /**
-   * Helper: Generate unique invite code
-   */
-  export async function generateUniqueInviteCode(): Promise<string> {
-    const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-    const length = 8;
-    const generate = () =>
-      Array.from({ length }, () =>
-        alphabet.charAt(Math.floor(Math.random() * alphabet.length)),
-      ).join('');
-
-    // Loop until we have a unique code
-    // Guard against extremely rare infinite loops by capping attempts
-    for (let attempt = 0; attempt < 20; attempt++) {
-      const code = generate();
-      const existing = await this.prisma.class.findUnique({
-        where: { invite_code: code },
-        select: { id: true },
-      });
-      if (!existing) return code;
-    }
-    // Fallback
-    return `${Date.now()}`.slice(-8).toUpperCase();
+  // Loop until we have a unique code
+  // Guard against extremely rare infinite loops by capping attempts
+  for (let attempt = 0; attempt < 20; attempt++) {
+    const code = generate();
+    const existing = await prisma.class.findUnique({
+      where: { invite_code: code },
+      select: { id: true },
+    });
+    if (!existing) return code;
   }
+  // Fallback
+  return `${Date.now()}`.slice(-8).toUpperCase();
+}
 
-  /**
-   * Generate a unique slug for a class name by replacing spaces with hyphens
-   * and appending an incrementing number if needed.
-   */
-  export async function generateUniqueSlug(name: string): Promise<string> {
-    const base = this.slugify(name);
-    let attempt = 0;
-    while (true) {
-      const candidate = attempt === 0 ? base : `${base}-${attempt + 1}`;
-      const exists = await this.prisma.class.findFirst({
-        where: { slug: candidate } as any,
-        select: { id: true },
-      });
-      if (!exists) return candidate;
-      attempt += 1;
-    }
+/**
+ * Generate a unique slug for a class name by replacing spaces with hyphens
+ * and appending an incrementing number if needed.
+ */
+export async function generateUniqueSlug(
+  name: string,
+  prisma: any,
+): Promise<string> {
+  const base = slugify(name);
+  let attempt = 0;
+  while (true) {
+    const candidate = attempt === 0 ? base : `${base}-${attempt + 1}`;
+    const exists = await prisma.class.findFirst({
+      where: { slug: candidate } as any,
+      select: { id: true },
+    });
+    if (!exists) return candidate;
+    attempt += 1;
   }
+}
 
-  export function slugify(input: string): string {
-    return input
-      .trim()
-      .toLowerCase()
-      .replace(/\s+/g, '-')
-      .replace(/[^a-z0-9\-]/g, '')
-      .replace(/-+/g, '-')
-      .replace(/^-|-$/g, '');
-  }
+export function slugify(input: string): string {
+  return input
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, '-')
+    .replace(/[^a-z0-9\-]/g, '')
+    .replace(/-+/g, '-')
+    .replace(/^-|-$/g, '');
+}
 
-  /**
-   * Helper: Check if user has access to class
-   */
-  export function checkClassAccess(classData: any, userId: string): boolean {
-    // Creator
-    if (classData.created_by === userId) return true;
+/**
+ * Helper: Check if user has access to class
+ */
+export function checkClassAccess(classData: any, userId: string): boolean {
+  // Creator
+  if (classData.created_by === userId) return true;
 
-    // Teacher
-    if (classData.teachers.some((t: any) => t.teacher_id === userId))
-      return true;
+  // Teacher
+  if (classData.teachers.some((t: any) => t.teacher_id === userId)) return true;
 
-    // Active student
-    if (
-      classData.members.some(
-        (m: any) => m.student_id === userId && m.status === 'active',
-      )
+  // Active student
+  if (
+    classData.members.some(
+      (m: any) => m.student_id === userId && m.status === 'active',
     )
-      return true;
+  )
+    return true;
 
-    return false;
-  }
+  return false;
+}
 
-  /**
-   * Helper: Check access by class id
-   */
-  export async function checkClassAccessById(
-    classId: string,
-    userId: string,
-  ): Promise<boolean> {
-    const classData = await this.prisma.class.findUnique({
-      where: { id: classId },
-      include: { teachers: true, members: true },
-    });
-    if (!classData) return false;
-    return this.checkClassAccess(classData, userId);
-  }
+/**
+ * Helper: Check access by class id
+ */
+export async function checkClassAccessById(
+  classId: string,
+  userId: string,
+  prisma: any,
+): Promise<boolean> {
+  const classData = await prisma.class.findUnique({
+    where: { id: classId },
+    include: { teachers: true, members: true },
+  });
+  if (!classData) return false;
+  return checkClassAccess(classData, userId);
+}
 
-  /**
-   * Helper: Check if user can manage class (creator or teacher)
-   */
-  export async function checkClassManagementPermission(
-    classId: string,
-    userId: string,
-  ): Promise<boolean> {
-    const classData = await this.prisma.class.findUnique({
-      where: { id: classId },
-      include: {
-        teachers: true,
-      },
-    });
+/**
+ * Helper: Check if user can manage class (creator or teacher)
+ */
+export async function checkClassManagementPermission(
+  classId: string,
+  userId: string,
+  prisma: any,
+): Promise<boolean> {
+  const classData = await prisma.class.findUnique({
+    where: { id: classId },
+    include: {
+      teachers: true,
+    },
+  });
 
-    if (!classData) return false;
+  if (!classData) return false;
 
-    // Creator
-    if (classData.created_by === userId) return true;
+  // Creator
+  if (classData.created_by === userId) return true;
 
-    // Teacher
-    if (classData.teachers.some((t) => t.teacher_id === userId)) return true;
+  // Teacher
+  if (classData.teachers.some((t) => t.teacher_id === userId)) return true;
 
-    return false;
-  }
+  return false;
+}

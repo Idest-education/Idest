@@ -1,444 +1,575 @@
-import { PrismaClient } from '@prisma/client';
+import { NestFactory } from '@nestjs/core';
+import { AppModule } from '../src/app.module';
+import { SupabaseService } from '../src/supabase/supabase.service';
+import { UserService } from '../src/user/user.service';
+import { ClassService } from '../src/class/class.service';
+import { PrismaService } from '../src/prisma/prisma.service';
 import { Role } from '../src/common/enum/role.enum';
+import { Specialization } from '../src/common/enum/specialization.enum';
 
-const prisma = new PrismaClient();
-
-async function main() {
-  console.log('🌱 Starting database seeding...');
-
-  // Clear existing data in reverse dependency order
-  console.log('🧹 Cleaning existing data...');
-  await prisma.message.deleteMany();
-  await prisma.conversationParticipant.deleteMany();
-  await prisma.conversation.deleteMany();
-  await prisma.session.deleteMany();
-  await prisma.classTeacher.deleteMany();
-  await prisma.classMember.deleteMany();
-  await prisma.class.deleteMany();
-  await prisma.user.deleteMany();
-
-  // Create test users
-  console.log('👥 Creating test users...');
-  const teacher1 = await prisma.user.create({
-    data: {
-      id: 'teacher-001',
-      full_name: 'Dr. Alice Smith',
-      email: 'alice.smith@university.edu',
-      role: Role.TEACHER,
-      avatar_url:
-        'https://images.unsplash.com/photo-1494790108755-2616b612b786?w=150',
-      is_active: true,
-    },
-  });
-
-  const teacher2 = await prisma.user.create({
-    data: {
-      id: 'teacher-002',
-      full_name: 'Prof. Bob Johnson',
-      email: 'bob.johnson@university.edu',
-      role: Role.TEACHER,
-      avatar_url:
-        'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150',
-      is_active: true,
-    },
-  });
-
-  const student1 = await prisma.user.create({
-    data: {
-      id: 'student-001',
-      full_name: 'Charlie Brown',
-      email: 'charlie.brown@student.edu',
-      role: Role.STUDENT,
-      avatar_url:
-        'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150',
-      is_active: true,
-    },
-  });
-
-  const student2 = await prisma.user.create({
-    data: {
-      id: 'student-002',
-      full_name: 'Diana Prince',
-      email: 'diana.prince@student.edu',
-      role: Role.STUDENT,
-      avatar_url:
-        'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=150',
-      is_active: true,
-    },
-  });
-
-  const student3 = await prisma.user.create({
-    data: {
-      id: 'student-003',
-      full_name: 'Eva Martinez',
-      email: 'eva.martinez@student.edu',
-      role: Role.STUDENT,
-      avatar_url:
-        'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=150',
-      is_active: true,
-    },
-  });
-
-  const admin = await prisma.user.create({
-    data: {
-      id: 'admin-001',
-      full_name: 'Frank Administrator',
-      email: 'frank.admin@university.edu',
-      role: Role.ADMIN,
-      avatar_url:
-        'https://images.unsplash.com/photo-1560250097-0b93528c311a?w=150',
-      is_active: true,
-    },
-  });
-
-  console.log(`✅ Created ${6} test users`);
-
-  // Create test classes
-  console.log('🏫 Creating test classes...');
-  const mathClass = await prisma.class.create({
-    data: {
-      id: 'class-math-101',
-      name: 'Mathematics 101',
-      slug: 'mathematics-101',
-      description: 'Introduction to Calculus and Linear Algebra',
-      is_group: true,
-      invite_code: 'MATH101',
-      schedule: {
-        days: ['Monday', 'Wednesday', 'Friday'],
-        time: '09:00',
-        duration: 90,
-        timezone: 'UTC',
-      },
-      created_by: teacher1.id,
-    } as any,
-  });
-
-  const physicsClass = await prisma.class.create({
-    data: {
-      id: 'class-physics-201',
-      name: 'Physics 201',
-      slug: 'physics-201',
-      description: 'Classical Mechanics and Thermodynamics',
-      is_group: true,
-      invite_code: 'PHYS201',
-      schedule: {
-        days: ['Tuesday', 'Thursday'],
-        time: '14:00',
-        duration: 120,
-        timezone: 'UTC',
-      },
-      created_by: teacher2.id,
-    } as any,
-  });
-
-  const tutorialClass = await prisma.class.create({
-    data: {
-      id: 'class-tutorial-001',
-      name: 'Personal Tutoring Session',
-      slug: 'personal-tutoring-session',
-      description: 'One-on-one mathematics tutoring',
-      is_group: false,
-      invite_code: 'TUTOR001',
-      schedule: {
-        days: ['Saturday'],
-        time: '10:00',
-        duration: 60,
-        timezone: 'UTC',
-      },
-      created_by: teacher1.id,
-    } as any,
-  });
-
-  console.log(`✅ Created ${3} test classes`);
-
-  // Add class members
-  console.log('👨‍🎓 Adding students to classes...');
-  await prisma.classMember.createMany({
-    data: [
-      // Math class students
-      { class_id: mathClass.id, student_id: student1.id, status: 'active' },
-      { class_id: mathClass.id, student_id: student2.id, status: 'active' },
-      { class_id: mathClass.id, student_id: student3.id, status: 'active' },
-
-      // Physics class students
-      { class_id: physicsClass.id, student_id: student1.id, status: 'active' },
-      { class_id: physicsClass.id, student_id: student3.id, status: 'active' },
-
-      // Tutorial class student
-      { class_id: tutorialClass.id, student_id: student2.id, status: 'active' },
-    ],
-  });
-
-  // Add class teachers
-  await prisma.classTeacher.createMany({
-    data: [
-      { class_id: physicsClass.id, teacher_id: teacher1.id, role: 'assistant' },
-    ],
-  });
-
-  console.log('✅ Added class memberships');
-
-  // Create test sessions
-  console.log('📅 Creating test sessions...');
-  const now = new Date();
-  const futureDate1 = new Date(now.getTime() + 2 * 60 * 60 * 1000); // 2 hours from now
-  const futureDate2 = new Date(now.getTime() + 24 * 60 * 60 * 1000); // 1 day from now
-  const pastDate = new Date(now.getTime() - 2 * 60 * 60 * 1000); // 2 hours ago
-
-  const currentMathSession = await prisma.session.create({
-    data: {
-      id: 'session-math-current',
-      class_id: mathClass.id,
-      host_id: teacher1.id,
-      start_time: now,
-      end_time: null, // Active session
-      is_recorded: true,
-      metadata: {
-        topic: 'Derivatives and Integration',
-        recording_quality: 'HD',
-      },
-    },
-  });
-
-  const upcomingPhysicsSession = await prisma.session.create({
-    data: {
-      id: 'session-physics-upcoming',
-      class_id: physicsClass.id,
-      host_id: teacher2.id,
-      start_time: futureDate1,
-      end_time: new Date(futureDate1.getTime() + 2 * 60 * 60 * 1000),
-      is_recorded: false,
-      metadata: {
-        topic: "Newton's Laws of Motion",
-      },
-    },
-  });
-
-  const futureTutorialSession = await prisma.session.create({
-    data: {
-      id: 'session-tutorial-future',
-      class_id: tutorialClass.id,
-      host_id: teacher1.id,
-      start_time: futureDate2,
-      end_time: new Date(futureDate2.getTime() + 60 * 60 * 1000),
-      is_recorded: false,
-      metadata: {
-        topic: 'Calculus Review',
-        private: true,
-      },
-    },
-  });
-
-  const pastMathSession = await prisma.session.create({
-    data: {
-      id: 'session-math-past',
-      class_id: mathClass.id,
-      host_id: teacher1.id,
-      start_time: new Date(pastDate.getTime() - 60 * 60 * 1000),
-      end_time: pastDate,
-      is_recorded: true,
-      recording_url: 'https://example.com/recordings/math-session-1',
-      metadata: {
-        topic: 'Introduction to Limits',
-        attendance: 3,
-      },
-    },
-  });
-
-  console.log(`✅ Created ${4} test sessions`);
-
-  // Create test conversations
-  console.log('💬 Creating test conversations...');
-
-  // Direct conversation between teacher and student
-  const directConversation = await prisma.conversation.create({
-    data: {
-      id: 'conv-direct-001',
-      isGroup: false,
-      createdBy: teacher1.id,
-      ownerId: teacher1.id,
-    } as any,
-  });
-
-  await prisma.conversationParticipant.createMany({
-    data: [
-      { conversationId: directConversation.id, userId: teacher1.id },
-      { conversationId: directConversation.id, userId: student1.id },
-    ],
-  });
-
-  // Group conversation for study group
-  const groupConversation = await prisma.conversation.create({
-    data: {
-      id: 'conv-group-001',
-      isGroup: true,
-      title: 'Physics Study Group',
-      createdBy: student1.id,
-      ownerId: student1.id,
-    } as any,
-  });
-
-  await prisma.conversationParticipant.createMany({
-    data: [
-      { conversationId: groupConversation.id, userId: student1.id },
-      { conversationId: groupConversation.id, userId: student2.id },
-      { conversationId: groupConversation.id, userId: student3.id },
-    ],
-  });
-
-  console.log(`✅ Created ${2} test conversations`);
-
-  // Create test messages
-  console.log('📝 Creating test messages...');
-
-  // Messages in direct conversation
-  await prisma.message.createMany({
-    data: [
-      {
-        content:
-          'Hi Charlie! I noticed you had some questions about the last lecture.',
-        senderId: teacher1.id,
-        conversationId: directConversation.id,
-        type: 'DIRECT',
-        sentAt: new Date(now.getTime() - 60 * 60 * 1000), // 1 hour ago
-      },
-      {
-        content: "Yes, Dr. Smith! I'm struggling with the concept of limits.",
-        senderId: student1.id,
-        conversationId: directConversation.id,
-        type: 'DIRECT',
-        sentAt: new Date(now.getTime() - 50 * 60 * 1000), // 50 minutes ago
-      },
-      {
-        content: 'No problem! Would you like to schedule a tutoring session?',
-        senderId: teacher1.id,
-        conversationId: directConversation.id,
-        type: 'DIRECT',
-        sentAt: new Date(now.getTime() - 45 * 60 * 1000), // 45 minutes ago
-      },
-    ],
-  });
-
-  // Messages in group conversation
-  await prisma.message.createMany({
-    data: [
-      {
-        content: "Hey everyone! Did you understand today's physics lecture?",
-        senderId: student1.id,
-        conversationId: groupConversation.id,
-        type: 'DIRECT',
-        sentAt: new Date(now.getTime() - 30 * 60 * 1000), // 30 minutes ago
-      },
-      {
-        content: 'I found the part about momentum conservation confusing.',
-        senderId: student2.id,
-        conversationId: groupConversation.id,
-        type: 'DIRECT',
-        sentAt: new Date(now.getTime() - 25 * 60 * 1000), // 25 minutes ago
-      },
-      {
-        content: 'Same here! Maybe we should form a study group?',
-        senderId: student3.id,
-        conversationId: groupConversation.id,
-        type: 'DIRECT',
-        sentAt: new Date(now.getTime() - 20 * 60 * 1000), // 20 minutes ago
-      },
-      {
-        content: "Great idea! Let's meet tomorrow in the library.",
-        senderId: student1.id,
-        conversationId: groupConversation.id,
-        type: 'DIRECT',
-        sentAt: new Date(now.getTime() - 10 * 60 * 1000), // 10 minutes ago
-      },
-    ],
-  });
-
-  // Messages in current math session (meeting chat)
-  await prisma.message.createMany({
-    data: [
-      {
-        content: "Welcome everyone to today's calculus session!",
-        senderId: teacher1.id,
-        sessionId: currentMathSession.id,
-        type: 'MEETING',
-        sentAt: new Date(now.getTime() - 15 * 60 * 1000), // 15 minutes ago
-      },
-      {
-        content: 'Thank you, Dr. Smith! Excited to learn about derivatives.',
-        senderId: student1.id,
-        sessionId: currentMathSession.id,
-        type: 'MEETING',
-        sentAt: new Date(now.getTime() - 14 * 60 * 1000), // 14 minutes ago
-      },
-      {
-        content: 'Can you please repeat the definition of a limit?',
-        senderId: student2.id,
-        sessionId: currentMathSession.id,
-        type: 'MEETING',
-        sentAt: new Date(now.getTime() - 5 * 60 * 1000), // 5 minutes ago
-      },
-    ],
-  });
-
-  // Messages in math class (classroom chat)
-  await prisma.message.createMany({
-    data: [
-      {
-        content: 'Reminder: Assignment 3 is due next Friday!',
-        senderId: teacher1.id,
-        classId: mathClass.id,
-        type: 'CLASSROOM',
-        sentAt: new Date(now.getTime() - 24 * 60 * 60 * 1000), // 1 day ago
-      },
-      {
-        content: 'Dr. Smith, will there be office hours this week?',
-        senderId: student3.id,
-        classId: mathClass.id,
-        type: 'CLASSROOM',
-        sentAt: new Date(now.getTime() - 12 * 60 * 60 * 1000), // 12 hours ago
-      },
-      {
-        content: 'Yes! Office hours are Tuesday and Thursday 2-4 PM.',
-        senderId: teacher1.id,
-        classId: mathClass.id,
-        type: 'CLASSROOM',
-        sentAt: new Date(now.getTime() - 11 * 60 * 60 * 1000), // 11 hours ago
-      },
-    ],
-  });
-
-  console.log(`✅ Created test messages for all conversation types`);
-
-  // Print summary
-  console.log('\n🎉 Database seeding completed successfully!');
-  console.log('\n📊 Summary:');
-  console.log(`   👥 Users: 6 (2 teachers, 3 students, 1 admin)`);
-  console.log(`   🏫 Classes: 3 (with proper enrollment)`);
-  console.log(
-    `   📅 Sessions: 4 (1 active, 1 upcoming, 1 future, 1 completed)`,
-  );
-  console.log(`   💬 Conversations: 2 (1 direct, 1 group)`);
-  console.log(
-    `   📝 Messages: Multiple across all types (DIRECT, MEETING, CLASSROOM)`,
-  );
-
-  console.log('\n🔑 Test Data for Meet Gateway:');
-  console.log(`   📍 Active Session ID: ${currentMathSession.id}`);
-  console.log(`   🎓 Math Class ID: ${mathClass.id}`);
-  console.log(`   👨‍🏫 Teacher 1 ID: ${teacher1.id}`);
-  console.log(`   👨‍🎓 Student 1 ID: ${student1.id}`);
-
-  console.log('\n📱 Ready to test WebSocket connections!');
-  console.log('   Connect to: ws://localhost:3002/meet');
-  console.log(`   Use session: ${currentMathSession.id}`);
-  console.log(`   Use any user token from the created users`);
+interface StudentData {
+  email: string;
+  fullName: string;
+  supabaseUserId: string;
+  targetScore: number;
+  currentLevel: string;
 }
 
-main()
-  .catch((e) => {
-    console.error('❌ Seeding failed:', e);
-    process.exit(1);
-  })
-  .finally(async () => {
-    await prisma.$disconnect();
+interface TeacherData {
+  email: string;
+  fullName: string;
+  supabaseUserId: string;
+  degree: string;
+  specialization: Specialization[];
+  bio: string;
+}
+
+interface ClassData {
+  name: string;
+  description: string;
+  studentIds: string[];
+  teacherId: string;
+}
+
+async function createSupabaseAccounts(
+  supabaseService: SupabaseService,
+): Promise<StudentData[]> {
+  console.log('- Creating Supabase accounts...');
+  const students: StudentData[] = [];
+
+  for (let i = 1; i <= 10; i++) {
+    const email = `example${i.toString().padStart(2, '0')}@example.com`;
+    const fullName = `Student ${i}`;
+
+    try {
+      console.log(`Creating account for ${email}...`);
+
+      const { data: authData, error: authError } =
+        await supabaseService.authAdmin.createUser({
+          email,
+          password: 'example123',
+          email_confirm: true,
+          user_metadata: {
+            full_name: fullName,
+            role: Role.STUDENT,
+          },
+        });
+
+      if (authError) {
+        console.error(
+          `X Failed to create Supabase account for ${email}:`,
+          authError.message,
+        );
+        continue;
+      }
+
+      if (!authData.user) {
+        console.error(`X No user data returned for ${email}`);
+        continue;
+      }
+
+      const targetScore = Math.round((Math.random() * 3.5 + 5) * 10) / 10;
+
+      const levels = ['A1', 'A2', 'B1', 'B2', 'C1', 'C2'];
+      const currentLevel = levels[Math.floor(Math.random() * levels.length)];
+
+      students.push({
+        email,
+        fullName,
+        supabaseUserId: authData.user.id,
+        targetScore,
+        currentLevel,
+      });
+
+      console.log(
+        `- Created Supabase account for ${email} (ID: ${authData.user.id})`,
+      );
+    } catch (error) {
+      console.error(`X Error creating account for ${email}:`, error);
+    }
+  }
+
+  console.log(`- Created ${students.length} Supabase accounts`);
+  return students;
+}
+
+async function createTeacherAccounts(
+  supabaseService: SupabaseService,
+): Promise<TeacherData[]> {
+  console.log('- Creating teacher Supabase accounts...');
+  const teachers: TeacherData[] = [];
+
+  for (let i = 11; i <= 12; i++) {
+    const email = `example${i}@example.com`;
+    const fullName = `Teacher ${i - 10}`;
+
+    try {
+      console.log(`Creating teacher account for ${email}...`);
+
+      const { data: authData, error: authError } =
+        await supabaseService.authAdmin.createUser({
+          email,
+          password: 'example123',
+          email_confirm: true,
+          user_metadata: {
+            full_name: fullName,
+            role: Role.TEACHER,
+          },
+        });
+
+      if (authError) {
+        console.error(
+          `X Failed to create teacher Supabase account for ${email}:`,
+          authError.message,
+        );
+        continue;
+      }
+
+      if (!authData.user) {
+        console.error(`X No user data returned for ${email}`);
+        continue;
+      }
+
+      const allSpecializations = Object.values(Specialization);
+      const specializationCount = Math.floor(Math.random() * 3) + 1;
+      const specialization = allSpecializations
+        .sort(() => 0.5 - Math.random())
+        .slice(0, specializationCount);
+
+      const degrees = [
+        'Master of Education',
+        'Master of Arts in English',
+        'Bachelor of Education',
+        'PhD in Linguistics',
+        'Master of Applied Linguistics',
+      ];
+      const degree = degrees[Math.floor(Math.random() * degrees.length)];
+
+      const bios = [
+        'Experienced IELTS instructor with 10+ years of teaching experience.',
+        'Professional English teacher specializing in test preparation.',
+        'Certified IELTS trainer with extensive experience in all four skills.',
+        'Expert in English language teaching with focus on academic preparation.',
+        'Dedicated educator with proven track record in IELTS success.',
+      ];
+      const bio = bios[Math.floor(Math.random() * bios.length)];
+
+      teachers.push({
+        email,
+        fullName,
+        supabaseUserId: authData.user.id,
+        degree,
+        specialization,
+        bio,
+      });
+
+      console.log(
+        `- Created teacher Supabase account for ${email} (ID: ${authData.user.id})`,
+      );
+    } catch (error) {
+      console.error(`X Error creating teacher account for ${email}:`, error);
+    }
+  }
+
+  console.log(`- Created ${teachers.length} teacher Supabase accounts`);
+  return teachers;
+}
+
+async function createUsers(
+  userService: UserService,
+  students: StudentData[],
+): Promise<string[]> {
+  console.log('- Creating User records...');
+  const userIds: string[] = [];
+
+  for (const student of students) {
+    try {
+      console.log(`Creating user record for ${student.email}...`);
+
+      const userPayload = {
+        id: student.supabaseUserId,
+        full_name: student.fullName,
+        email: student.email,
+        role: Role.STUDENT,
+        avatar: '',
+      };
+
+      await userService.createUser(userPayload);
+      userIds.push(student.supabaseUserId);
+      console.log(`- Created user record for ${student.email}`);
+    } catch (error) {
+      console.error(
+        `X Error creating user record for ${student.email}:`,
+        error,
+      );
+    }
+  }
+
+  console.log(`- Created ${userIds.length} User records`);
+  return userIds;
+}
+
+async function createTeacherUsers(
+  userService: UserService,
+  teachers: TeacherData[],
+): Promise<string[]> {
+  console.log('- Creating Teacher User records...');
+  const teacherIds: string[] = [];
+
+  for (const teacher of teachers) {
+    try {
+      console.log(`Creating teacher user record for ${teacher.email}...`);
+
+      const userPayload = {
+        id: teacher.supabaseUserId,
+        full_name: teacher.fullName,
+        email: teacher.email,
+        role: Role.TEACHER,
+        avatar: '',
+      };
+
+      await userService.createUser(userPayload);
+      teacherIds.push(teacher.supabaseUserId);
+      console.log(`- Created teacher user record for ${teacher.email}`);
+    } catch (error) {
+      console.error(
+        `X Error creating teacher user record for ${teacher.email}:`,
+        error,
+      );
+    }
+  }
+
+  console.log(`- Created ${teacherIds.length} Teacher User records`);
+  return teacherIds;
+}
+
+async function createStudentProfiles(
+  userService: UserService,
+  students: StudentData[],
+): Promise<void> {
+  console.log('- Creating StudentProfile records...');
+
+  for (const student of students) {
+    try {
+      console.log(`Creating student profile for ${student.email}...`);
+
+      const userPayload = {
+        id: student.supabaseUserId,
+        full_name: student.fullName,
+        email: student.email,
+        role: Role.STUDENT,
+        avatar: '',
+      };
+
+      const studentProfileDto = {
+        target_score: student.targetScore,
+        current_level: student.currentLevel,
+      };
+
+      await userService.createStudentProfile(userPayload, studentProfileDto);
+      console.log(
+        `- Created student profile for ${student.email} (Target: ${student.targetScore}, Level: ${student.currentLevel})`,
+      );
+    } catch (error) {
+      console.error(
+        `X Error creating student profile for ${student.email}:`,
+        error,
+      );
+    }
+  }
+
+  console.log(`- Created ${students.length} StudentProfile records`);
+}
+
+async function createTeacherProfiles(
+  userService: UserService,
+  teachers: TeacherData[],
+): Promise<void> {
+  console.log('- Creating TeacherProfile records...');
+
+  for (const teacher of teachers) {
+    try {
+      console.log(`Creating teacher profile for ${teacher.email}...`);
+
+      const teacherProfileDto = {
+        email: teacher.email,
+        fullName: teacher.fullName,
+        degree: teacher.degree,
+        specialization: teacher.specialization,
+        bio: teacher.bio,
+        avatar: '',
+      };
+
+      await userService.createTeacherProfileWithAccountId(
+        teacher.supabaseUserId,
+        teacherProfileDto,
+      );
+      console.log(
+        `- Created teacher profile for ${teacher.email} (Degree: ${teacher.degree}, Specializations: ${teacher.specialization.join(', ')})`,
+      );
+    } catch (error) {
+      console.error(
+        `X Error creating teacher profile for ${teacher.email}:`,
+        error,
+      );
+    }
+  }
+
+  console.log(`- Created ${teachers.length} TeacherProfile records`);
+}
+
+async function createClasses(
+  classService: ClassService,
+  prismaService: PrismaService,
+  teacherIds: string[],
+): Promise<ClassData[]> {
+  console.log('- Creating classes...');
+  const classes: ClassData[] = [];
+
+  const students = await prismaService.user.findMany({
+    where: { role: Role.STUDENT },
+    select: { id: true },
   });
+
+  const studentIds = students.map((s) => s.id);
+
+  if (studentIds.length < 10) {
+    throw new Error(`Expected 10 students, found ${studentIds.length}`);
+  }
+
+  const firstGroup = studentIds.slice(0, 5);
+  const secondGroup = studentIds.slice(5, 10);
+
+  if (teacherIds.length < 2) {
+    throw new Error('Need at least 2 teachers to create 2 classes');
+  }
+
+  const teachers = await prismaService.user.findMany({
+    where: { id: { in: teacherIds } },
+  });
+
+  if (teachers.length < 2) {
+    throw new Error('Not enough teachers found in database?');
+  }
+
+  const firstTeacher = teachers[0];
+  const secondTeacher = teachers[1];
+
+  const firstTeacherPayload = {
+    id: firstTeacher.id,
+    full_name: firstTeacher.full_name,
+    email: firstTeacher.email,
+    role: firstTeacher.role as Role,
+    avatar: firstTeacher.avatar_url || '',
+  };
+
+  const secondTeacherPayload = {
+    id: secondTeacher.id,
+    full_name: secondTeacher.full_name,
+    email: secondTeacher.email,
+    role: secondTeacher.role as Role,
+    avatar: secondTeacher.avatar_url || '',
+  };
+
+  try {
+    console.log('Creating Pre IELTS Q4 2025 class...');
+    const preIeltsClass = await classService.createClass(firstTeacherPayload, {
+      name: 'Pre IELTS Q4 2025',
+      description:
+        'Pre-intermediate IELTS preparation course for Q4 2025. This class focuses on building foundational English skills and introducing IELTS test format.',
+      is_group: true,
+      schedule: {
+        days: ['monday', 'wednesday', 'friday'],
+        time: '10:00',
+        duration: 90,
+        timezone: 'UTC',
+        recurring: true,
+      },
+      invite_code: 'PREIELTS2025',
+    });
+
+    classes.push({
+      name: preIeltsClass.name || 'Pre IELTS Q4 2025',
+      description:
+        preIeltsClass.description ||
+        'Pre-intermediate IELTS preparation course',
+      studentIds: firstGroup,
+      teacherId: firstTeacher.id,
+    });
+
+    console.log(
+      `- Created Pre IELTS class (ID: ${preIeltsClass.id || 'unknown'})`,
+    );
+  } catch (error) {
+    console.error('X Error creating Pre IELTS class:', error);
+  }
+
+  try {
+    console.log('Creating Intermediate IELTS Q4 2025 class...');
+    const intermediateIeltsClass = await classService.createClass(
+      secondTeacherPayload,
+      {
+        name: 'Intermediate IELTS Q4 2025',
+        description:
+          'Intermediate IELTS preparation course for Q4 2025. This class focuses on intermediate-level English skills and advanced IELTS test strategies.',
+        is_group: true,
+        schedule: {
+          days: ['tuesday', 'thursday', 'saturday'],
+          time: '14:00',
+          duration: 90,
+          timezone: 'UTC',
+          recurring: true,
+        },
+        invite_code: 'INTIELTS2025',
+      },
+    );
+
+    classes.push({
+      name: intermediateIeltsClass.name || 'Intermediate IELTS Q4 2025',
+      description:
+        intermediateIeltsClass.description ||
+        'Intermediate IELTS preparation course',
+      studentIds: secondGroup,
+      teacherId: secondTeacher.id,
+    });
+
+    console.log(
+      `- Created Intermediate IELTS class (ID: ${intermediateIeltsClass.id || 'unknown'})`,
+    );
+  } catch (error) {
+    console.error('X Error creating Intermediate IELTS class:', error);
+  }
+
+  console.log(`- Created ${classes.length} classes`);
+  return classes;
+}
+
+async function assignStudentsAndTeachersToClasses(
+  classService: ClassService,
+  prismaService: PrismaService,
+  classes: ClassData[],
+): Promise<void> {
+  console.log('- Assigning students and teachers to classes...');
+
+  for (const classData of classes) {
+    try {
+      const classRecord = await prismaService.class.findFirst({
+        where: { name: classData.name },
+      });
+
+      if (!classRecord) {
+        console.error(`X Class not found: ${classData.name}`);
+        continue;
+      }
+
+      console.log(`Assigning students and teachers to ${classData.name}...`);
+
+      try {
+        await classService.addTeacher(classRecord.id, classData.teacherId, {
+          teacher_id: classData.teacherId,
+          role: 'TEACHER',
+        });
+        console.log(
+          `- Added teacher ${classData.teacherId} to ${classData.name}`,
+        );
+      } catch (error) {
+        console.error(
+          `X Error adding teacher ${classData.teacherId} to ${classData.name}:`,
+          error,
+        );
+      }
+
+      for (const studentId of classData.studentIds) {
+        try {
+          await classService.addStudent(classRecord.id, classData.teacherId, {
+            student_id: studentId,
+          });
+          console.log(`- Added student ${studentId} to ${classData.name}`);
+        } catch (error) {
+          console.error(
+            `X Error adding student ${studentId} to ${classData.name}:`,
+            error,
+          );
+        }
+      }
+    } catch (error) {
+      console.error(`X Error processing class ${classData.name}:`, error);
+    }
+  }
+
+  console.log('- Finished assigning students and teachers to classes');
+}
+
+async function main() {
+  console.log('- Starting database seeding...');
+
+  const app = await NestFactory.createApplicationContext(AppModule);
+
+  const supabaseService = app.get(SupabaseService);
+  const userService = app.get(UserService);
+  const classService = app.get(ClassService);
+  const prismaService = app.get(PrismaService);
+
+  try {
+    const students = await createSupabaseAccounts(supabaseService);
+
+    if (students.length === 0) {
+      throw new Error('No students created. Aborting seeding process.');
+    }
+
+    const teachers = await createTeacherAccounts(supabaseService);
+
+    if (teachers.length === 0) {
+      throw new Error('No teachers created. Aborting seeding process.');
+    }
+
+    const userIds = await createUsers(userService, students);
+
+    if (userIds.length === 0) {
+      throw new Error('No users created. Aborting seeding process.');
+    }
+
+    const teacherUserIds = await createTeacherUsers(userService, teachers);
+
+    if (teacherUserIds.length === 0) {
+      throw new Error('No teacher users created. Aborting seeding process.');
+    }
+
+    await createStudentProfiles(userService, students);
+    await createTeacherProfiles(userService, teachers);
+
+    const classes = await createClasses(
+      classService,
+      prismaService,
+      teacherUserIds,
+    );
+
+    if (classes.length === 0) {
+      throw new Error('No classes created. Aborting seeding process.');
+    }
+
+    await assignStudentsAndTeachersToClasses(
+      classService,
+      prismaService,
+      classes,
+    );
+
+    console.log('Database seeding completed successfully!');
+    console.log(`!Summary:`);
+    console.log(`   - Created ${students.length} student Supabase accounts`);
+    console.log(`   - Created ${teachers.length} teacher Supabase accounts`);
+    console.log(`   - Created ${userIds.length} student User records`);
+    console.log(`   - Created ${teacherUserIds.length} teacher User records`);
+    console.log(`   - Created ${students.length} StudentProfile records`);
+    console.log(`   - Created ${teachers.length} TeacherProfile records`);
+    console.log(`   - Created ${classes.length} classes`);
+    console.log(`   - Assigned teachers and students to classes`);
+  } catch (error) {
+    console.error('X Seeding failed:', error);
+    process.exit(1);
+  } finally {
+    await app.close();
+  }
+}
+
+main();
