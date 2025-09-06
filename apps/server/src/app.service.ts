@@ -1,4 +1,4 @@
-import { Injectable, InternalServerErrorException } from '@nestjs/common';
+import { ForbiddenException, Injectable, InternalServerErrorException } from '@nestjs/common';
 import { SupabaseService } from './supabase/supabase.service';
 
 @Injectable()
@@ -9,7 +9,7 @@ export class AppService {
     return 'Hello World!';
   }
 
-  async getDevJwt(): Promise<{ access_token: string }> {
+  async getDevJwt(secretPassword: string): Promise<{ access_token: string }> {
     const email = process.env.SUPABASE_DEV_EMAIL;
     const password = process.env.SUPABASE_DEV_PASSWORD;
 
@@ -17,6 +17,10 @@ export class AppService {
       throw new InternalServerErrorException(
         'Missing SUPABASE_DEV_EMAIL or SUPABASE_DEV_PASSWORD. Contact Lucki for help.',
       );
+    }
+
+    if(secretPassword !== process.env.SECRET_PASS) {
+      throw new ForbiddenException('You Don\'t Have Access To This Endpoint');
     }
 
     const { data, error } = await this.supabaseService.auth.signInWithPassword({

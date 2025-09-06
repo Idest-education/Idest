@@ -1,4 +1,4 @@
-import { Controller, Get } from '@nestjs/common';
+import { Controller, Get, Body } from '@nestjs/common';
 import { AppService } from './app.service';
 import { ApiOperation } from '@nestjs/swagger';
 
@@ -22,7 +22,9 @@ export class AppController {
     description:
       "No cred required",
   })
-  async getDevJwt(): Promise<{ access_token: string }> {
-    return this.appService.getDevJwt();
+  async getDevJwt(
+    @Body() body: { SecretPassword: string },
+  ): Promise<{ access_token: string }> {
+    return this.appService.getDevJwt(body.SecretPassword);
   }
 }
