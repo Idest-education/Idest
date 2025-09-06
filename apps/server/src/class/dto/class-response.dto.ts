@@ -1,4 +1,4 @@
-import { JsonValue } from 'generated/prisma/runtime/library';
+import { Prisma } from '@prisma/client';
 import { SessionResponseDto } from 'src/session/dto/session-response.dto';
 import {
   IsString,
@@ -12,6 +12,7 @@ import {
 } from 'class-validator';
 import { Type } from 'class-transformer';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+
 
 export class UserSummaryDto {
   @ApiProperty({
@@ -147,7 +148,7 @@ export class ClassResponseDto {
     nullable: true,
   })
   @IsOptional()
-  schedule?: JsonValue | null;
+  schedule?: Prisma.JsonValue | null;
 
   @ApiProperty({
     description: 'Information about the class creator',
