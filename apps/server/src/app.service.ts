@@ -5,9 +5,7 @@ import { SupabaseService } from './supabase/supabase.service';
 export class AppService {
   constructor(private readonly supabaseService: SupabaseService) {}
 
-  getHello(): string {
-    return 'Hello World!';
-  }
+
 
   async getDevJwt(secretPassword: string): Promise<{ access_token: string }> {
     const email = process.env.SUPABASE_DEV_EMAIL;

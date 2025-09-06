@@ -1,6 +1,18 @@
-import { Controller, Get, Body } from '@nestjs/common';
+import { Controller, Get, Body, Post } from '@nestjs/common';
 import { AppService } from './app.service';
-import { ApiOperation } from '@nestjs/swagger';
+import { ApiBody, ApiOperation, ApiProperty } from '@nestjs/swagger';
+import { IsString, IsNotEmpty } from 'class-validator';
+import { SkipEnvelope } from './common/decorator/skip-envelope.decorator';
+
+class JwtRequestDto {
+  @ApiProperty({
+    description: 'The secret password to get dev JWT',
+    example: 'dev-password',
+  })
+  @IsString({ message: 'SecretPassword must be a string' })
+  @IsNotEmpty({ message: 'SecretPassword is required' })
+  SecretPassword: string;
+}
 
 @Controller()
 export class AppController {
@@ -8,22 +20,23 @@ export class AppController {
 
   @ApiOperation({
     summary: 'Check app health',
-    description:
-      "Check app health",
   })
   @Get()
+  @SkipEnvelope()
   getHello(): string {
-    return this.appService.getHello();
+    return `Made by <a href="https://github.com/LuckiPhoenix" target="_blank">Lucki</a>`;
   }
 
-  @Get('jwt')
+  @Post('jwt')
   @ApiOperation({
     summary: 'Get dev JWT for testing',
-    description:
-      "No cred required",
+    description: 'No cred required',
+  })
+  @ApiBody({
+    type: JwtRequestDto,
   })
   async getDevJwt(
-    @Body() body: { SecretPassword: string },
+    @Body() body: JwtRequestDto,
   ): Promise<{ access_token: string }> {
     return this.appService.getDevJwt(body.SecretPassword);
   }

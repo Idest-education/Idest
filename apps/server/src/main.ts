@@ -7,6 +7,7 @@ import { AllExceptionFilter } from './common/filters/exception.filter';
 import { SuccessEnvelopeInterceptor } from './common/interceptors/response.interceptor';
 import { SwaggerModule } from '@nestjs/swagger';
 import { DocumentBuilder } from '@nestjs/swagger';
+import { Reflector } from '@nestjs/core';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
@@ -28,7 +29,7 @@ async function bootstrap() {
     }),
   );
   app.useGlobalFilters(new AllExceptionFilter());
-  app.useGlobalInterceptors(new SuccessEnvelopeInterceptor());
+  app.useGlobalInterceptors(new SuccessEnvelopeInterceptor(app.get(Reflector)));
 
   const corsOrigins = (
     config.get<string>('CORS_ORIGINS') || 'http://localhost:3000'

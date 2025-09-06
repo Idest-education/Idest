@@ -1,3 +1,3 @@
-# WORK IN PROCESS
+# Welcome
 
-Check my code later, don't read my code pls. thanks
+API here: https://idest-server.onrender.com/api
