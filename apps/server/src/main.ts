@@ -1,7 +1,7 @@
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { ConfigService } from '@nestjs/config';
-import { ValidationPipe } from '@nestjs/common';
+import { InternalServerErrorException, ValidationPipe } from '@nestjs/common';
 import helmet from 'helmet';
 import { AllExceptionFilter } from './common/filters/exception.filter';
 import { SuccessEnvelopeInterceptor } from './common/interceptors/response.interceptor';
@@ -16,7 +16,7 @@ async function bootstrap() {
   const requiredEnv = ['DATABASE_URL', 'JWT_SECRET'];
   const missing = requiredEnv.filter((k) => !config.get<string>(k));
   if (missing.length) {
-    throw new Error(
+    throw new InternalServerErrorException(
       `Missing required environment variables: ${missing.join(', ')}`,
     );
   }
@@ -41,7 +41,6 @@ async function bootstrap() {
   app.use(helmet());
 
   const port = Number(config.get<string>('PORT')) || 8000;
-
   // Swagger config
   const swaggerConfig = new DocumentBuilder()
     .setTitle('Idest')

@@ -120,7 +120,47 @@ export class ClassQueryService {
         where: { created_by: userId },
         include: {
           creator: {
-            select: { id: true, full_name: true, email: true, role: true },
+            select: {
+              id: true,
+              full_name: true,
+              email: true,
+              avatar_url: true,
+              role: true,
+            },
+          },
+          members: {
+            include: {
+              student: {
+                select: {
+                  id: true,
+                  full_name: true,
+                  email: true,
+                  avatar_url: true,
+                  role: true,
+                },
+              },
+            },
+          },
+          teachers: {
+            include: {
+              teacher: {
+                select: {
+                  id: true,
+                  full_name: true,
+                  email: true,
+                  avatar_url: true,
+                  role: true,
+                },
+              },
+            },
+          },
+          sessions: {
+            orderBy: { created_at: 'desc' },
+            include: {
+              host: {
+                select: { id: true, full_name: true, email: true },
+              },
+            },
           },
           _count: {
             select: { members: true, teachers: true, sessions: true },
@@ -137,7 +177,47 @@ export class ClassQueryService {
         },
         include: {
           creator: {
-            select: { id: true, full_name: true, email: true, role: true },
+            select: {
+              id: true,
+              full_name: true,
+              email: true,
+              avatar_url: true,
+              role: true,
+            },
+          },
+          members: {
+            include: {
+              student: {
+                select: {
+                  id: true,
+                  full_name: true,
+                  email: true,
+                  avatar_url: true,
+                  role: true,
+                },
+              },
+            },
+          },
+          teachers: {
+            include: {
+              teacher: {
+                select: {
+                  id: true,
+                  full_name: true,
+                  email: true,
+                  avatar_url: true,
+                  role: true,
+                },
+              },
+            },
+          },
+          sessions: {
+            orderBy: { created_at: 'desc' },
+            include: {
+              host: {
+                select: { id: true, full_name: true, email: true },
+              },
+            },
           },
           _count: {
             select: { members: true, teachers: true, sessions: true },
@@ -157,7 +237,47 @@ export class ClassQueryService {
         },
         include: {
           creator: {
-            select: { id: true, full_name: true, email: true, role: true },
+            select: {
+              id: true,
+              full_name: true,
+              email: true,
+              avatar_url: true,
+              role: true,
+            },
+          },
+          members: {
+            include: {
+              student: {
+                select: {
+                  id: true,
+                  full_name: true,
+                  email: true,
+                  avatar_url: true,
+                  role: true,
+                },
+              },
+            },
+          },
+          teachers: {
+            include: {
+              teacher: {
+                select: {
+                  id: true,
+                  full_name: true,
+                  email: true,
+                  avatar_url: true,
+                  role: true,
+                },
+              },
+            },
+          },
+          sessions: {
+            orderBy: { created_at: 'desc' },
+            include: {
+              host: {
+                select: { id: true, full_name: true, email: true },
+              },
+            },
           },
           _count: {
             select: { members: true, teachers: true, sessions: true },
@@ -271,7 +391,11 @@ export class ClassQueryService {
     userId: string,
   ): Promise<UserSummaryDto[]> {
     try {
-      const hasAccess = await checkClassAccessById(classId, userId, this.prisma);
+      const hasAccess = await checkClassAccessById(
+        classId,
+        userId,
+        this.prisma,
+      );
       if (!hasAccess)
         throw new ForbiddenException('Access denied to this class');
 
@@ -309,7 +433,11 @@ export class ClassQueryService {
     userId: string,
   ): Promise<UserSummaryDto[]> {
     try {
-      const hasAccess = await checkClassAccessById(classId, userId, this.prisma);
+      const hasAccess = await checkClassAccessById(
+        classId,
+        userId,
+        this.prisma,
+      );
       if (!hasAccess)
         throw new ForbiddenException('Access denied to this class');
 
@@ -346,7 +474,11 @@ export class ClassQueryService {
     userId: string,
   ): Promise<ClassCountDto> {
     try {
-      const hasAccess = await checkClassAccessById(classId, userId, this.prisma);
+      const hasAccess = await checkClassAccessById(
+        classId,
+        userId,
+        this.prisma,
+      );
       if (!hasAccess)
         throw new ForbiddenException('Access denied to this class');
 
