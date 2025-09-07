@@ -1,5 +1,5 @@
 import { CloudinaryService } from 'src/cloudinary/cloudinary.service';
-import { Injectable, InternalServerErrorException, NotFoundException, UnprocessableEntityException } from '@nestjs/common';
+import { ConflictException, Injectable, InternalServerErrorException, NotFoundException, UnprocessableEntityException } from '@nestjs/common';
 import { CreateUserDto } from './dto/createUser.dto';
 import { userPayload } from 'src/common/types/userPayload.interface';
 import { Prisma, StudentProfile, TeacherProfile, User } from '@prisma/client';
@@ -10,6 +10,7 @@ import { CreateTeacherProfileDto } from './dto/createTeacherProfile.dto';
 import { Role } from 'src/common/enum/role.enum';
 import { SupabaseService } from 'src/supabase/supabase.service';
 import { AllUsers } from './types/allUsers.type';
+import { CredDto } from './dto/cred.dto';
 
 @Injectable()
 export class UserService {
@@ -41,6 +42,44 @@ export class UserService {
       return newUser;
     } catch (error) {
       if (error instanceof UnprocessableEntityException) {
+        throw error;
+      }
+      throw new InternalServerErrorException(`Error creating user: ${error}`);
+    }
+  }
+  async createUserWithCredentials(credentials: CredDto): Promise<User> {
+    try {
+      if (!credentials.email || !credentials.password || !credentials.fullName || !credentials.role) {
+        throw new UnprocessableEntityException(`Credentials insufficient`);
+      }
+      const existingUser = await this.prisma.user.findUnique({
+        where: { email: credentials.email },
+      });
+      if (existingUser) {
+        throw new ConflictException(`User with email ${credentials.email} already exists`);
+      }
+      const supabaseUser = await this.supabaseService.authAdmin.createUser({
+        email: credentials.email,
+        password: credentials.password,
+        user_metadata: {
+          full_name: credentials.fullName,
+          role: credentials.role,
+        },
+      });
+      if (!supabaseUser.data.user) {
+        throw new InternalServerErrorException(`Failed to create user`);
+      }
+      const user = await this.prisma.user.create({
+        data: {
+          id: supabaseUser.data.user.id,
+          full_name: credentials.fullName,
+          email: credentials.email,
+          role: credentials.role,
+        },
+      });
+      return user;
+    } catch (error) {
+      if (error instanceof InternalServerErrorException || error instanceof ConflictException || error instanceof UnprocessableEntityException) {
         throw error;
       }
       throw new InternalServerErrorException(`Error creating user: ${error}`);

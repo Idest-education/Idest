@@ -41,7 +41,10 @@ import {
   ApiInternalServerErrorResponse,
   ApiForbiddenResponse,
   ApiUnauthorizedResponse,
+  ApiConflictResponse,
 } from '@nestjs/swagger';
+import { CredDto } from './dto/cred.dto';
+import { Public } from 'src/common/decorator/public.decorator';
 
 @Controller('user')
 @ApiTags('User')
@@ -86,6 +89,25 @@ export class UserController {
   @ApiInternalServerErrorResponse({ description: 'Internal server error' })
   async createUser(@CurrentUser() user: userPayload) {
     return await this.userService.createUser(user);
+  }
+
+  @Public()
+  @Post('serverside-create')
+  @ApiOperation({
+    summary: 'Server side user creation (skip client side supabase implementation) ',
+    description:
+      "Creates a new user account using the credentials provided.",
+  })
+  @ApiOkResponse({
+    description: 'User successfully created',
+    type: UserResponseDto,
+  })
+  @ApiBody({ type: CredDto })
+  @ApiConflictResponse({ description: 'User already exists' })
+  @ApiUnprocessableEntityResponse({ description: 'Credentials insufficient' })
+  @ApiInternalServerErrorResponse({ description: 'Internal server error' })
+  async createUserWithCredentials(@Body() credentials: CredDto){
+    return await this.userService.createUserWithCredentials(credentials);
   }
 
   @Post('student-profile')
