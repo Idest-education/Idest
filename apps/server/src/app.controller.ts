@@ -24,7 +24,11 @@ export class AppController {
   @Get()
   @SkipEnvelope()
   getHello(): string {
-    return `Made by <a href="https://github.com/LuckiPhoenix" target="_blank">Lucki</a>`;
+    return `Made by <a href="https://github.com/LuckiPhoenix" target="_blank">Lucki</a>
+<a> Bây giờ là ${new Date().toLocaleString()}</a>
+<a> Đang chạy trên ${process.env.NODE_ENV} environment</a>
+<a> uptime: ${process.uptime()}</a>
+    `;
   }
 
   @Post('jwt')

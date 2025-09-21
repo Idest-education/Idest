@@ -35,7 +35,7 @@ export class AiService {
 
   async generateTextWithContext(prompt: string, user: User) {
     const contextCategory = await this.getContextCategory(prompt);
-    console.log("getting context for: ",contextCategory);
+    console.log('getting context for: ', contextCategory);
     const context = await this.getContext(
       contextCategory as PromptContext,
       user,
@@ -46,8 +46,8 @@ export class AiService {
     Here is the context:
     ${context}
     `;
-    console.log("system prompt: ",systemPrompt);
-    console.log("prompt: ",prompt);
+    console.log('system prompt: ', systemPrompt);
+    console.log('prompt: ', prompt);
     const response = await this.openai.responses.create({
       model: 'gpt-5-nano',
       input: [
@@ -55,17 +55,17 @@ export class AiService {
         { role: 'user', content: prompt },
       ],
     });
-    console.log("response: ",response);
+    console.log('response: ', response);
     return response.output_text;
   }
 
   async getContextCategory(prompt: string) {
     const context = getContextCategoryWithRegex(prompt);
-    console.log("regex result: ",context);
+    console.log('regex result: ', context);
     if (context != 'Others') {
       return context;
     }
-    console.log("regex failed, using gpt to get context category");
+    console.log('regex failed, using gpt to get context category');
     const systemPrompt = `
     Response with just the label, nothing else. Look at the user's prompt and label it as one of the following:
     - User
@@ -84,7 +84,7 @@ export class AiService {
         { role: 'user', content: prompt },
       ],
     });
-    console.log("gpt regex result: ",response.output_text);
+    console.log('gpt regex result: ', response.output_text);
     return response.output_text;
   }
 

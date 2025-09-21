@@ -7,15 +7,13 @@ import {
 import { PrismaService } from 'src/prisma/prisma.service';
 import { UserService } from 'src/user/user.service';
 import { userPayload } from 'src/common/types/userPayload.interface';
-import { Role } from 'src/common/enum/role.enum';
 import {
   ConnectedUsersManager,
   ConnectedUser,
 } from './utils/connected-users-manager';
-import * as JWT from 'jsonwebtoken';
-import { promisify } from 'util';
+import { verifyTokenAsync } from 'src/common/guard/auth.guard';
+import { JwtPayload } from 'jsonwebtoken';
 
-const verifyAsync = promisify(JWT.verify);
 
 @Injectable()
 export class MeetService {
@@ -24,6 +22,16 @@ export class MeetService {
     private readonly userService: UserService,
     private readonly connectedUsersManager: ConnectedUsersManager,
   ) {}
+  /**
+   * Validate JWT token
+   */
+  async validateToken(token: string): Promise<JwtPayload> {
+    try {
+      return await verifyTokenAsync(token, process.env.JWT_SECRET!);
+    } catch (error) {
+      throw new UnauthorizedException('Invalid token, please login again');
+    }
+  }
 
   /**
    * Validate if a session exists and is active
@@ -41,7 +49,6 @@ export class MeetService {
         throw new NotFoundException(`Session ${sessionId} not found`);
       }
 
-      // Check if session is still active (hasn't ended)
       if (session.end_time && session.end_time < new Date()) {
         throw new ForbiddenException(`Session ${sessionId} has already ended`);
       }
