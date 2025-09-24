@@ -44,7 +44,7 @@ model StudentProfile {
 model TeacherProfile {
   user_id        String @id
   degree         String
-  specialization String
+  specialization IELTSSkill[]
   bio            String
   user           User   @relation(fields: [user_id], references: [id])
 }
@@ -111,7 +111,7 @@ model Assignment {
   id          String              @id @default(uuid())
   created_by  String
   class_id    String?
-  skill       String
+  skill       IELTSSkill
   title       String
   slug        String              @unique
   description String
@@ -281,4 +281,11 @@ enum MessageType {
   DIRECT
   CLASSROOM
   MEETING
+}
+
+enum IELTSSkill {
+  WRITING
+  SPEAKING
+  LISTENING
+  READING
 }
