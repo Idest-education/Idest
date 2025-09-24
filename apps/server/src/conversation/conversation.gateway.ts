@@ -12,7 +12,7 @@ import { PrismaService } from 'src/prisma/prisma.service';
 import * as JWT from 'jsonwebtoken';
 import { checkClassAccess } from './conversation.util';
 
-@WebSocketGateway(3003, {
+@WebSocketGateway(8001, {
   cors: true,
   namespace: '/conversation',
 })

@@ -1,5 +1,11 @@
 import { CloudinaryService } from 'src/cloudinary/cloudinary.service';
-import { ConflictException, Injectable, InternalServerErrorException, NotFoundException, UnprocessableEntityException } from '@nestjs/common';
+import {
+  ConflictException,
+  Injectable,
+  InternalServerErrorException,
+  NotFoundException,
+  UnprocessableEntityException,
+} from '@nestjs/common';
 import { CreateUserDto } from './dto/createUser.dto';
 import { userPayload } from 'src/common/types/userPayload.interface';
 import { Prisma, StudentProfile, TeacherProfile, User } from '@prisma/client';
@@ -49,25 +55,37 @@ export class UserService {
   }
   async createUserWithCredentials(credentials: CredDto): Promise<User> {
     try {
-      if (!credentials.email || !credentials.password || !credentials.fullName || !credentials.role) {
+      if (
+        !credentials.email ||
+        !credentials.password ||
+        !credentials.fullName ||
+        !credentials.role
+      ) {
         throw new UnprocessableEntityException(`Credentials insufficient`);
       }
       const existingUser = await this.prisma.user.findUnique({
         where: { email: credentials.email },
       });
       if (existingUser) {
-        throw new ConflictException(`User with email ${credentials.email} already exists`);
+        throw new ConflictException(
+          `User with email ${credentials.email} already exists`,
+        );
       }
-      const supabaseUser = await this.supabaseService.authAdmin.createUser({
+      const supabaseUser = await this.supabaseService.auth.signUp({
         email: credentials.email,
         password: credentials.password,
-        user_metadata: {
-          full_name: credentials.fullName,
-          role: credentials.role,
+        options: {
+          data: {
+            full_name: credentials.fullName,
+            role: credentials.role,
+          },
+          emailRedirectTo: `localhost:3000/auth/callback`,
         },
       });
       if (!supabaseUser.data.user) {
-        throw new InternalServerErrorException(`Failed to create user`);
+        throw new InternalServerErrorException(
+          `Failed to create user !${supabaseUser}`,
+        );
       }
       const user = await this.prisma.user.create({
         data: {
@@ -79,7 +97,11 @@ export class UserService {
       });
       return user;
     } catch (error) {
-      if (error instanceof InternalServerErrorException || error instanceof ConflictException || error instanceof UnprocessableEntityException) {
+      if (
+        error instanceof InternalServerErrorException ||
+        error instanceof ConflictException ||
+        error instanceof UnprocessableEntityException
+      ) {
         throw error;
       }
       throw new InternalServerErrorException(`Error creating user: ${error}`);
@@ -103,14 +125,13 @@ export class UserService {
       if (error instanceof NotFoundException) {
         throw error;
       }
-      throw new InternalServerErrorException(`Error fetching user by ID: ${error}`);
+      throw new InternalServerErrorException(
+        `Error fetching user by ID: ${error}`,
+      );
     }
   }
 
-  async updateUser(
-    id: string,
-    dto: UpdateUserDto,
-  ): Promise<User> {
+  async updateUser(id: string, dto: UpdateUserDto): Promise<User> {
     try {
       const user = await this.prisma.user.findUnique({
         where: { id },
@@ -138,23 +159,23 @@ export class UserService {
 
       return newUser;
     } catch (error) {
-      if (error instanceof UnprocessableEntityException || error instanceof NotFoundException) {
+      if (
+        error instanceof UnprocessableEntityException ||
+        error instanceof NotFoundException
+      ) {
         throw error;
       }
       throw new InternalServerErrorException(`Error updating user: ${error}`);
     }
   }
 
-  async uploadAvatar(
-    image: string,
-    userId: string,
-  ): Promise<User> {
+  async uploadAvatar(image: string, userId: string): Promise<User> {
     try {
       // Assuming image processing and storage logic is implemented here
       const avatarUrl = image;
 
       const user = await this.getUserById(userId);
-      if(!user) {
+      if (!user) {
         throw new NotFoundException(`User with ID ${userId} not found`);
       }
       if (user.avatar_url) {
@@ -174,17 +195,19 @@ export class UserService {
 
       return updatedUser;
     } catch (error) {
-      if (error instanceof UnprocessableEntityException || error instanceof NotFoundException) {
+      if (
+        error instanceof UnprocessableEntityException ||
+        error instanceof NotFoundException
+      ) {
         throw error;
       }
-      throw new InternalServerErrorException(`Error uploading avatar: ${error}`);
+      throw new InternalServerErrorException(
+        `Error uploading avatar: ${error}`,
+      );
     }
   }
 
-  async banUser(
-    bannedId: string,
-    banner: userPayload,
-  ): Promise<boolean> {
+  async banUser(bannedId: string, banner: userPayload): Promise<boolean> {
     try {
       const bannedUser = await this.prisma.user.findUnique({
         where: { id: bannedId },
@@ -195,7 +218,9 @@ export class UserService {
       }
 
       if (banner.id === bannedId) {
-        throw new UnprocessableEntityException(`User with ID ${bannedId} cannot ban themselves`);
+        throw new UnprocessableEntityException(
+          `User with ID ${bannedId} cannot ban themselves`,
+        );
       }
 
       await this.prisma.user.update({
@@ -211,16 +236,16 @@ export class UserService {
 
       return true;
     } catch (error) {
-      if (error instanceof UnprocessableEntityException || error instanceof NotFoundException) {
+      if (
+        error instanceof UnprocessableEntityException ||
+        error instanceof NotFoundException
+      ) {
         throw error;
       }
       throw new InternalServerErrorException(`Error banning user: ${error}`);
     }
   }
-  async unbanUser(
-    unbannedId: string,
-    unbanner: userPayload,
-  ): Promise<boolean> {
+  async unbanUser(unbannedId: string, unbanner: userPayload): Promise<boolean> {
     try {
       const unbannedUser = await this.prisma.user.findUnique({
         where: { id: unbannedId },
@@ -231,7 +256,9 @@ export class UserService {
       }
 
       if (unbanner.id === unbannedId) {
-        throw new UnprocessableEntityException(`User with ID ${unbannedId} cannot unban themselves`);
+        throw new UnprocessableEntityException(
+          `User with ID ${unbannedId} cannot unban themselves`,
+        );
       }
 
       await this.prisma.user.update({
@@ -247,7 +274,10 @@ export class UserService {
 
       return true;
     } catch (error) {
-      if (error instanceof UnprocessableEntityException || error instanceof NotFoundException) {
+      if (
+        error instanceof UnprocessableEntityException ||
+        error instanceof NotFoundException
+      ) {
         throw error;
       }
       throw new InternalServerErrorException(`Error unbanning user: ${error}`);
@@ -259,9 +289,7 @@ export class UserService {
     sortBy?: string,
     filter?: string[],
     sortOrder?: 'asc' | 'desc',
-  ): Promise<
-    AllUsers | null
-  > {
+  ): Promise<AllUsers | null> {
     try {
       const safePage = Number.isFinite(page) && page > 0 ? Math.floor(page) : 1;
       const normalizedLimit =
@@ -382,7 +410,14 @@ export class UserService {
       const totalPages = Math.max(1, Math.ceil(total / safeLimit));
       const hasMore = safePage < totalPages;
 
-      return { users, total, page: safePage, limit: safeLimit, totalPages, hasMore };
+      return {
+        users,
+        total,
+        page: safePage,
+        limit: safeLimit,
+        totalPages,
+        hasMore,
+      };
     } catch (error) {
       if (error instanceof UnprocessableEntityException) {
         throw error;
@@ -400,10 +435,15 @@ export class UserService {
       }
       return user;
     } catch (error) {
-      if (error instanceof UnprocessableEntityException || error instanceof NotFoundException) {
+      if (
+        error instanceof UnprocessableEntityException ||
+        error instanceof NotFoundException
+      ) {
         throw error;
       }
-      throw new UnprocessableEntityException(`Error fetching user by email: ${error}`);
+      throw new UnprocessableEntityException(
+        `Error fetching user by email: ${error}`,
+      );
     }
   }
 
@@ -435,10 +475,15 @@ export class UserService {
         role: user.role,
       };
     } catch (error) {
-      if (error instanceof UnprocessableEntityException || error instanceof NotFoundException) {
+      if (
+        error instanceof UnprocessableEntityException ||
+        error instanceof NotFoundException
+      ) {
         throw error;
       }
-      throw new InternalServerErrorException(`Failed to get user details for ${userId}: ${error}`);
+      throw new InternalServerErrorException(
+        `Failed to get user details for ${userId}: ${error}`,
+      );
     }
   }
   async createStudentProfile(
@@ -454,14 +499,18 @@ export class UserService {
         },
       });
       if (!studentProfile) {
-        throw new UnprocessableEntityException(`Failed to create student profile`);
+        throw new UnprocessableEntityException(
+          `Failed to create student profile`,
+        );
       }
       return studentProfile;
     } catch (error) {
       if (error instanceof UnprocessableEntityException) {
         throw error;
       }
-      throw new InternalServerErrorException(`Error creating student profile: ${error}`);
+      throw new InternalServerErrorException(
+        `Error creating student profile: ${error}`,
+      );
     }
   }
   async createTeacherProfile(
@@ -475,7 +524,9 @@ export class UserService {
 
       const supabaseUserId = invitedUser?.id;
       if (!supabaseUserId) {
-        throw new UnprocessableEntityException(`Failed to invite user by email: ${dto.email}`);
+        throw new UnprocessableEntityException(
+          `Failed to invite user by email: ${dto.email}`,
+        );
       }
 
       const teacherProfile = await this.prisma.$transaction(async (tx) => {
@@ -501,7 +552,9 @@ export class UserService {
       });
 
       if (!teacherProfile) {
-        throw new UnprocessableEntityException(`Failed to create teacher profile`);
+        throw new UnprocessableEntityException(
+          `Failed to create teacher profile`,
+        );
       }
 
       return teacherProfile;
@@ -509,13 +562,15 @@ export class UserService {
       if (error instanceof UnprocessableEntityException) {
         throw error;
       }
-      throw new InternalServerErrorException(`Error creating teacher profile: ${error}`);
+      throw new InternalServerErrorException(
+        `Error creating teacher profile: ${error}`,
+      );
     }
   }
   async createTeacherProfileWithAccountId(
     teacherId: string,
-    dto: CreateTeacherProfileDto
-  ){
+    dto: CreateTeacherProfileDto,
+  ) {
     try {
       const teacherProfile = await this.prisma.teacherProfile.create({
         data: {
@@ -526,17 +581,18 @@ export class UserService {
         },
       });
       if (!teacherProfile) {
-        throw new UnprocessableEntityException(`Failed to create teacher profile`);
+        throw new UnprocessableEntityException(
+          `Failed to create teacher profile`,
+        );
       }
       return teacherProfile;
     } catch (error) {
       if (error instanceof UnprocessableEntityException) {
         throw error;
       }
-      throw new InternalServerErrorException(`Error creating teacher profile: ${error}`);
+      throw new InternalServerErrorException(
+        `Error creating teacher profile: ${error}`,
+      );
     }
   }
-
 }
-
-
