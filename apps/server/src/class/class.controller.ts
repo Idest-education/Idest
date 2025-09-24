@@ -260,7 +260,7 @@ export class ClassController {
     description: 'Access denied - TEACHER or ADMIN role required',
   })
   @ApiUnprocessableEntityResponse({
-    description: 'Teacher already assigned or failed to add teacher',
+    description: 'Teacher already assigned, failed to add teacher or input is not a teacher',
   })
   @ApiUnauthorizedResponse({ description: 'Authentication required' })
   @ApiInternalServerErrorResponse({ description: 'Internal server error' })
@@ -602,9 +602,9 @@ export class ClassController {
     type: [ClassResponseDto],
   })
   @ApiInternalServerErrorResponse({ description: 'Internal server error' })
-  async getPublicClasses(): Promise<ClassResponseDto[]> {
+  async getPublicClasses(): Promise<string> {
     console.log('getPublicClasses route called');
-    return this.classService.getPublicClasses();
+    return "unavailable";
   }
 
   @Put(':id/regenerate-code')

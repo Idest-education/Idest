@@ -4,6 +4,7 @@ import {
   ForbiddenException,
   ConflictException,
   InternalServerErrorException,
+  UnprocessableEntityException,
 } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { AddClassMemberDto, AddClassTeacherDto } from '../dto/class-member.dto';
@@ -169,6 +170,15 @@ export class ClassMembershipService {
           teacher_id: dto.teacher_id,
         },
       });
+      const teacher = await this.prisma.user.findUnique({
+        where: { id: dto.teacher_id },
+      });
+      if (!teacher) {
+        throw new NotFoundException('Teacher not found');
+      }
+      if (teacher.role !== 'TEACHER') {
+        throw new UnprocessableEntityException('Only teachers can be added to classes');
+      }
 
       if (existingTeacher) {
         throw new ConflictException('Teacher is already in this class');
