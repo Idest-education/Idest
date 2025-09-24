@@ -22,4 +22,14 @@ export class AiController {
   async generateTextWithContext(@Body() body: { prompt: string }, @CurrentUser() user: User) {
     return this.aiService.generateTextWithContext(body.prompt, user);
   }
+
+  @Post('grade-writing')
+  async gradeWritingSubmission(@Body() body: { submission: string, question: string }) {
+    return this.aiService.gradeWritingSubmission(body.submission, body.question);
+  }
+
+  @Post('grade-speaking')
+  async gradeSpeakingSubmission(@Body() body: { question: string, answer: string }) {
+    return this.aiService.gradeSpeakingSubmission(body.question, body.answer);
+  }
 }

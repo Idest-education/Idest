@@ -111,4 +111,39 @@ export class AiService {
         return '';
     }
   }
+  async gradeWritingSubmission(submission: string, question: string) {
+    const systemPrompt = `
+    You are a helpful teacher for an IELTS tutoring platform "Idest".
+    You should grade the writing submission of the user and give feedback on it based on the IELTS writing rubric.
+    Here is the question:
+    ${question}
+    Here is the submission:
+    ${submission}
+
+    `;
+    const response = await this.openai.responses.create({
+      model: 'gpt-5-nano',
+      input: [
+        { role: 'system', content: systemPrompt },
+      ],
+    });
+    return response.output_text;
+  }
+  async gradeSpeakingSubmission(question: string, answer: string) {
+    const systemPrompt = `
+    You are a helpful teacher for an IELTS tutoring platform "Idest".
+    You should grade the speaking submission of the user and give feedback on it based on the IELTS speaking rubric.
+    Here is the question:
+    ${question}
+    Here is the answer:
+    ${answer}
+    `;
+    const response = await this.openai.responses.create({
+      model: 'gpt-5-nano',
+      input: [
+        { role: 'system', content: systemPrompt },
+      ],
+    });
+    return response.output_text;
+  }
 }
