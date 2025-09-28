@@ -28,6 +28,5 @@
   },
 
   "editor.inlineSuggest.enabled": true,
-
-
+  "cSpell.words": ["Supabase"]
 }

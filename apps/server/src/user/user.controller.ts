@@ -70,6 +70,34 @@ export class UserController {
     return await this.userService.getUserById(user.id);
   }
 
+  @Get('role')
+  @ApiOperation({
+    summary: 'Get current user role',
+    description:
+      "Retrieves the current authenticated user's role from the database.",
+  })
+  @ApiOkResponse({
+    description: 'Successfully retrieved user role',
+    schema: {
+      type: 'object',
+      properties: {
+        role: {
+          type: 'string',
+          enum: ['ADMIN', 'STUDENT', 'TEACHER'],
+          example: 'STUDENT',
+        },
+      },
+    },
+  })
+  @ApiNotFoundResponse({ description: 'User not found' })
+  @ApiUnauthorizedResponse({ description: 'Authentication required' })
+  @ApiInternalServerErrorResponse({ description: 'Internal server error' })
+  async getUserRole(
+    @CurrentUser() user: userPayload,
+  ): Promise<{ role: string }> {
+    return await this.userService.getUserRole(user.id);
+  }
+
   @Post()
   @ApiOperation({
     summary: 'Create user',
@@ -94,9 +122,9 @@ export class UserController {
   @Public()
   @Post('serverside-create')
   @ApiOperation({
-    summary: 'Server side user creation (skip client side supabase implementation) ',
-    description:
-      "Creates a new user account using the credentials provided.",
+    summary:
+      'Server side user creation (skip client side supabase implementation) ',
+    description: 'Creates a new user account using the credentials provided.',
   })
   @ApiOkResponse({
     description: 'User successfully created',
@@ -106,7 +134,7 @@ export class UserController {
   @ApiConflictResponse({ description: 'User already exists' })
   @ApiUnprocessableEntityResponse({ description: 'Credentials insufficient' })
   @ApiInternalServerErrorResponse({ description: 'Internal server error' })
-  async createUserWithCredentials(@Body() credentials: CredDto){
+  async createUserWithCredentials(@Body() credentials: CredDto) {
     return await this.userService.createUserWithCredentials(credentials);
   }
 

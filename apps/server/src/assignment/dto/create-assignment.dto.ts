@@ -12,21 +12,21 @@ import {
 export class CreateAssignmentDto {
   @ApiProperty({ enum: Specialization })
   @IsEnum(Specialization)
-  skill!: Specialization;
+  skill: Specialization;
 
   @ApiProperty()
   @IsString()
   @IsNotEmpty()
-  title!: string;
+  title: string;
 
   @ApiProperty()
   @IsString()
   @IsNotEmpty()
-  description!: string;
+  description: string;
 
   @ApiProperty()
   @IsBoolean()
-  is_public!: boolean;
+  is_public: boolean;
 
   @ApiPropertyOptional({ description: 'Optional class association' })
   @IsOptional()

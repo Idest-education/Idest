@@ -595,4 +595,26 @@ export class UserService {
       );
     }
   }
+
+  async getUserRole(userId: string): Promise<{ role: string }> {
+    try {
+      const user = await this.prisma.user.findUnique({
+        where: { id: userId },
+        select: { role: true },
+      });
+
+      if (!user) {
+        throw new NotFoundException(`User with ID ${userId} not found`);
+      }
+
+      return { role: user.role };
+    } catch (error) {
+      if (error instanceof NotFoundException) {
+        throw error;
+      }
+      throw new InternalServerErrorException(
+        `Error fetching user role: ${error}`,
+      );
+    }
+  }
 }
