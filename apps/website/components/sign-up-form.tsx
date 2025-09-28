@@ -43,7 +43,7 @@ export function SignUpForm({
     setError(null);
 
     if (password !== repeatPassword) {
-      setError("Passwords do not match");
+      setError("Mật khẩu không khớp");
       setIsLoading(false);
       return;
     }
@@ -58,11 +58,11 @@ export function SignUpForm({
       if (!res.ok) {
         const msg = await res.json();
         const errordata = msg.message;
-        throw new Error(errordata || `Register failed (${res.status})`);
+        throw new Error(errordata || `Đăng ký thất bại (${res.status})`);
       }
       router.push("/auth/sign-up-success");
     } catch (error: unknown) {
-      setError(error instanceof Error ? error.message : "An error occurred");
+      setError(error instanceof Error ? error.message : "Đã xảy ra lỗi");
     } finally {
       setIsLoading(false);
     }
@@ -70,90 +70,183 @@ export function SignUpForm({
 
   return (
     <div className={cn("flex flex-col gap-6", className)} {...props}>
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-2xl">Sign up</CardTitle>
-          <CardDescription>Create a new account</CardDescription>
+      {/* Background decoration */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute top-20 left-10 w-20 h-20 bg-purple-200 rounded-full opacity-20 animate-pulse"></div>
+        <div className="absolute top-40 right-20 w-16 h-16 bg-indigo-200 rounded-full opacity-20 animate-pulse" style={{animationDelay: '1s'}}></div>
+        <div className="absolute bottom-40 left-20 w-24 h-24 bg-blue-200 rounded-full opacity-20 animate-pulse" style={{animationDelay: '2s'}}></div>
+        <div className="absolute bottom-20 right-40 w-18 h-18 bg-purple-200 rounded-full opacity-20 animate-pulse" style={{animationDelay: '3s'}}></div>
+      </div>
+
+      {/* Header Logo */}
+      <div className="mb-8 text-center relative z-10">
+        <div className="flex items-center justify-center gap-3 mb-4">
+          <div className="w-16 h-16 bg-gradient-to-r from-indigo-600 to-purple-600 rounded-2xl flex items-center justify-center text-white text-2xl font-bold shadow-2xl">
+            🎓
+          </div>
+          <div className="flex flex-col">
+            <span className="text-3xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
+              EnglishMaster
+            </span>
+            <span className="text-sm text-gray-500 font-medium">
+              Learn • Practice • Excel
+            </span>
+          </div>
+        </div>
+        <p className="text-gray-600 text-lg">
+          Bắt đầu hành trình học tiếng Anh! 🚀
+        </p>
+      </div>
+
+      {/* Sign Up Card */}
+      <Card className="w-full max-w-md bg-white/80 backdrop-blur-sm border-indigo-100 shadow-2xl relative z-10">
+        <CardHeader className="text-center pb-4">
+          <CardTitle className="text-2xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
+            Đăng ký tài khoản
+          </CardTitle>
+          <CardDescription className="text-gray-600">
+            Tạo tài khoản mới để khám phá thế giới tiếng Anh
+          </CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSignUp}>
-            <div className="flex flex-col gap-6">
-              <div className="grid gap-2">
-                <Label htmlFor="email">Email</Label>
+            <div className="flex flex-col gap-4">
+              <div className="grid gap-3">
+                <Label htmlFor="email" className="text-gray-700 font-medium">
+                  📧 Email
+                </Label>
                 <Input
                   id="email"
                   type="email"
-                  placeholder="m@example.com"
+                  placeholder="your-email@example.com"
                   required
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
+                  className="h-11 text-gray-700 border-indigo-200 focus:border-indigo-500 focus:ring-indigo-500 bg-white/50 backdrop-blur-sm transition-all duration-200"
                 />
               </div>
 
-              <div className="grid gap-2">
-                <div className="flex items-center">
-                  <Label htmlFor="fullName">Fullname</Label>
-                </div>
+              <div className="grid gap-3">
+                <Label htmlFor="fullName" className="text-gray-700 font-medium">
+                  👤 Họ và tên
+                </Label>
                 <Input
                   id="fullName"
-                  type="fullName"
+                  type="text"
+                  placeholder="Nguyễn Văn A"
                   required
                   value={fullName}
                   onChange={(e) => setFullName(e.target.value)}
+                  className="h-11 text-gray-700 border-indigo-200 focus:border-indigo-500 focus:ring-indigo-500 bg-white/50 backdrop-blur-sm transition-all duration-200"
                 />
               </div>
 
-              <div className="grid gap-2">
-                <Label htmlFor="role">Role</Label>
+              <div className="grid gap-3">
+                <Label htmlFor="role" className="text-gray-700 font-medium">
+                  🎯 Vai trò
+                </Label>
                 <Select onValueChange={(val) => setRole(val as "student" | "teacher")}>
-                  <SelectTrigger id="role" className="w-full">
-                    <SelectValue placeholder="Select your role" />
+                  <SelectTrigger id="role" className="h-11 border-indigo-200 focus:border-indigo-500 focus:ring-indigo-500 bg-white/50 backdrop-blur-sm">
+                    <SelectValue placeholder="Chọn vai trò của bạn" />
                   </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="STUDENT">Student</SelectItem>
-                    <SelectItem value="TEACHER">Teacher</SelectItem>
+                  <SelectContent className="bg-white/95 backdrop-blur-sm border-indigo-100">
+                    <SelectItem value="STUDENT" className="hover:bg-indigo-50">
+                      <div className="flex text-gray-700 items-center gap-2">
+                        <span>👨‍🎓</span>
+                        <span>Học viên</span>
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="TEACHER" className="hover:bg-purple-50">
+                      <div className="flex text-gray-700 items-center gap-2">
+                        <span>👨‍🏫</span>
+                        <span>Giáo viên</span>
+                      </div>
+                    </SelectItem>
                   </SelectContent>
                 </Select>
               </div>
 
-              <div className="grid gap-2">
-                <div className="flex items-center">
-                  <Label htmlFor="password">Password</Label>
-                </div>
+              <div className="grid gap-3">
+                <Label htmlFor="password" className="text-gray-700 font-medium">
+                  🔒 Mật khẩu
+                </Label>
                 <Input
                   id="password"
                   type="password"
+                  placeholder="••••••••"
                   required
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
+                  className="h-11 text-gray-700 border-indigo-200 focus:border-indigo-500 focus:ring-indigo-500 bg-white/50 backdrop-blur-sm transition-all duration-200"
                 />
               </div>
-              <div className="grid gap-2">
-                <div className="flex items-center">
-                  <Label htmlFor="repeat-password">Repeat Password</Label>
-                </div>
+
+              <div className="grid gap-3">
+                <Label htmlFor="repeat-password" className="text-gray-700 font-medium">
+                  🔐 Xác nhận mật khẩu
+                </Label>
                 <Input
                   id="repeat-password"
                   type="password"
+                  placeholder="••••••••"
                   required
                   value={repeatPassword}
                   onChange={(e) => setRepeatPassword(e.target.value)}
+                  className="h-11 text-gray-700 border-indigo-200 focus:border-indigo-500 focus:ring-indigo-500 bg-white/50 backdrop-blur-sm transition-all duration-200"
                 />
               </div>
-              {error && <p className="text-sm text-red-500">{error}</p>}
-              <Button type="submit" className="w-full" disabled={isLoading}>
-                {isLoading ? "Creating an account..." : "Sign up"}
+
+              {error && (
+                <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
+                  <p className="text-sm text-red-600 flex items-center gap-2">
+                    <span>⚠️</span>
+                    {error}
+                  </p>
+                </div>
+              )}
+
+              <Button 
+                type="submit" 
+                className="w-full h-11 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white font-semibold rounded-lg shadow-lg hover:shadow-xl transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed" 
+                disabled={isLoading}
+              >
+                {isLoading ? (
+                  <div className="flex items-center gap-2">
+                    <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                    <span>Đang tạo tài khoản...</span>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-2">
+                    <span>🎉</span>
+                    <span>Tạo tài khoản</span>
+                  </div>
+                )}
               </Button>
             </div>
-            <div className="mt-4 text-center text-sm">
-              Already have an account?{" "}
-              <Link href="/auth/login" className="underline underline-offset-4">
-                Login
-              </Link>
+
+            {/* Sign in link */}
+            <div className="mt-6 text-center">
+              <p className="text-gray-600">
+                Đã có tài khoản?{" "}
+                <Link
+                  href="/auth/login"
+                  className="font-semibold text-indigo-600 hover:text-purple-600 hover:underline underline-offset-4 transition-colors duration-200"
+                >
+                  Đăng nhập ngay
+                </Link>
+              </p>
             </div>
           </form>
         </CardContent>
       </Card>
+
+      {/* Floating elements */}
+      <div className="absolute top-10 right-10 opacity-30 animate-bounce" style={{animationDelay: '0.5s'}}>
+        <div className="text-4xl">🎓</div>
+      </div>
+      <div className="absolute bottom-10 left-10 opacity-30 animate-bounce" style={{animationDelay: '1.5s'}}>
+        <div className="text-4xl">📝</div>
+      </div>
     </div>
   );
 }
