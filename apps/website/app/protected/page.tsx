@@ -26,14 +26,14 @@ export default async function ProtectedPage() {
     : null;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background via-background to-secondary/20">
+    <div className="min-h-screen">
       <div className="container mx-auto px-4 max-w-6xl">
         {/* Header Section */}
         <div className="text-center mb-12">
           <div className="inline-flex items-center justify-center w-16 h-16 bg-green-500/10 rounded-full mb-4">
             <ShieldCheckIcon className="w-8 h-8 text-green-600" />
           </div>
-          <h1 className="text-4xl font-bold bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text text-transparent mb-2">
+          <h1 className="text-4xl font-bold bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text text-black mb-2">
             Protected Dashboard
           </h1>
           <p className="text-muted-foreground text-lg">
@@ -78,7 +78,7 @@ export default async function ProtectedPage() {
               
               <div className="flex justify-between items-center py-3 border-b border-border/50">
                 <span className="text-muted-foreground font-medium">Email</span>
-                <span className="font-medium">{user.email}</span>
+                <span className="font-medium">{user.user_metadata.role}</span>
               </div>
             </div>
           </div>
@@ -152,7 +152,8 @@ export default async function ProtectedPage() {
   }, 
   expiresAt,
   tokenType: session.token_type,
-  refreshToken: session.refresh_token ? '[HIDDEN FOR SECURITY]' : null
+  refreshToken: session.refresh_token ? '[HIDDEN FOR SECURITY]' : null,
+  session
 }, null, 2)}
             </pre>
           </div>

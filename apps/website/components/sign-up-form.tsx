@@ -49,15 +49,16 @@ export function SignUpForm({
     }
 
     try {
-      const res = await fetch("https://ie-backend.fly.dev/user/serverside-create", {
+      const res = await fetch("http://localhost:8000/user/serverside-create", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, password, fullName, role }),
       });
 
       if (!res.ok) {
-        const msg = await res.text();
-        throw new Error(msg || `Register failed (${res.status})`);
+        const msg = await res.json();
+        const errordata = msg.message;
+        throw new Error(errordata || `Register failed (${res.status})`);
       }
       router.push("/auth/sign-up-success");
     } catch (error: unknown) {
