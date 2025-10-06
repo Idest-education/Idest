@@ -3,6 +3,8 @@ import { MongooseModule } from '@nestjs/mongoose';
 import { JwtModule } from '@nestjs/jwt';
 import { Assignment, AssignmentSchema } from './schemas/assignment.schema';
 import { JwtAuthGuard } from '../guards/jwt-auth.guard';
+import { AssignmentController } from './assignment.controller';
+import { AssignmentService } from './assignment.service';
 import { ReadingModule } from './reading/reading.module';
 import { ListeningModule } from './listening/listening.module';
 import { WritingModule } from './writing/writing.module';
@@ -22,8 +24,8 @@ import { SpeakingModule } from './speaking/speaking.module';
     WritingModule,
     SpeakingModule,
   ],
-  controllers: [],
-  providers: [JwtAuthGuard],
-  exports: [],
+  controllers: [AssignmentController],
+  providers: [JwtAuthGuard, AssignmentService],
+  exports: [AssignmentService],
 })
 export class AssignmentModule {}

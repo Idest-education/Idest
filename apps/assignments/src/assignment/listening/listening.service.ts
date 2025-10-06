@@ -4,7 +4,7 @@ import { Model } from 'mongoose';
 import { Assignment, AssignmentDocument } from '../schemas/assignment.schema';
 import { CreateAssignmentDto } from '../dto/create-assignment.dto';
 import { UpdateAssignmentDto } from '../dto/update-assignment.dto';
-import { generateSlugFromTitle } from '../utils/slug.util';
+import { generateUniqueSlug } from '../utils/slug.util';
 
 @Injectable()
 export class ListeningService {
@@ -25,7 +25,7 @@ export class ListeningService {
     this.assertListeningSections(dto.sections);
     const data = {
       ...dto,
-      slug: dto.slug ?? generateSlugFromTitle(dto.title),
+      slug: dto.slug ?? await generateUniqueSlug(dto.title, this.assignmentModel),
       skill: 'listening',
     } as any;
     const created = new this.assignmentModel(data);

@@ -6,7 +6,7 @@ import { CreateAssignmentDto } from '../dto/create-assignment.dto';
 import { UpdateAssignmentDto } from '../dto/update-assignment.dto';
 import { WritingSubmission, WritingSubmissionDocument } from './schemas/writing-submission.schema';
 import { CreateWritingSubmissionDto } from './dto/create-writing-submission.dto';
-import { generateSlugFromTitle } from '../utils/slug.util';
+import { generateUniqueSlug } from '../utils/slug.util';
 
 @Injectable()
 export class WritingService {
@@ -20,7 +20,7 @@ export class WritingService {
   async createAssignment(dto: CreateAssignmentDto) {
     const data = {
       ...dto,
-      slug: dto.slug ?? generateSlugFromTitle(dto.title),
+      slug: dto.slug ?? await generateUniqueSlug(dto.title, this.assignmentModel),
       skill: 'writing',
     } as any;
     const created = new this.assignmentModel(data);

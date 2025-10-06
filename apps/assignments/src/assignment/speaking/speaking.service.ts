@@ -8,7 +8,7 @@ import { SpeakingAssignment, SpeakingAssignmentDocument } from './schemas/speaki
 import { SpeakingResponse, SpeakingResponseDocument } from './schemas/speaking-response.schema';
 import { CreateSpeakingResponseDto } from './dto/create-speaking-response.dto';
 import { CreateSpeakingAssignmentDto } from './dto/create-speaking-assignment.dto';
-import { generateSlugFromTitle } from '../utils/slug.util';
+import { generateUniqueSlug } from '../utils/slug.util';
 
 @Injectable()
 export class SpeakingService {
@@ -25,7 +25,7 @@ export class SpeakingService {
     const data = { ...dto, skill: 'speaking' } as any;
     const created = new this.assignmentModel({
       ...data,
-      slug: data.slug ?? generateSlugFromTitle(data.title),
+      slug: data.slug ?? await generateUniqueSlug(data.title, this.assignmentModel),
     });
     const saved = await created.save();
     // Also persist an empty SpeakingAssignment shell tied to this assignment id

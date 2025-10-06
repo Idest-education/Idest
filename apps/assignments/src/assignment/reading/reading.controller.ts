@@ -18,7 +18,7 @@ export class ReadingController {
   async create(@Body() dto: CreateAssignmentDto, @Req() req: any) {
     const data = await this.readingService.createAssignment({
       ...dto,
-      created_by: req.user?.sub || req.user?.userId,
+      created_by: (dto as any).created_by || req.user?.sub || req.user?.userId,
       slug: undefined as any,
     });
     return { status: true, message: 'Created', data, statusCode: HttpStatus.CREATED };
