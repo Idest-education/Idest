@@ -2,9 +2,10 @@ import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { IsString, IsUUID, IsOptional, IsNumber } from 'class-validator';
 
 export class CreateSpeakingResponseDto {
-  @ApiProperty()
+  @ApiPropertyOptional()
+  @IsOptional()
   @IsUUID()
-  id: string;
+  id?: string;
 
   @ApiProperty()
   @IsString()
@@ -15,17 +16,23 @@ export class CreateSpeakingResponseDto {
   user_id: string;
 
   @ApiProperty()
-  @IsNumber()
-  part_number: number;
-
-  @ApiProperty()
   @IsString()
   audio_url: string;
 
   @ApiPropertyOptional()
   @IsOptional()
   @IsString()
-  transcript?: string;
+  transcriptOne?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  transcriptTwo?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  transcriptThree?: string;
 
 }
 

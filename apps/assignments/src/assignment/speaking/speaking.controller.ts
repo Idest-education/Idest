@@ -1,8 +1,8 @@
-import { Controller, Get, Post, Patch, Delete, Param, Body, HttpStatus, UseGuards, Req } from '@nestjs/common';
+import { Controller, Get, Post, Patch, Delete, Param, Body, HttpStatus, UseGuards } from '@nestjs/common';
 import { ApiTags, ApiBearerAuth, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { SpeakingService } from './speaking.service';
-import { CreateAssignmentDto } from '../dto/create-assignment.dto';
-import { UpdateAssignmentDto } from '../dto/update-assignment.dto';
+import { CreateSpeakingAssignmentDto } from './dto/create-speaking-assignment.dto';
+import { UpdateSpeakingAssignmentDto } from './dto/update-speaking-assignment.dto';
 import { CreateSpeakingResponseDto } from './dto/create-speaking-response.dto';
 import { JwtAuthGuard } from '../../guards/jwt-auth.guard';
 
@@ -16,12 +16,8 @@ export class SpeakingController {
   @Post('assignments')
   @ApiOperation({ summary: 'Create speaking assignment' })
   @ApiResponse({ status: HttpStatus.CREATED })
-  async create(@Body() dto: CreateAssignmentDto, @Req() req: any) {
-    const data = await this.speakingService.createAssignment({
-      ...dto,
-      created_by: req.user?.sub || req.user?.userId,
-      slug: undefined as any,
-    });
+  async create(@Body() dto: CreateSpeakingAssignmentDto) {
+    const data = await this.speakingService.createAssignment(dto);
     return { status: true, message: 'Created', data, statusCode: HttpStatus.CREATED };
   }
 
@@ -44,7 +40,7 @@ export class SpeakingController {
   @Patch('assignments/:id')
   @ApiOperation({ summary: 'Update speaking assignment' })
   @ApiResponse({ status: HttpStatus.OK })
-  async update(@Param('id') id: string, @Body() dto: UpdateAssignmentDto) {
+  async update(@Param('id') id: string, @Body() dto: UpdateSpeakingAssignmentDto) {
     const data = await this.speakingService.update(id, dto);
     return { status: true, message: 'Updated', data, statusCode: HttpStatus.OK };
   }
@@ -63,6 +59,30 @@ export class SpeakingController {
   async submitResponse(@Body() dto: CreateSpeakingResponseDto) {
     const data = await this.speakingService.submitResponse(dto);
     return { status: true, message: 'Submitted', data, statusCode: HttpStatus.CREATED };
+  }
+
+  @Get('responses')
+  @ApiOperation({ summary: 'Get all speaking responses' })
+  @ApiResponse({ status: HttpStatus.OK })
+  async getAllResponses() {
+    const data = await this.speakingService.getAllResponses();
+    return { status: true, message: 'Fetched', data, statusCode: HttpStatus.OK };
+  }
+
+  @Get('responses/user/:userId')
+  @ApiOperation({ summary: 'Get user speaking responses' })
+  @ApiResponse({ status: HttpStatus.OK })
+  async getUserResponses(@Param('userId') userId: string) {
+    const data = await this.speakingService.getUserResponses(userId);
+    return { status: true, message: 'Fetched', data, statusCode: HttpStatus.OK };
+  }
+
+  @Get('responses/assignment/:assignmentId')
+  @ApiOperation({ summary: 'Get all responses for a speaking assignment' })
+  @ApiResponse({ status: HttpStatus.OK })
+  async getAssignmentResponses(@Param('assignmentId') assignmentId: string) {
+    const data = await this.speakingService.getAssignmentResponses(assignmentId);
+    return { status: true, message: 'Fetched', data, statusCode: HttpStatus.OK };
   }
 
   @Get('responses/:id')

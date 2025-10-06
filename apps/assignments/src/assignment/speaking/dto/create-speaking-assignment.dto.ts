@@ -1,5 +1,5 @@
-import { ApiProperty } from '@nestjs/swagger';
-import { IsString, IsNumber, IsIn, ValidateNested, IsArray, IsUUID, IsOptional } from 'class-validator';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { IsString, IsNumber, IsIn, ValidateNested, IsArray, IsOptional } from 'class-validator';
 import { Type } from 'class-transformer';
 
 export class CreateSpeakingQuestionDto {
@@ -18,9 +18,6 @@ export class CreateSpeakingPartDto {
   @IsIn([1, 2, 3])
   part_number: number;
 
-  @ApiProperty()
-  @IsString()
-  description: string;
 
   @ApiProperty({ type: [CreateSpeakingQuestionDto] })
   @IsArray()
@@ -30,10 +27,10 @@ export class CreateSpeakingPartDto {
 }
 
 export class CreateSpeakingAssignmentDto {
-  @ApiProperty({ required: false })
-  @IsUUID()
-  @IsOptional()
-  id?: string;
+  @ApiProperty()
+  @IsString()
+  title: string;
+
 
   @ApiProperty({ type: [CreateSpeakingPartDto] })
   @IsArray()

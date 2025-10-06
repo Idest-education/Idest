@@ -16,16 +16,22 @@ export class SpeakingResponse {
   user_id: string;
 
   @Prop({ required: true })
-  part_number: number;
-
-  @Prop({ required: true })
   audio_url: string;
 
   @Prop()
-  transcript?: string;
+  transcriptOne?: string;
+
+  @Prop()
+  transcriptTwo?: string;
+
+  @Prop()
+  transcriptThree?: string;
 
   @Prop()
   score?: number;
+
+  @Prop()
+  feedback?: string;
 
   @Prop({ default: Date.now })
   created_at: Date;

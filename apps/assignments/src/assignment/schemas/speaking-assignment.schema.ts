@@ -20,8 +20,6 @@ export class SpeakingPart {
   @Prop({ required: true })
   part_number: number;
 
-  @Prop({ required: true })
-  description: string;
 
   @Prop({ type: [SpeakingQuestionSchema], default: [] })
   questions: SpeakingQuestion[];
@@ -29,15 +27,31 @@ export class SpeakingPart {
 
 export const SpeakingPartSchema = SchemaFactory.createForClass(SpeakingPart);
 
-@Schema()
+@Schema({ timestamps: { createdAt: 'created_at', updatedAt: false } })
 export class SpeakingAssignment {
-  @Prop({ required: true, default: uuidv4 })
-  id: string;
+  @Prop({ type: String, default: () => uuidv4() })
+  _id: string;
+
+  @Prop({ required: true })
+  title: string;
+
 
   @Prop({ type: [SpeakingPartSchema], default: [] })
   parts: SpeakingPart[];
 }
 
 export const SpeakingAssignmentSchema = SchemaFactory.createForClass(SpeakingAssignment);
+
+SpeakingAssignmentSchema.virtual('id').get(function () {
+  return this._id;
+});
+
+SpeakingAssignmentSchema.set('toJSON', {
+  virtuals: true,
+  transform: (_, ret: any) => {
+    delete ret.__v;
+    return ret;
+  },
+});
 
 

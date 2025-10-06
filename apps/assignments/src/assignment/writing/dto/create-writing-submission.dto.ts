@@ -17,7 +17,11 @@ export class CreateWritingSubmissionDto {
 
   @ApiProperty()
   @IsString()
-  content: string;
+  contentOne: string;
+
+  @ApiProperty()
+  @IsString()
+  contentTwo: string;
 
 
 }

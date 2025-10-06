@@ -16,10 +16,16 @@ export class WritingSubmission {
   user_id: string;
 
   @Prop({ required: true })
-  content: string;
+  contentOne: string;
+
+  @Prop({ required: true })
+  contentTwo: string;
 
   @Prop()
   score?: number;
+
+  @Prop()
+  feedback?: string;
 
   @Prop({ default: Date.now })
   created_at: Date;
