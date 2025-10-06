@@ -1,182 +1,292 @@
 import {
-  Injectable,
-  NotFoundException,
+  BadRequestException,
+  ConflictException,
   ForbiddenException,
+  Injectable,
+  InternalServerErrorException,
+  NotFoundException,
+  UnauthorizedException,
+  UnprocessableEntityException,
 } from '@nestjs/common';
+import { CreateAssignmentDto } from './dto/create-assignment.dto';
+import { FindAssignmentDto } from './dto/find-assignment.dto';
+import { DeleteAssignmentDto } from './dto/delete-assignment.dto';
 import { PrismaService } from 'src/prisma/prisma.service';
-import { userPayload } from 'src/common/types/userPayload.interface';
-import { CreateAssignmentDto } from 'src/assignment/dto/create-assignment.dto';
-import { UpdateAssignmentDto } from 'src/assignment/dto/update-assignment.dto';
-import { AssignmentResponseDto } from 'src/assignment/dto/assignment-response.dto';
-import { generateUniqueAssignmentSlug } from 'src/assignment/assignment.util';
-import { checkClassManagementPermission } from 'src/class/class.util';
+import { HttpService } from '@nestjs/axios';
+import { ConfigService } from '@nestjs/config';
+import { firstValueFrom } from 'rxjs';
+
+interface ApiResponse {
+  status: boolean;
+  message: string;
+  data?: any;
+  statusCode?: number;
+}
 
 @Injectable()
 export class AssignmentService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly httpService: HttpService,
+    private readonly configService: ConfigService,
+  ) {}
 
-  async createAssignment(
-    user: userPayload,
-    dto: CreateAssignmentDto,
-  ): Promise<AssignmentResponseDto> {
-    if (dto.class_id) {
-      const canManage = await checkClassManagementPermission(
-        dto.class_id,
-        user.id,
-        this.prisma,
-      );
-      if (!canManage) throw new ForbiddenException('No permission for class');
-    }
+  async create(createAssignmentDto: CreateAssignmentDto) {
+    try {
+      const assignmentUrl = this.configService.get<string>('ASSIGNMENT_URL');
 
-    const slug = await generateUniqueAssignmentSlug(dto.title, this.prisma);
-
-    const created = await this.prisma.assignment.create({
-      data: {
-        created_by: user.id,
-        class_id: dto.class_id ?? null,
-        skill: dto.skill,
-        title: dto.title,
-        slug,
-        description: dto.description,
-        is_public: dto.is_public,
-      },
-    });
-
-    return this.toResponseDto(created);
-  }
-
-  async updateAssignment(
-    id: string,
-    user: userPayload,
-    dto: UpdateAssignmentDto,
-  ): Promise<AssignmentResponseDto> {
-    const existing = await this.prisma.assignment.findUnique({ where: { id } });
-    if (!existing) throw new NotFoundException('Assignment not found');
-    if (existing.created_by !== user.id) {
-      throw new ForbiddenException('Only creator can update assignment');
-    }
-
-    let newSlug: string | undefined;
-    if (dto.title && dto.title !== existing.title) {
-      newSlug = await generateUniqueAssignmentSlug(dto.title, this.prisma);
-    }
-
-    const updated = await this.prisma.assignment.update({
-      where: { id },
-      data: {
-        class_id: dto.class_id !== undefined ? dto.class_id : undefined,
-        skill: dto.skill !== undefined ? dto.skill : undefined,
-        title: dto.title !== undefined ? dto.title : undefined,
-        slug: newSlug,
-        description:
-          dto.description !== undefined ? dto.description : undefined,
-        is_public: dto.is_public !== undefined ? dto.is_public : undefined,
-      },
-    });
-
-    return this.toResponseDto(updated);
-  }
-
-  async deleteAssignment(id: string, user: userPayload): Promise<void> {
-    const existing = await this.prisma.assignment.findUnique({ where: { id } });
-    if (!existing) throw new NotFoundException('Assignment not found');
-    if (existing.created_by !== user.id) {
-      throw new ForbiddenException('Only creator can delete assignment');
-    }
-    await this.prisma.assignment.delete({ where: { id } });
-  }
-
-  async getAssignments(params: {
-    user?: userPayload;
-    class_id?: string;
-    creator_id?: string;
-    is_public?: boolean;
-    q?: string;
-  }): Promise<AssignmentResponseDto[]> {
-    const { user, class_id, creator_id, is_public, q } = params;
-
-    if (class_id && user) {
-      const hasAccess = await checkClassManagementPermission(
-        class_id,
-        user.id,
-        this.prisma,
-      );
-      if (!hasAccess) throw new ForbiddenException('No access to class');
-    }
-
-    const assignments = await this.prisma.assignment.findMany({
-      where: {
-        class_id: class_id ?? undefined,
-        created_by: creator_id ?? undefined,
-        is_public: is_public ?? undefined,
-        OR: q
-          ? [
-              { title: { contains: q, mode: 'insensitive' } },
-              { description: { contains: q, mode: 'insensitive' } },
-            ]
-          : undefined,
-      },
-      orderBy: { created_at: 'desc' },
-    });
-
-    return assignments.map((a) => this.toResponseDto(a));
-  }
-
-  async getAssignmentById(
-    id: string,
-    user?: userPayload,
-  ): Promise<AssignmentResponseDto> {
-    const a = await this.prisma.assignment.findUnique({ where: { id } });
-    if (!a) throw new NotFoundException('Assignment not found');
-    if (!a.is_public) {
-      if (!user) throw new ForbiddenException('Authentication required');
-      if (a.created_by !== user.id) {
-        const canAccess = a.class_id
-          ? await checkClassManagementPermission(
-              a.class_id,
-              user.id,
-              this.prisma,
-            )
-          : false;
-        if (!canAccess) throw new ForbiddenException('No access');
+      if (!assignmentUrl) {
+        throw new InternalServerErrorException(
+          'ASSIGNMENT_URL is not configured in environment variables',
+        );
       }
-    }
-    return this.toResponseDto(a);
-  }
 
-  async getAssignmentBySlug(
-    slug: string,
-    user?: userPayload,
-  ): Promise<AssignmentResponseDto> {
-    const a = await this.prisma.assignment.findUnique({ where: { slug } });
-    if (!a) throw new NotFoundException('Assignment not found');
-    if (!a.is_public) {
-      if (!user) throw new ForbiddenException('Authentication required');
-      if (a.created_by !== user.id) {
-        const canAccess = a.class_id
-          ? await checkClassManagementPermission(
-              a.class_id,
-              user.id,
-              this.prisma,
-            )
-          : false;
-        if (!canAccess) throw new ForbiddenException('No access');
+      const { skill } = createAssignmentDto;
+      const url = `${assignmentUrl}/${skill}/assignments`;
+
+      const response = await firstValueFrom(
+        this.httpService.post<ApiResponse>(url, createAssignmentDto),
+      );
+
+      const { status, message, data, statusCode } = response.data;
+
+      if (status === true) {
+        return data;
       }
+
+      this.throwExceptionByStatusCode(statusCode || 500, message);
+    } catch (error) {
+      if (
+        error instanceof BadRequestException ||
+        error instanceof UnauthorizedException ||
+        error instanceof ForbiddenException ||
+        error instanceof NotFoundException ||
+        error instanceof ConflictException ||
+        error instanceof UnprocessableEntityException ||
+        error instanceof InternalServerErrorException
+      ) {
+        throw error;
+      }
+
+      if (error.response) {
+        const { status, message, data, statusCode } = error.response.data;
+        if (status === false) {
+          this.throwExceptionByStatusCode(
+            statusCode || error.response.status,
+            message || 'External API error',
+          );
+        }
+      }
+
+      throw new InternalServerErrorException(
+        `Failed to create assignment: ${error.message || error}`,
+      );
     }
-    return this.toResponseDto(a);
   }
 
-  private toResponseDto(a: any): AssignmentResponseDto {
-    return {
-      id: a.id,
-      created_by: a.created_by,
-      class_id: a.class_id ?? '',
-      skill: a.skill,
-      title: a.title,
-      slug: a.slug,
-      description: a.description,
-      is_public: a.is_public,
-      created_at: a.created_at,
-    };
+  async findAll(findAssignmentDto: FindAssignmentDto) {
+    try {
+      const assignmentUrl = this.configService.get<string>('ASSIGNMENT_URL');
+
+      if (!assignmentUrl) {
+        throw new InternalServerErrorException(
+          'ASSIGNMENT_URL is not configured in environment variables',
+        );
+      }
+
+      const { skill, id } = findAssignmentDto;
+
+      let url: string;
+
+      if (skill && id) {
+        url = `${assignmentUrl}/${skill}/assignment/${id}`;
+      } else if (skill) {
+        url = `${assignmentUrl}/${skill}/assignment`;
+      } else if (id) {
+        url = `${assignmentUrl}/assignment/${id}`;
+      } else {
+        url = `${assignmentUrl}/assignments`;
+      }
+
+      const response = await firstValueFrom(
+        this.httpService.get<ApiResponse>(url),
+      );
+
+      const { status, message, data, statusCode } = response.data;
+
+      if (status === true) {
+        return data;
+      }
+
+      this.throwExceptionByStatusCode(statusCode || 500, message);
+    } catch (error) {
+      if (
+        error instanceof BadRequestException ||
+        error instanceof UnauthorizedException ||
+        error instanceof ForbiddenException ||
+        error instanceof NotFoundException ||
+        error instanceof ConflictException ||
+        error instanceof UnprocessableEntityException ||
+        error instanceof InternalServerErrorException
+      ) {
+        throw error;
+      }
+
+      if (error.response) {
+        const { status, message, data, statusCode } = error.response.data;
+        if (status === false) {
+          this.throwExceptionByStatusCode(
+            statusCode || error.response.status,
+            message || 'External API error',
+          );
+        }
+      }
+
+      throw new InternalServerErrorException(
+        `Failed to fetch assignments: ${error.message || error}`,
+      );
+    }
+  }
+
+  async update(id: string, createAssignmentDto: CreateAssignmentDto) {
+    try {
+      const assignmentUrl = this.configService.get<string>('ASSIGNMENT_URL');
+
+      if (!assignmentUrl) {
+        throw new InternalServerErrorException(
+          'ASSIGNMENT_URL is not configured in environment variables',
+        );
+      }
+
+      const { skill } = createAssignmentDto;
+      const url = `${assignmentUrl}/${skill}/assignment/${id}`;
+
+      const response = await firstValueFrom(
+        this.httpService.patch<ApiResponse>(url, createAssignmentDto),
+      );
+
+      const { status, message, data, statusCode } = response.data;
+
+      if (status === true) {
+        return data;
+      }
+
+      this.throwExceptionByStatusCode(statusCode || 500, message);
+    } catch (error) {
+      if (
+        error instanceof BadRequestException ||
+        error instanceof UnauthorizedException ||
+        error instanceof ForbiddenException ||
+        error instanceof NotFoundException ||
+        error instanceof ConflictException ||
+        error instanceof UnprocessableEntityException ||
+        error instanceof InternalServerErrorException
+      ) {
+        throw error;
+      }
+
+      if (error.response) {
+        const { status, message, data, statusCode } = error.response.data;
+        if (status === false) {
+          this.throwExceptionByStatusCode(
+            statusCode || error.response.status,
+            message || 'External API error',
+          );
+        }
+      }
+
+      throw new InternalServerErrorException(
+        `Failed to update assignment: ${error.message || error}`,
+      );
+    }
+  }
+
+  async remove(deleteAssignmentDto: DeleteAssignmentDto) {
+    try {
+      const assignmentUrl = this.configService.get<string>('ASSIGNMENT_URL');
+
+      if (!assignmentUrl) {
+        throw new InternalServerErrorException(
+          'ASSIGNMENT_URL is not configured in environment variables',
+        );
+      }
+
+      const { skill, id } = deleteAssignmentDto;
+
+      let url: string;
+
+      if (skill) {
+        url = `${assignmentUrl}/${skill}/assignment/${id}`;
+      } else {
+        url = `${assignmentUrl}/assignment/${id}`;
+      }
+
+      const response = await firstValueFrom(
+        this.httpService.delete<ApiResponse>(url),
+      );
+
+      const { status, message, data, statusCode } = response.data;
+
+      if (status === true) {
+        return data;
+      }
+
+      this.throwExceptionByStatusCode(statusCode || 500, message);
+    } catch (error) {
+      if (
+        error instanceof BadRequestException ||
+        error instanceof UnauthorizedException ||
+        error instanceof ForbiddenException ||
+        error instanceof NotFoundException ||
+        error instanceof ConflictException ||
+        error instanceof UnprocessableEntityException ||
+        error instanceof InternalServerErrorException
+      ) {
+        throw error;
+      }
+
+      if (error.response) {
+        const { status, message, data, statusCode } = error.response.data;
+        if (status === false) {
+          this.throwExceptionByStatusCode(
+            statusCode || error.response.status,
+            message || 'External API error',
+          );
+        }
+      }
+
+      throw new InternalServerErrorException(
+        `Failed to delete assignment: ${error.message || error}`,
+      );
+    }
+  }
+
+  private throwExceptionByStatusCode(
+    statusCode: number,
+    message: string,
+  ): never {
+    switch (statusCode) {
+      case 400:
+        throw new BadRequestException(message);
+      case 401:
+        throw new UnauthorizedException(message);
+      case 403:
+        throw new ForbiddenException(message);
+      case 404:
+        throw new NotFoundException(message);
+      case 409:
+        throw new ConflictException(message);
+      case 422:
+        throw new UnprocessableEntityException(message);
+      case 500:
+      case 502:
+      case 503:
+      case 504:
+        throw new InternalServerErrorException(message);
+      default:
+        throw new InternalServerErrorException(
+          message || `Unexpected error with status code: ${statusCode}`,
+        );
+    }
   }
 }
