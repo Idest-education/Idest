@@ -24,7 +24,6 @@ export class GradeService {
 
   async speechToText(file: Express.Multer.File) {
     console.log(file);
-    console.log("calling speech to text");
     
     const uint8Array = new Uint8Array(file.buffer);
     const blob = new Blob([uint8Array], { type: file.mimetype });
@@ -35,6 +34,7 @@ export class GradeService {
     const response = await this.openai.audio.transcriptions.create({
       file: audioFile,
       model: 'whisper-1',
+      language: 'en',
     });
     console.log(response);
     return response.text;

@@ -7,6 +7,9 @@ import { CreateSpeakingResponseDto } from './dto/create-speaking-response.dto';
 import { CreateSpeakingAssignmentDto } from './dto/create-speaking-assignment.dto';
 import { UpdateSpeakingAssignmentDto } from './dto/update-speaking-assignment.dto';
 import { GradeService } from '../../grade/grade.service';
+import { SupabaseService } from '../../supabase/supabase.service';
+import { concatenateAudioFiles, getExtensionFromMimetype } from '../utils/audio.util';
+import { v4 as uuidv4 } from 'uuid';
 
 @Injectable()
 export class SpeakingService {
@@ -16,6 +19,7 @@ export class SpeakingService {
     @InjectModel(SpeakingResponse.name)
     private speakingResponseModel: Model<SpeakingResponseDocument>,
     private gradeService: GradeService,
+    private supabaseService: SupabaseService,
   ) {}
 
   async createAssignment(dto: CreateSpeakingAssignmentDto) {
@@ -41,14 +45,72 @@ export class SpeakingService {
     return this.speakingAssignmentModel.findOneAndDelete({ _id: id }).exec();
   }
 
-  async submitResponse(dto: CreateSpeakingResponseDto) {
+  async submitResponse(
+    dto: CreateSpeakingResponseDto,
+    files: {
+      audioOne?: Express.Multer.File[],
+      audioTwo?: Express.Multer.File[],
+      audioThree?: Express.Multer.File[],
+    },
+  ) {
     const assignment = await this.speakingAssignmentModel.findOne({ _id: dto.assignment_id }).exec();
     if (!assignment) throw new BadRequestException('assignment_id must reference a speaking assignment');
     
+    const submissionId = dto.id || uuidv4();
+    
+    let transcriptOne: string | undefined;
+    let transcriptTwo: string | undefined;
+    let transcriptThree: string | undefined;
     let score: number | undefined;
     let feedback: string | undefined;
+    let audioUrl: string | undefined;
     
-    if (dto.transcriptOne || dto.transcriptTwo || dto.transcriptThree) {
+    const audioFiles: Express.Multer.File[] = [];
+    
+    if (files.audioOne?.[0]) {
+      console.log('Transcribing Part 1 audio...');
+      audioFiles.push(files.audioOne[0]);
+      transcriptOne = await this.gradeService.speechToText(files.audioOne[0]);
+      console.log('Part 1 transcript:', transcriptOne);
+    }
+    
+    if (files.audioTwo?.[0]) {
+      console.log('Transcribing Part 2 audio...');
+      audioFiles.push(files.audioTwo[0]);
+      transcriptTwo = await this.gradeService.speechToText(files.audioTwo[0]);
+      console.log('Part 2 transcript:', transcriptTwo);
+    }
+    
+    if (files.audioThree?.[0]) {
+      console.log('Transcribing Part 3 audio...');
+      audioFiles.push(files.audioThree[0]);
+      transcriptThree = await this.gradeService.speechToText(files.audioThree[0]);
+      console.log('Part 3 transcript:', transcriptThree);
+    }
+    
+    if (audioFiles.length > 0) {
+      console.log(`Concatenating ${audioFiles.length} audio files...`);
+      const { buffer, mimetype } = concatenateAudioFiles(audioFiles);
+      
+      const extension = getExtensionFromMimetype(mimetype);
+      const fileName = `${submissionId}.${extension}`;
+      
+      console.log(`Uploading combined audio to Supabase bucket "audio" as ${fileName}...`);
+      try {
+        audioUrl = await this.supabaseService.uploadFile(
+          'audio',
+          fileName,
+          buffer,
+          mimetype,
+        );
+        console.log(`Audio uploaded successfully: ${audioUrl}`);
+      } catch (error) {
+        console.error('Failed to upload audio to Supabase:', error);
+        audioUrl = '';
+      }
+    }
+    
+    if (transcriptOne || transcriptTwo || transcriptThree) {
       let question = `Speaking Assignment: ${assignment.title}\n\n`;
       let answer = '';
       
@@ -60,16 +122,17 @@ export class SpeakingService {
         question += '\n';
       });
       
-      if (dto.transcriptOne) {
-        answer += `Part 1:\n${dto.transcriptOne}\n\n`;
+      if (transcriptOne) {
+        answer += `Part 1:\n${transcriptOne}\n\n`;
       }
-      if (dto.transcriptTwo) {
-        answer += `Part 2:\n${dto.transcriptTwo}\n\n`;
+      if (transcriptTwo) {
+        answer += `Part 2:\n${transcriptTwo}\n\n`;
       }
-      if (dto.transcriptThree) {
-        answer += `Part 3:\n${dto.transcriptThree}\n\n`;
+      if (transcriptThree) {
+        answer += `Part 3:\n${transcriptThree}\n\n`;
       }
       
+      console.log('Grading speaking submission...');
       const gradeResponseText = await this.gradeService.gradeSpeakingSubmission(question, answer.trim());
       
       try {
@@ -88,6 +151,7 @@ export class SpeakingService {
         const gradeResponse = JSON.parse(jsonText);
         score = gradeResponse.score;
         feedback = gradeResponse.feedback;
+        console.log('Grading complete. Score:', score);
       } catch (error) {
         console.error('Failed to parse grade response:', error);
         console.error('Raw response:', gradeResponseText);
@@ -96,6 +160,11 @@ export class SpeakingService {
     
     const payload = { 
       ...dto,
+      id: submissionId,
+      audio_url: audioUrl || '',
+      transcriptOne,
+      transcriptTwo,
+      transcriptThree,
       score,
       feedback,
     } as any;

@@ -16,7 +16,7 @@ export class SpeakingResponse {
   user_id: string;
 
   @Prop({ required: true })
-  audio_url: string;
+  audio_url?: string;
 
   @Prop()
   transcriptOne?: string;
