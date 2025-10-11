@@ -13,8 +13,6 @@ export type PromptContext =
   | 'Class'
   | 'Assignment'
   | 'Submission'
-  | 'Feedback'
-  | 'Progress'
   | 'Others';
 
 export function getContextCategoryWithRegex(prompt: string): PromptContext {
@@ -37,14 +35,6 @@ export function getContextCategoryWithRegex(prompt: string): PromptContext {
     Submission: isVietnamese
       ? /\b(submit|submission|upload|turn.?in|hand.?in|deliver|file|document|nộp|nộp bài|tải lên|gửi|chuyển|tệp|tài liệu|bài làm)\b/i
       : /\b(submit|submission|upload|turn.?in|hand.?in|deliver|file|document)\b/i,
-
-    Feedback: isVietnamese
-      ? /\b(feedback|comment|review|rating|evaluation|critique|suggestion|improvement|phản hồi|bình luận|đánh giá|nhận xét|góp ý|đề xuất|cải thiện|ý kiến)\b/i
-      : /\b(feedback|comment|review|rating|evaluation|critique|suggestion|improvement)\b/i,
-
-    Progress: isVietnamese
-      ? /\b(progress|tracking|status|completion|percentage|finished|started|ongoing|tiến độ|theo dõi|trạng thái|hoàn thành|phần trăm|kết thúc|bắt đầu|đang thực hiện|quá trình)\b/i
-      : /\b(progress|tracking|status|completion|percentage|finished|started|ongoing)\b/i,
 
     Others: /(?:)/i,
   };

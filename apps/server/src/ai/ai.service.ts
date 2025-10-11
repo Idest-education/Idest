@@ -72,8 +72,6 @@ export class AiService {
     - Class
     - Assignment
     - Submission
-    - Feedback
-    - Progress
     - Others
     `;
     const response = await this.openai.responses.create({
@@ -102,9 +100,7 @@ export class AiService {
         return '';
       case 'Submission':
         return '';
-      case 'Feedback':
-        return '';
-      case 'Progress':
+      default:
         return '';
     }
   }
