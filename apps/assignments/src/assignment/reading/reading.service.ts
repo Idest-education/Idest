@@ -2,6 +2,7 @@ import { BadRequestException, Injectable, NotFoundException } from '@nestjs/comm
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { Assignment, AssignmentDocument } from '../schemas/assignment.schema';
+import { Submission, SubmissionDocument } from '../schemas/submission.schema';
 import { CreateAssignmentDto } from '../dto/create-assignment.dto';
 import { UpdateAssignmentDto } from '../dto/update-assignment.dto';
 import { SubmitAssignmentDto } from '../dto/submit-assignment.dto';
@@ -13,6 +14,8 @@ export class ReadingService {
   constructor(
     @InjectModel(Assignment.name)
     private assignmentModel: Model<AssignmentDocument>,
+    @InjectModel(Submission.name)
+    private submissionModel: Model<SubmissionDocument>,
   ) {}
 
   private assertReadingSections(sections: CreateAssignmentDto['sections']) {
@@ -54,8 +57,7 @@ export class ReadingService {
     return this.assignmentModel.findOneAndDelete({ _id: id, skill: 'reading' }).exec();
   }
 
-  // src/assignment/utils/grading.util.ts
-  async gradeSubmission(submission: SubmitAssignmentDto): Promise<GradingResult> {
+  async gradeSubmission(submission: SubmitAssignmentDto): Promise<Submission> {
     const assignment = await this.assignmentModel
       .findOne({ _id: submission.assignment_id, skill: 'reading' })
       .exec();
@@ -64,8 +66,52 @@ export class ReadingService {
       throw new NotFoundException('Reading assignment not found');
     }
 
-    return gradeAssignment(assignment, submission);
+    const gradingResult = gradeAssignment(assignment, submission);
+
+    const submissionData = {
+      assignment_id: submission.assignment_id,
+      submitted_by: submission.submitted_by,
+      skill: 'reading',
+      ...gradingResult,
+    };
+
+    const createdSubmission = new this.submissionModel(submissionData);
+    return createdSubmission.save();
+  }
+
+  async getAllSubmissions() {
+    return this.submissionModel.find({skill: 'reading'}).exec();
+  }
+
+  async getUserSubmissions(userId: string) {
+    return this.submissionModel.find({ skill: 'reading', submitted_by: userId }).exec();
+  }
+
+  async getAssignmentSubmissions(assignmentId: string) {
+    return this.submissionModel.find({ skill: 'reading', assignment_id: assignmentId }).exec();
+  }
+
+  async getSubmission(id: string) {
+    const submission = await this.submissionModel
+      .findOne({ _id: id, skill: 'reading' })
+      .exec();
+    
+    if (!submission) {
+      throw new NotFoundException('Submission not found');
+    }
+    
+    return submission;
+  }
+  async debug() {
+    const all = await this.submissionModel.find();
+    console.log("Total submissions:", all.length);
+    console.log("Collection:", this.submissionModel.collection.name);
+    console.log("DB name:", this.submissionModel.db.name);
+    console.log("Example skill:", all[0]?.skill);
+  
+    const filtered = await this.submissionModel.find({ skill: 'reading' });
+    console.log("Filtered count:", filtered.length);
+  
+    return { all, filtered };
   }
 }
-
-

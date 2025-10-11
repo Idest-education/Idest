@@ -13,6 +13,7 @@ import { JwtAuthGuard } from '../../guards/jwt-auth.guard';
 export class ReadingController {
   constructor(private readonly readingService: ReadingService) {}
 
+
   @Post()
   @ApiOperation({ summary: 'Create reading assignment' })
   @ApiResponse({ status: HttpStatus.CREATED })
@@ -30,6 +31,13 @@ export class ReadingController {
   @ApiResponse({ status: HttpStatus.OK })
   async findAll() {
     const data = await this.readingService.findAll();
+    return { status: true, message: 'Fetched', data, statusCode: HttpStatus.OK };
+  }
+  @Get('submissions')
+  @ApiOperation({ summary: 'Get all reading submissions' })
+  @ApiResponse({ status: HttpStatus.OK })
+  async getAllSubmissions() {
+    const data = await this.readingService.getAllSubmissions();
     return { status: true, message: 'Fetched', data, statusCode: HttpStatus.OK };
   }
 
@@ -62,6 +70,7 @@ export class ReadingController {
     summary: 'Submit and grade reading assignment',
     description: 'Submit answers for a reading assignment and receive immediate grading with a score from 0-9 (rounded to .0 or .5)'
   })
+  @ApiResponse({ status: HttpStatus.OK, description: 'Assignment graded and saved successfully' })
   async submit(@Body() dto: SubmitAssignmentDto) {
     const data = await this.readingService.gradeSubmission({
       ...dto,
@@ -69,6 +78,33 @@ export class ReadingController {
     });
     return { status: true, message: 'Graded', data, statusCode: HttpStatus.OK };
   }
+
+
+  @Get('submissions/user/:userId')
+  @ApiOperation({ summary: 'Get user reading submissions' })
+  @ApiResponse({ status: HttpStatus.OK })
+  async getUserSubmissions(@Param('userId') userId: string) {
+    const data = await this.readingService.getUserSubmissions(userId);
+    return { status: true, message: 'Fetched', data, statusCode: HttpStatus.OK };
+  }
+
+  @Get('submissions/assignment/:assignmentId')
+  @ApiOperation({ summary: 'Get all submissions for a reading assignment' })
+  @ApiResponse({ status: HttpStatus.OK })
+  async getAssignmentSubmissions(@Param('assignmentId') assignmentId: string) {
+    const data = await this.readingService.getAssignmentSubmissions(assignmentId);
+    return { status: true, message: 'Fetched', data, statusCode: HttpStatus.OK };
+  }
+
+  @Get('submissions/:id')
+  @ApiOperation({ summary: 'Get reading submission' })
+  @ApiResponse({ status: HttpStatus.OK })
+  async getSubmission(@Param('id') id: string) {
+    const data = await this.readingService.getSubmission(id);
+    return { status: true, message: 'Fetched', data, statusCode: HttpStatus.OK };
+  }
+
+  
 }
 
 

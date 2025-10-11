@@ -32,6 +32,14 @@ export class ListeningController {
     const data = await this.listeningService.findAll();
     return { status: true, message: 'Fetched', data, statusCode: HttpStatus.OK };
   }
+  
+  @Get('submissions')
+  @ApiOperation({ summary: 'Get all listening submissions' })
+  @ApiResponse({ status: HttpStatus.OK })
+  async getAllSubmissions() {
+    const data = await this.listeningService.getAllSubmissions();
+    return { status: true, message: 'Fetched', data, statusCode: HttpStatus.OK };
+  }
 
   @Get(':id')
   @ApiOperation({ summary: 'Get listening assignment' })
@@ -64,14 +72,38 @@ export class ListeningController {
   })
   @ApiResponse({ 
     status: HttpStatus.OK,
-    description: 'Assignment graded successfully',
-  })
+    description: 'Assignment graded and saved successfully',
+    })
   async submit(@Body() dto: SubmitAssignmentDto, @Req() req: any) {
     const data = await this.listeningService.gradeSubmission({
       ...dto,
       submitted_by: dto.submitted_by || req.user?.sub || req.user?.userId,
     });
     return { status: true, message: 'Graded', data, statusCode: HttpStatus.OK };
+  }
+
+  @Get('submissions/user/:userId')
+  @ApiOperation({ summary: 'Get user listening submissions' })
+  @ApiResponse({ status: HttpStatus.OK })
+  async getUserSubmissions(@Param('userId') userId: string) {
+    const data = await this.listeningService.getUserSubmissions(userId);
+    return { status: true, message: 'Fetched', data, statusCode: HttpStatus.OK };
+  }
+
+  @Get('submissions/assignment/:assignmentId')
+  @ApiOperation({ summary: 'Get all submissions for a listening assignment' })
+  @ApiResponse({ status: HttpStatus.OK })
+  async getAssignmentSubmissions(@Param('assignmentId') assignmentId: string) {
+    const data = await this.listeningService.getAssignmentSubmissions(assignmentId);
+    return { status: true, message: 'Fetched', data, statusCode: HttpStatus.OK };
+  }
+
+  @Get('submissions/:id')
+  @ApiOperation({ summary: 'Get listening submission' })
+  @ApiResponse({ status: HttpStatus.OK })
+  async getSubmission(@Param('id') id: string) {
+    const data = await this.listeningService.getSubmission(id);
+    return { status: true, message: 'Fetched', data, statusCode: HttpStatus.OK };
   }
 }
 
