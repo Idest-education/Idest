@@ -9,11 +9,11 @@ import { JwtAuthGuard } from '../../guards/jwt-auth.guard';
 @ApiTags('listening')
 @ApiBearerAuth()
 @UseGuards(JwtAuthGuard)
-@Controller('listening/assignments')
+@Controller('listening')
 export class ListeningController {
   constructor(private readonly listeningService: ListeningService) {}
 
-  @Post()
+  @Post('assignments')
   @ApiOperation({ summary: 'Create listening assignment' })
   @ApiResponse({ status: HttpStatus.CREATED })
   async create(@Body() dto: CreateAssignmentDto, @Req() req: any) {
@@ -25,14 +25,14 @@ export class ListeningController {
     return { status: true, message: 'Created', data, statusCode: HttpStatus.CREATED };
   }
 
-  @Get()
+  @Get('assignments')
   @ApiOperation({ summary: 'List listening assignments' })
   @ApiResponse({ status: HttpStatus.OK })
   async findAll() {
     const data = await this.listeningService.findAll();
     return { status: true, message: 'Fetched', data, statusCode: HttpStatus.OK };
   }
-  
+
   @Get('submissions')
   @ApiOperation({ summary: 'Get all listening submissions' })
   @ApiResponse({ status: HttpStatus.OK })
@@ -41,7 +41,7 @@ export class ListeningController {
     return { status: true, message: 'Fetched', data, statusCode: HttpStatus.OK };
   }
 
-  @Get(':id')
+  @Get('assignments/:id')
   @ApiOperation({ summary: 'Get listening assignment' })
   @ApiResponse({ status: HttpStatus.OK })
   async findOne(@Param('id') id: string) {
@@ -49,7 +49,7 @@ export class ListeningController {
     return { status: true, message: 'Fetched', data, statusCode: HttpStatus.OK };
   }
 
-  @Patch(':id')
+  @Patch('assignments/:id')
   @ApiOperation({ summary: 'Update listening assignment' })
   @ApiResponse({ status: HttpStatus.OK })
   async update(@Param('id') id: string, @Body() dto: UpdateAssignmentDto) {
@@ -57,7 +57,7 @@ export class ListeningController {
     return { status: true, message: 'Updated', data, statusCode: HttpStatus.OK };
   }
 
-  @Delete(':id')
+  @Delete('assignments/:id')
   @ApiOperation({ summary: 'Delete listening assignment' })
   @ApiResponse({ status: HttpStatus.OK })
   async remove(@Param('id') id: string) {
@@ -65,7 +65,7 @@ export class ListeningController {
     return { status: true, message: 'Deleted', data, statusCode: HttpStatus.OK };
   }
 
-  @Post('submit')
+  @Post('submissions')
   @ApiOperation({ 
     summary: 'Submit and grade listening assignment',
     description: 'Submit answers for a listening assignment and receive immediate grading with a score from 0-9 (rounded to .0 or .5)'

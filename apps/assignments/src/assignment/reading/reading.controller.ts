@@ -9,12 +9,12 @@ import { JwtAuthGuard } from '../../guards/jwt-auth.guard';
 @ApiTags('reading')
 @ApiBearerAuth()
 @UseGuards(JwtAuthGuard)
-@Controller('reading/assignments')
+@Controller('reading')
 export class ReadingController {
   constructor(private readonly readingService: ReadingService) {}
 
 
-  @Post()
+  @Post('assignments')
   @ApiOperation({ summary: 'Create reading assignment' })
   @ApiResponse({ status: HttpStatus.CREATED })
   async create(@Body() dto: CreateAssignmentDto, @Req() req: any) {
@@ -26,7 +26,7 @@ export class ReadingController {
     return { status: true, message: 'Created', data, statusCode: HttpStatus.CREATED };
   }
 
-  @Get()
+  @Get('assignments')
   @ApiOperation({ summary: 'List reading assignments' })
   @ApiResponse({ status: HttpStatus.OK })
   async findAll() {
@@ -41,7 +41,7 @@ export class ReadingController {
     return { status: true, message: 'Fetched', data, statusCode: HttpStatus.OK };
   }
 
-  @Get(':id')
+  @Get('assignments/:id')
   @ApiOperation({ summary: 'Get reading assignment' })
   @ApiResponse({ status: HttpStatus.OK })
   async findOne(@Param('id') id: string) {
@@ -49,7 +49,7 @@ export class ReadingController {
     return { status: true, message: 'Fetched', data, statusCode: HttpStatus.OK };
   }
 
-  @Patch(':id')
+  @Patch('assignments/:id')
   @ApiOperation({ summary: 'Update reading assignment' })
   @ApiResponse({ status: HttpStatus.OK })
   async update(@Param('id') id: string, @Body() dto: UpdateAssignmentDto) {
@@ -57,7 +57,7 @@ export class ReadingController {
     return { status: true, message: 'Updated', data, statusCode: HttpStatus.OK };
   }
 
-  @Delete(':id')
+  @Delete('assignments/:id')
   @ApiOperation({ summary: 'Delete reading assignment' })
   @ApiResponse({ status: HttpStatus.OK })
   async remove(@Param('id') id: string) {
@@ -65,7 +65,7 @@ export class ReadingController {
     return { status: true, message: 'Deleted', data, statusCode: HttpStatus.OK };
   }
 
-  @Post('submit')
+  @Post('submissions')
   @ApiOperation({ 
     summary: 'Submit and grade reading assignment',
     description: 'Submit answers for a reading assignment and receive immediate grading with a score from 0-9 (rounded to .0 or .5)'
