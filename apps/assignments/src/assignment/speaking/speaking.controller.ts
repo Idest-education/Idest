@@ -1,10 +1,11 @@
-import { Controller, Get, Post, Patch, Delete, Param, Body, HttpStatus, UseGuards } from '@nestjs/common';
-import { ApiTags, ApiBearerAuth, ApiOperation, ApiResponse } from '@nestjs/swagger';
+import { Controller, Get, Post, Patch, Delete, Param, Body, HttpStatus, UseGuards, UseInterceptors, UploadedFile } from '@nestjs/common';
+import { ApiTags, ApiBearerAuth, ApiOperation, ApiResponse, ApiConsumes, ApiBody } from '@nestjs/swagger';
 import { SpeakingService } from './speaking.service';
 import { CreateSpeakingAssignmentDto } from './dto/create-speaking-assignment.dto';
 import { UpdateSpeakingAssignmentDto } from './dto/update-speaking-assignment.dto';
 import { CreateSpeakingResponseDto } from './dto/create-speaking-response.dto';
 import { JwtAuthGuard } from '../../guards/jwt-auth.guard';
+import { FileInterceptor } from '@nestjs/platform-express';
 
 @ApiTags('speaking')
 @ApiBearerAuth()
@@ -91,6 +92,28 @@ export class SpeakingController {
   async getResponse(@Param('id') id: string) {
     const data = await this.speakingService.getResponse(id);
     return { status: true, message: 'Fetched', data, statusCode: HttpStatus.OK };
+  }
+
+  @Post('speech-to-text')
+  @ApiOperation({ summary: 'Convert speech to text' })
+  @ApiConsumes('multipart/form-data') 
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        audio: {
+          type: 'string',
+          format: 'binary',
+        },
+      },
+    },
+  })
+  @UseInterceptors(FileInterceptor('audio')) // 'audio' = name of the form field
+  @ApiResponse({ status: HttpStatus.OK })
+  async speechToText(@UploadedFile() audio: Express.Multer.File) {
+    console.log("you called speech to text", audio);
+    const data = await this.speakingService.speechToText(audio);
+    return { status: true, message: 'Converted', data, statusCode: HttpStatus.OK };
   }
 }
 

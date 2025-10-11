@@ -22,6 +22,24 @@ export class GradeService {
     return response.output_text;
   }
 
+  async speechToText(file: Express.Multer.File) {
+    console.log(file);
+    console.log("calling speech to text");
+    
+    const uint8Array = new Uint8Array(file.buffer);
+    const blob = new Blob([uint8Array], { type: file.mimetype });
+    const audioFile = new File([blob], file.originalname, {
+      type: file.mimetype,
+    });
+    
+    const response = await this.openai.audio.transcriptions.create({
+      file: audioFile,
+      model: 'whisper-1',
+    });
+    console.log(response);
+    return response.text;
+  }
+
   async gradeWritingSubmission(submission: string, question: string) {
     const systemPrompt = `You are a helpful and fair IELTS writing teacher for the tutoring platform "Idest".
 Your task is to evaluate the user's writing submission according to the official IELTS Writing rubric (Task Achievement, Coherence and Cohesion, Lexical Resource, Grammatical Range and Accuracy).

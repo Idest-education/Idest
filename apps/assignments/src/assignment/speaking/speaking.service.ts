@@ -118,6 +118,10 @@ export class SpeakingService {
   async getAssignmentResponses(assignmentId: string) {
     return this.speakingResponseModel.find({ assignment_id: assignmentId }).exec();
   }
+
+  async speechToText(file: Express.Multer.File) {
+    return this.gradeService.speechToText(file);
+  }
 }
 
 

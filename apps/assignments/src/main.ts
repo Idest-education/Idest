@@ -20,7 +20,13 @@ async function bootstrap() {
 
   const config = new DocumentBuilder()
     .setTitle('Assignment Microservice')
-    .setDescription('API documentation')
+    .setDescription(`
+  <h3>Available API Docs:</h3>
+  <ul>
+    <li><a href="http://localhost:8000/api">Main Service (remember to open the repo)</a></li>
+    <li><a href="/api">Assignment Service (remember to add /hehe)</a></li>
+  </ul>
+  `)
     .setVersion('1.0')
     .addBearerAuth()
     .build();
