@@ -13,7 +13,6 @@ export type PromptContext =
   | 'Class'
   | 'Assignment'
   | 'Submission'
-  | 'Question/Test'
   | 'Feedback'
   | 'Progress'
   | 'Others';
@@ -38,10 +37,6 @@ export function getContextCategoryWithRegex(prompt: string): PromptContext {
     Submission: isVietnamese
       ? /\b(submit|submission|upload|turn.?in|hand.?in|deliver|file|document|nộp|nộp bài|tải lên|gửi|chuyển|tệp|tài liệu|bài làm)\b/i
       : /\b(submit|submission|upload|turn.?in|hand.?in|deliver|file|document)\b/i,
-
-    'Question/Test': isVietnamese
-      ? /\b(question|test|quiz|exam|assessment|evaluate|answer|score|grade|mark|câu hỏi|bài kiểm tra|bài thi|kỳ thi|đánh giá|chấm điểm|trả lời|điểm số|điểm|xếp loại)\b/i
-      : /\b(question|test|quiz|exam|assessment|evaluate|answer|score|grade|mark)\b/i,
 
     Feedback: isVietnamese
       ? /\b(feedback|comment|review|rating|evaluation|critique|suggestion|improvement|phản hồi|bình luận|đánh giá|nhận xét|góp ý|đề xuất|cải thiện|ý kiến)\b/i

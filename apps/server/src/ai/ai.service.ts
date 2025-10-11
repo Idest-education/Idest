@@ -72,7 +72,6 @@ export class AiService {
     - Class
     - Assignment
     - Submission
-    - Question/Test
     - Feedback
     - Progress
     - Others
@@ -102,8 +101,6 @@ export class AiService {
       case 'Assignment':
         return '';
       case 'Submission':
-        return '';
-      case 'Question/Test':
         return '';
       case 'Feedback':
         return '';
