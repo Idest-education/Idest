@@ -3,6 +3,7 @@ import { ApiTags, ApiBearerAuth, ApiOperation, ApiResponse } from '@nestjs/swagg
 import { ReadingService } from './reading.service';
 import { CreateAssignmentDto } from '../dto/create-assignment.dto';
 import { UpdateAssignmentDto } from '../dto/update-assignment.dto';
+import { SubmitAssignmentDto } from '../dto/submit-assignment.dto';
 import { JwtAuthGuard } from '../../guards/jwt-auth.guard';
 
 @ApiTags('reading')
@@ -54,6 +55,19 @@ export class ReadingController {
   async remove(@Param('id') id: string) {
     const data = await this.readingService.remove(id);
     return { status: true, message: 'Deleted', data, statusCode: HttpStatus.OK };
+  }
+
+  @Post('submit')
+  @ApiOperation({ 
+    summary: 'Submit and grade reading assignment',
+    description: 'Submit answers for a reading assignment and receive immediate grading with a score from 0-9 (rounded to .0 or .5)'
+  })
+  async submit(@Body() dto: SubmitAssignmentDto) {
+    const data = await this.readingService.gradeSubmission({
+      ...dto,
+      submitted_by: dto.submitted_by
+    });
+    return { status: true, message: 'Graded', data, statusCode: HttpStatus.OK };
   }
 }
 

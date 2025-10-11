@@ -1,10 +1,12 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { Assignment, AssignmentDocument } from '../schemas/assignment.schema';
 import { CreateAssignmentDto } from '../dto/create-assignment.dto';
 import { UpdateAssignmentDto } from '../dto/update-assignment.dto';
+import { SubmitAssignmentDto } from '../dto/submit-assignment.dto';
 import { generateUniqueSlug } from '../utils/slug.util';
+import { gradeAssignment, GradingResult } from '../utils/grading.util';
 
 @Injectable()
 export class ListeningService {
@@ -50,6 +52,18 @@ export class ListeningService {
 
   async remove(id: string) {
     return this.assignmentModel.findOneAndDelete({ _id: id, skill: 'listening' }).exec();
+  }
+
+  async gradeSubmission(submission: SubmitAssignmentDto): Promise<GradingResult> {
+    const assignment = await this.assignmentModel
+      .findOne({ _id: submission.assignment_id, skill: 'listening' })
+      .exec();
+
+    if (!assignment) {
+      throw new NotFoundException('Listening assignment not found');
+    }
+
+    return gradeAssignment(assignment, submission);
   }
 }
 
