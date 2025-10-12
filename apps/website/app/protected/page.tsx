@@ -77,7 +77,7 @@ export default async function ProtectedPage() {
               </div>
               
               <div className="flex justify-between items-center py-3 border-b border-border/50">
-                <span className="text-muted-foreground font-medium">Email</span>
+                <span className="text-muted-foreground font-medium">Role</span>
                 <span className="font-medium">{user.user_metadata.role}</span>
               </div>
             </div>

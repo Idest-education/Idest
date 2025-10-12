@@ -13,12 +13,12 @@ export interface ClassData {
     teachers: number;
     sessions: number;
   };
-  schedule: {
-    days: string[];
-    time: string;
-    duration: number;
-    timezone: string;
-  };
+  // schedule: {
+  //   days: string[];
+  //   time: string;
+  //   duration: number;
+  //   timezone: string;
+  // };
 }
 
 export interface ClassResponse {
@@ -90,4 +90,20 @@ export interface ClassDetail {
       email: string;
     };
   }>;
+}
+
+export interface ScheduleData {
+  days: string[];
+  time: string;
+  duration: number;
+  timezone?: string;
+  recurring?: boolean;
+}
+
+export interface CreateClassPayload {
+  name: string;
+  description?: string;
+  is_group: boolean;
+  schedule?: ScheduleData;
+  invite_code?: string;
 }
