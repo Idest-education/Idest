@@ -46,7 +46,7 @@ async function bootstrap() {
     .split(',')
     .map((s) => s.trim())
     .filter(Boolean);
-  app.enableCors({ origin: '*', credentials: true });
+  app.enableCors({ origin: '*', credentials: false });
   app.use(helmet());
 
   const port = Number(config.get<string>('PORT')) || 8000;
