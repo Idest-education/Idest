@@ -1,4 +1,3 @@
-import { CloudinaryService } from 'src/cloudinary/cloudinary.service';
 import {
   ConflictException,
   Injectable,
@@ -22,7 +21,6 @@ import { CredDto } from './dto/cred.dto';
 export class UserService {
   constructor(
     private readonly prisma: PrismaService,
-    private readonly cloudinary: CloudinaryService,
     private readonly supabaseService: SupabaseService,
   ) {}
 
@@ -169,43 +167,43 @@ export class UserService {
     }
   }
 
-  async uploadAvatar(image: string, userId: string): Promise<User> {
-    try {
-      // Assuming image processing and storage logic is implemented here
-      const avatarUrl = image;
+  // async uploadAvatar(image: string, userId: string): Promise<User> {
+  //   try {
+  //     // Assuming image processing and storage logic is implemented here
+  //     const avatarUrl = image;
 
-      const user = await this.getUserById(userId);
-      if (!user) {
-        throw new NotFoundException(`User with ID ${userId} not found`);
-      }
-      if (user.avatar_url) {
-        this.cloudinary.deleteImage(user.avatar_url);
-      }
+  //     const user = await this.getUserById(userId);
+  //     if (!user) {
+  //       throw new NotFoundException(`User with ID ${userId} not found`);
+  //     }
+  //     if (user.avatar_url) {
+  //       this.cloudinary.deleteImage(user.avatar_url);
+  //     }
 
-      await this.prisma.user.update({
-        where: { id: userId },
-        data: { avatar_url: avatarUrl },
-      });
-      const updatedUser = await this.prisma.user.findUnique({
-        where: { id: userId },
-      });
-      if (!updatedUser) {
-        throw new UnprocessableEntityException(`Failed to update user`);
-      }
+  //     await this.prisma.user.update({
+  //       where: { id: userId },
+  //       data: { avatar_url: avatarUrl },
+  //     });
+  //     const updatedUser = await this.prisma.user.findUnique({
+  //       where: { id: userId },
+  //     });
+  //     if (!updatedUser) {
+  //       throw new UnprocessableEntityException(`Failed to update user`);
+  //     }
 
-      return updatedUser;
-    } catch (error) {
-      if (
-        error instanceof UnprocessableEntityException ||
-        error instanceof NotFoundException
-      ) {
-        throw error;
-      }
-      throw new InternalServerErrorException(
-        `Error uploading avatar: ${error}`,
-      );
-    }
-  }
+  //     return updatedUser;
+  //   } catch (error) {
+  //     if (
+  //       error instanceof UnprocessableEntityException ||
+  //       error instanceof NotFoundException
+  //     ) {
+  //       throw error;
+  //     }
+  //     throw new InternalServerErrorException(
+  //       `Error uploading avatar: ${error}`,
+  //     );
+  //   }
+  // }
 
   async banUser(bannedId: string, banner: userPayload): Promise<boolean> {
     try {

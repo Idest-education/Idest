@@ -12,6 +12,8 @@ import { SessionModule } from './session/session.module';
 import { ConversationModule } from './conversation/conversation.module';
 import { SupabaseModule } from './supabase/supabase.module';
 import { AiModule } from './ai/ai.module';
+import { RabbitModule } from './rabbit/rabbit.module';
+import { GradeModule } from './grade/grade.module';
 
 const isTestEnv = process.env.NODE_ENV === 'dev';
 const throttleImports = isTestEnv
@@ -46,6 +48,8 @@ const throttleProviders = isTestEnv
     ConversationModule,
     SupabaseModule,
     AiModule,
+    RabbitModule,
+    GradeModule,
   ],
   controllers: [AppController],
   providers: [AppService, ...throttleProviders],
