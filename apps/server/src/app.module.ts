@@ -6,7 +6,6 @@ import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { UserModule } from './user/user.module';
 import { PrismaModule } from './prisma/prisma.module';
-import { CloudinaryModule } from './cloudinary/cloudinary.module';
 import { MeetModule } from './meet/meet.module';
 import { ClassModule } from './class/class.module';
 import { SessionModule } from './session/session.module';
@@ -41,7 +40,6 @@ const throttleProviders = isTestEnv
     ...throttleImports,
     UserModule,
     PrismaModule,
-    CloudinaryModule,
     MeetModule,
     ClassModule,
     SessionModule,

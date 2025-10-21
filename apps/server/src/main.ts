@@ -34,7 +34,7 @@ async function bootstrap() {
   app.use(
     '/hehe',
     createProxyMiddleware({
-      target: 'http://localhost:8008', // assignment service
+      target: process.env.ASSIGNMENT_URL, // assignment service
       changeOrigin: true,
       pathRewrite: { '^/hehe': '' },
     }),
