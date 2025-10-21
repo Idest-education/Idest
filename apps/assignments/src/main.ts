@@ -23,8 +23,8 @@ async function bootstrap() {
     .setDescription(`
   <h3>Available API Docs:</h3>
   <ul>
-    <li><a href="http://localhost:8000/api">Main Service (remember to open the repo)</a></li>
-    <li><a href="/api">Assignment Service (remember to add /hehe)</a></li>
+    <li><a href="${process.env.API_URL}/api">Main Service </a></li>
+    <li><a href="/api">Assignment Service</a></li>
   </ul>
   `)
     .setVersion('1.0')
@@ -32,6 +32,6 @@ async function bootstrap() {
     .build();
   const document = SwaggerModule.createDocument(app, config);
   SwaggerModule.setup('api', app, document);
-  await app.listen(process.env.PORT ?? 8000);
+  await app.listen(process.env.PORT ?? 8008);
 }
 bootstrap();
