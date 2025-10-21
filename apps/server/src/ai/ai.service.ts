@@ -70,8 +70,6 @@ export class AiService {
     Response with just the label, nothing else. Look at the user's prompt and label it as one of the following:
     - User
     - Class
-    - Assignment
-    - Submission
     - Others
     `;
     const response = await this.openai.responses.create({
@@ -87,7 +85,7 @@ export class AiService {
 
   async getContext(category: PromptContext, user: User): Promise<string> {
     if (category == 'Others') {
-      return '';
+      return 'No context found, answer with basic IELTS knowledge';
     }
     switch (category) {
       case 'User':
@@ -96,12 +94,8 @@ export class AiService {
       case 'Class':
         const userClasses = await this.classService.getUserClasses(user.id);
         return JSON.stringify(userClasses);
-      case 'Assignment':
-        return '';
-      case 'Submission':
-        return '';
       default:
-        return '';
+        return 'No context found, answer with basic IELTS knowledge';
     }
   }
   async gradeWritingSubmission(submission: string, question: string) {
