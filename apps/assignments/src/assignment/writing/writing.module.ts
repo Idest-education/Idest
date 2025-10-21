@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
 import { JwtModule } from '@nestjs/jwt';
 import { WritingService } from './writing.service';
@@ -18,10 +18,11 @@ import { GradeModule } from '../../grade/grade.module';
       secret: process.env.JWT_SECRET || 'default-secret-key',
       signOptions: { expiresIn: '1d' },
     }),
-    GradeModule,
+    forwardRef(() => GradeModule),
   ],
   controllers: [WritingController],
   providers: [WritingService, JwtAuthGuard],
+  exports: [WritingService],
 })
 export class WritingModule {}
 

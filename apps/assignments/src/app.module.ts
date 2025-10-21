@@ -6,12 +6,14 @@ import { MongooseModule } from '@nestjs/mongoose';
 import { ConfigModule } from '@nestjs/config';
 import { GradeModule } from './grade/grade.module';
 import { SupabaseModule } from './supabase/supabase.module';
+import { RabbitModule } from './rabbit/rabbit.module';
 
 @Module({
 
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
     MongooseModule.forRoot(process.env.MONGODB_URI!), 
+    RabbitModule,
     SupabaseModule,
     AssignmentModule, 
     GradeModule,

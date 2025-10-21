@@ -1,9 +1,14 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { JwtModule } from '@nestjs/jwt';
 import { ConfigModule } from '@nestjs/config';
 import { GradeService } from './grade.service';
 import { GradeController } from './grade.controller';
 import { JwtAuthGuard } from '../guards/jwt-auth.guard';
+import { RabbitModule } from '../rabbit/rabbit.module';
+import { ReadingModule } from '../assignment/reading/reading.module';
+import { ListeningModule } from '../assignment/listening/listening.module';
+import { WritingModule } from '../assignment/writing/writing.module';
+import { SpeakingModule } from '../assignment/speaking/speaking.module';
 
 @Module({
   imports: [
@@ -12,6 +17,11 @@ import { JwtAuthGuard } from '../guards/jwt-auth.guard';
       signOptions: { expiresIn: '1d' },
     }),
     ConfigModule,
+    RabbitModule,
+    ReadingModule,
+    ListeningModule,
+    forwardRef(() => WritingModule),
+    forwardRef(() => SpeakingModule),
   ],
   providers: [GradeService, JwtAuthGuard],
   controllers: [GradeController],

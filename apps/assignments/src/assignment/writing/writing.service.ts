@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable, Inject, forwardRef } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { WritingAssignment, WritingAssignmentDocument } from '../schemas/writing-assignment.schema';
@@ -15,6 +15,7 @@ export class WritingService {
     private writingAssignmentModel: Model<WritingAssignmentDocument>,
     @InjectModel(WritingSubmission.name)
     private writingSubmissionModel: Model<WritingSubmissionDocument>,
+    @Inject(forwardRef(() => GradeService))
     private gradeService: GradeService,
   ) {}
 

@@ -20,6 +20,7 @@ import { JwtAuthGuard } from '../../guards/jwt-auth.guard';
   ],
   controllers: [ListeningController],
   providers: [ListeningService, JwtAuthGuard],
+  exports: [ListeningService],
 })
 export class ListeningModule {}
 

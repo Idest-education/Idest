@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
 import { JwtModule } from '@nestjs/jwt';
 import { SpeakingService } from './speaking.service';
@@ -7,6 +7,7 @@ import { SpeakingAssignment, SpeakingAssignmentSchema } from '../schemas/speakin
 import { SpeakingResponse, SpeakingResponseSchema } from './schemas/speaking-response.schema';
 import { JwtAuthGuard } from '../../guards/jwt-auth.guard';
 import { GradeModule } from '../../grade/grade.module';
+import { SupabaseModule } from '../../supabase/supabase.module';
 
 @Module({
   imports: [
@@ -18,10 +19,12 @@ import { GradeModule } from '../../grade/grade.module';
       secret: process.env.JWT_SECRET || 'default-secret-key',
       signOptions: { expiresIn: '1d' },
     }),
-    GradeModule,
+    forwardRef(() => GradeModule),
+    SupabaseModule,
   ],
   controllers: [SpeakingController],
   providers: [SpeakingService, JwtAuthGuard],
+  exports: [SpeakingService],
 })
 export class SpeakingModule {}
 

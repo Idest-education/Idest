@@ -20,6 +20,7 @@ import { JwtAuthGuard } from '../../guards/jwt-auth.guard';
   ],
   controllers: [ReadingController],
   providers: [ReadingService, JwtAuthGuard],
+  exports: [ReadingService],
 })
 export class ReadingModule {}
 
