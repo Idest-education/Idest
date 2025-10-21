@@ -41,15 +41,15 @@ async function bootstrap() {
   );
 
   const corsOrigins = (
-    config.get<string>('CORS_ORIGINS') || 'http://localhost:3000'
+    process.env.CORS_ORIGINS || 'http://localhost:3000'
   )
     .split(',')
     .map((s) => s.trim())
     .filter(Boolean);
-  app.enableCors({ origin: '*', credentials: false });
+  app.enableCors({ origin: corsOrigins, credentials: true });
   app.use(helmet());
 
-  const port = Number(config.get<string>('PORT')) || 8000;
+  const port = Number(process.env.PORT) || 8000;
   // Swagger config
   const swaggerConfig = new DocumentBuilder()
     .setTitle('Idest')

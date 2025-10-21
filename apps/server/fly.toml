@@ -12,7 +12,7 @@ primary_region = 'sin'
   release_command = 'npx prisma migrate deploy'
 
 [http_service]
-  internal_port = 3000
+  internal_port = 8000
   force_https = true
   auto_stop_machines = 'stop'
   auto_start_machines = true
