@@ -2,6 +2,7 @@ import { EnvVarWarning } from "@/components/env-var-warning";
 import { AuthButton } from "@/components/auth-button";
 import { hasEnvVars } from "@/lib/utils";
 import Link from "next/link";
+import ChatButtonClient from "@/components/conversation/ChatButtonClient"
 
 const navItems = [
   { href: "/protected/classes", label: "Classes", icon: "👥" },
@@ -71,10 +72,10 @@ export default function ProtectedLayout({
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                   </svg>
                 </button>
-                
+
                 {/* Invisible bridge to prevent gap */}
                 <div className="absolute left-0 top-full w-full h-2 bg-transparent group-hover:block hidden"></div>
-                
+
                 <div className="absolute left-0 top-full pt-4 hidden group-hover:block">
                   <div className="bg-white/95 backdrop-blur-sm border border-purple-100 rounded-xl shadow-2xl min-w-[250px] overflow-hidden">
                     <div className="p-2">
@@ -99,8 +100,9 @@ export default function ProtectedLayout({
             </div>
           </div>
 
-          {/* Right side: Progress + Auth + Env */}
-          <div className="flex items-center gap-4">
+          {/* Right side: Chat + Auth + Env */}
+          <div className="flex items-center gap-4 relative">
+            <ChatButtonClient /> {/* 👈 thêm dòng này */}
             {!hasEnvVars ? <EnvVarWarning /> : <AuthButton />}
           </div>
         </div>
@@ -117,9 +119,9 @@ export default function ProtectedLayout({
       {/* Background decoration */}
       <div className="fixed inset-0 pointer-events-none overflow-hidden">
         <div className="absolute top-20 left-10 w-20 h-20 bg-purple-200 rounded-full opacity-20 animate-pulse"></div>
-        <div className="absolute top-40 right-20 w-16 h-16 bg-indigo-200 rounded-full opacity-20 animate-pulse" style={{animationDelay: '1s'}}></div>
-        <div className="absolute bottom-40 left-20 w-24 h-24 bg-blue-200 rounded-full opacity-20 animate-pulse" style={{animationDelay: '2s'}}></div>
-        <div className="absolute bottom-20 right-40 w-18 h-18 bg-purple-200 rounded-full opacity-20 animate-pulse" style={{animationDelay: '3s'}}></div>
+        <div className="absolute top-40 right-20 w-16 h-16 bg-indigo-200 rounded-full opacity-20 animate-pulse" style={{ animationDelay: '1s' }}></div>
+        <div className="absolute bottom-40 left-20 w-24 h-24 bg-blue-200 rounded-full opacity-20 animate-pulse" style={{ animationDelay: '2s' }}></div>
+        <div className="absolute bottom-20 right-40 w-18 h-18 bg-purple-200 rounded-full opacity-20 animate-pulse" style={{ animationDelay: '3s' }}></div>
       </div>
     </main>
   );

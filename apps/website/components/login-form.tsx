@@ -33,12 +33,24 @@ export function LoginForm({
     setError(null);
 
     try {
-      const { error } = await supabase.auth.signInWithPassword({
+      const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
+
       if (error) throw error;
-      // Update this route to redirect to an authenticated route. The user already has an active session.
+
+      // Lấy access_token và user_id
+      const accessToken = data.session?.access_token;
+      const userId = data.user?.id;
+
+      // Lưu vào localStorage
+      if (accessToken && userId) {
+        localStorage.setItem("access_token", accessToken);
+        localStorage.setItem("user_id", userId);
+      }
+
+      // Chuyển hướng sau khi login thành công
       router.push("/protected");
     } catch (error: unknown) {
       setError(error instanceof Error ? error.message : "An error occurred");
@@ -52,9 +64,9 @@ export function LoginForm({
       {/* Background decoration */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <div className="absolute top-20 left-10 w-20 h-20 bg-purple-200 rounded-full opacity-20 animate-pulse"></div>
-        <div className="absolute top-40 right-20 w-16 h-16 bg-indigo-200 rounded-full opacity-20 animate-pulse" style={{animationDelay: '1s'}}></div>
-        <div className="absolute bottom-40 left-20 w-24 h-24 bg-blue-200 rounded-full opacity-20 animate-pulse" style={{animationDelay: '2s'}}></div>
-        <div className="absolute bottom-20 right-40 w-18 h-18 bg-purple-200 rounded-full opacity-20 animate-pulse" style={{animationDelay: '3s'}}></div>
+        <div className="absolute top-40 right-20 w-16 h-16 bg-indigo-200 rounded-full opacity-20 animate-pulse" style={{ animationDelay: '1s' }}></div>
+        <div className="absolute bottom-40 left-20 w-24 h-24 bg-blue-200 rounded-full opacity-20 animate-pulse" style={{ animationDelay: '2s' }}></div>
+        <div className="absolute bottom-20 right-40 w-18 h-18 bg-purple-200 rounded-full opacity-20 animate-pulse" style={{ animationDelay: '3s' }}></div>
       </div>
 
       {/* Header Logo */}
@@ -104,7 +116,7 @@ export function LoginForm({
                   className="h-12 text-gray-700 border-indigo-200 focus:border-indigo-500 focus:ring-indigo-500 bg-white/50 backdrop-blur-sm transition-all duration-200"
                 />
               </div>
-              
+
               <div className="grid gap-3">
                 <div className="flex items-center justify-between">
                   <Label htmlFor="password" className="text-gray-700 font-medium">
@@ -137,9 +149,9 @@ export function LoginForm({
                 </div>
               )}
 
-              <Button 
-                type="submit" 
-                className="w-full h-12 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white font-semibold rounded-lg shadow-lg hover:shadow-xl transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed" 
+              <Button
+                type="submit"
+                className="w-full h-12 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white font-semibold rounded-lg shadow-lg hover:shadow-xl transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
                 disabled={isLoading}
               >
                 {isLoading ? (
@@ -195,10 +207,10 @@ export function LoginForm({
 
 
       {/* Floating elements */}
-      <div className="absolute top-10 right-10 opacity-30 animate-bounce" style={{animationDelay: '0.5s'}}>
+      <div className="absolute top-10 right-10 opacity-30 animate-bounce" style={{ animationDelay: '0.5s' }}>
         <div className="text-4xl">🎯</div>
       </div>
-      <div className="absolute bottom-10 left-10 opacity-30 animate-bounce" style={{animationDelay: '1.5s'}}>
+      <div className="absolute bottom-10 left-10 opacity-30 animate-bounce" style={{ animationDelay: '1.5s' }}>
         <div className="text-4xl">✨</div>
       </div>
     </div>

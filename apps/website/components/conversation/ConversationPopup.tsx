@@ -1,0 +1,88 @@
+"use client";
+
+import { useState, useEffect } from "react";
+import { conversationService } from "@/services/conversation.service";
+import { ConversationDto } from "@/types/conversation";
+import ChatWindow from "./ChatWindow";
+import { X } from "lucide-react";
+
+interface ConversationPopupProps {
+    onClose: () => void;
+    onSelectConversation?: (conversationId: string) => void; // 👈 callback khi chọn hội thoại
+    defaultConversationId?: string; // 👈 dùng khi hiển thị ChatWindow mini
+}
+
+export default function ConversationPopup({
+    onClose,
+    onSelectConversation,
+    defaultConversationId,
+}: ConversationPopupProps) {
+    const [conversations, setConversations] = useState<ConversationDto[]>([]);
+    const [selectedId, setSelectedId] = useState<string | null>(defaultConversationId ?? null);
+    const [loading, setLoading] = useState(true);
+
+    // Nếu có defaultConversationId thì mở luôn ChatWindow
+    useEffect(() => {
+        if (defaultConversationId) setSelectedId(defaultConversationId);
+    }, [defaultConversationId]);
+
+    useEffect(() => {
+        conversationService
+            .getUserConversations()
+            .then((res) => setConversations(res.items))
+            .finally(() => setLoading(false));
+    }, []);
+
+    // Nếu popup được dùng để hiển thị ChatWindow mini
+    if (defaultConversationId) {
+        return (
+            <div className="w-[380px] bg-white border border-indigo-100 rounded-2xl shadow-2xl overflow-hidden animate-fadeIn">
+                <div className="flex justify-between items-center px-4 py-3 border-b bg-gradient-to-r from-indigo-600 to-purple-600 text-white">
+                    <button
+                        onClick={onClose}
+                        className="text-sm hover:bg-white/20 rounded-lg px-2 py-1"
+                    >
+                        ✕
+                    </button>
+                </div>
+                <ChatWindow conversationId={selectedId!} onBack={onClose} />
+            </div>
+        );
+    }
+
+    // Nếu popup dùng để hiển thị danh sách hội thoại (navbar)
+    return (
+        <div className="w-[380px] bg-white border border-indigo-100 rounded-2xl shadow-2xl overflow-hidden animate-fadeIn">
+            {/* Header */}
+            <div className="flex justify-between items-center px-4 py-3 border-b bg-gradient-to-r from-indigo-600 to-purple-600 text-white">
+                <h3 className="font-semibold text-lg">Messages</h3>
+                <button onClick={onClose} className="p-1 hover:bg-white/20 rounded-full">
+                    <X className="w-5 h-5" />
+                </button>
+            </div>
+
+            {/* Danh sách hội thoại */}
+            <div className="max-h-[500px] overflow-y-auto p-3 space-y-2">
+                {loading && <p className="text-gray-500 text-sm">Loading...</p>}
+                {!loading && conversations.length === 0 && (
+                    <p className="text-gray-400 text-sm italic">No conversations yet.</p>
+                )}
+
+                {conversations.map((conv) => (
+                    <button
+                        key={conv.id}
+                        onClick={() => onSelectConversation?.(conv.id)} // 👈 gọi callback thay vì set state
+                        className="w-full text-left px-3 py-2 rounded-lg hover:bg-indigo-50 transition"
+                    >
+                        <p className="font-semibold text-gray-800">
+                            {conv.title || "Untitled Chat"}
+                        </p>
+                        <p className="text-sm text-gray-500 truncate">
+                            {conv.messages?.at(-1)?.content || "No messages yet"}
+                        </p>
+                    </button>
+                ))}
+            </div>
+        </div>
+    );
+}

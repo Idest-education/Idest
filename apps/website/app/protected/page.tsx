@@ -1,9 +1,9 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { 
-  InfoIcon, 
-  ShieldCheckIcon, 
-  UserIcon, 
+import {
+  InfoIcon,
+  ShieldCheckIcon,
+  UserIcon,
   ClockIcon,
   KeyIcon,
   CheckIcon
@@ -67,7 +67,7 @@ export default async function ProtectedPage() {
               </div>
               <h2 className="text-xl font-semibold">User Information</h2>
             </div>
-            
+
             <div className="space-y-4">
               <div className="flex justify-between items-center py-3 border-b border-border/50">
                 <span className="text-muted-foreground font-medium">User ID</span>
@@ -75,7 +75,7 @@ export default async function ProtectedPage() {
                   {user.id}
                 </code>
               </div>
-              
+
               <div className="flex justify-between items-center py-3 border-b border-border/50">
                 <span className="text-muted-foreground font-medium">Role</span>
                 <span className="font-medium">{user.user_metadata.role}</span>
@@ -95,7 +95,7 @@ export default async function ProtectedPage() {
             </div>
             <CopyButton text={jwt} label="Token" />
           </div>
-          
+
           <div className="bg-muted/30 rounded-lg p-4 border border-dashed">
             <div className="flex items-center gap-2 mb-3">
               <InfoIcon className="w-4 h-4 text-muted-foreground" />
@@ -104,10 +104,10 @@ export default async function ProtectedPage() {
               </span>
             </div>
             <pre className="text-xs font-mono bg-background border rounded-md p-4 overflow-auto max-h-40 leading-relaxed">
-{jwt}
+              {jwt}
             </pre>
           </div>
-          
+
           <div className="mt-4 p-4 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 rounded-lg">
             <div className="flex items-start gap-2">
               <InfoIcon className="w-4 h-4 text-amber-600 mt-0.5" />
@@ -134,27 +134,27 @@ export default async function ProtectedPage() {
               </div>
             </div>
           </summary>
-          
+
           <div className="px-6 pb-6">
             <div className="flex justify-end mb-3">
-              <CopyButton 
-                text={JSON.stringify({ user: { id: user.id, email: user.email }, expiresAt }, null, 2)} 
-                label="JSON" 
+              <CopyButton
+                text={JSON.stringify({ user: { id: user.id, email: user.email }, expiresAt }, null, 2)}
+                label="JSON"
               />
             </div>
             <pre className="text-xs font-mono bg-muted/50 border rounded-lg p-4 overflow-auto max-h-60">
-{JSON.stringify({ 
-  user: { 
-    id: user.id, 
-    email: user.email,
-    created_at: user.created_at,
-    last_sign_in_at: user.last_sign_in_at
-  }, 
-  expiresAt,
-  tokenType: session.token_type,
-  refreshToken: session.refresh_token ? '[HIDDEN FOR SECURITY]' : null,
-  session
-}, null, 2)}
+              {JSON.stringify({
+                user: {
+                  id: user.id,
+                  email: user.email,
+                  created_at: user.created_at,
+                  last_sign_in_at: user.last_sign_in_at
+                },
+                expiresAt,
+                tokenType: session.token_type,
+                refreshToken: session.refresh_token ? '[HIDDEN FOR SECURITY]' : null,
+                session
+              }, null, 2)}
             </pre>
           </div>
         </details>

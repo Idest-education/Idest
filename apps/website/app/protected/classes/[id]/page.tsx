@@ -8,12 +8,17 @@ import { ClassDetail } from "@/types/class";
 import DefaultAvatar from "@/assets/default-avatar.png";
 import { BookOpen, Users, Calendar, Clock, Award, Video, Copy, CheckCircle2 } from "lucide-react";
 import LoadingScreen from "@/components/loading-screen";
+import MemberCard from "@/components/class/member-card";
+import ConversationPopup from "@/components/conversation/ConversationPopup";
 
 export default function ClassDetailPage() {
   const { id } = useParams();
   const [classData, setClassData] = useState<ClassDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [copied, setCopied] = useState(false);
+
+  const [showChatPopup, setShowChatPopup] = useState(false);
+  const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!id) return;
@@ -25,19 +30,19 @@ export default function ClassDetailPage() {
 
   const formatDateTime = (dateStr: string) => {
     const date = new Date(dateStr);
-    return date.toLocaleString('en-US', { 
-      month: 'short', 
-      day: 'numeric', 
+    return date.toLocaleString('en-US', {
+      month: 'short',
+      day: 'numeric',
       year: 'numeric',
-      hour: '2-digit', 
+      hour: '2-digit',
       minute: '2-digit'
     });
   };
 
   const formatTime = (dateStr: string) => {
     const date = new Date(dateStr);
-    return date.toLocaleString('en-US', { 
-      hour: '2-digit', 
+    return date.toLocaleString('en-US', {
+      hour: '2-digit',
       minute: '2-digit'
     });
   };
@@ -47,6 +52,11 @@ export default function ClassDetailPage() {
     navigator.clipboard.writeText(classData.invite_code);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
+  };
+
+  const handleOpenConversation = (conversationId: string) => {
+    setActiveConversationId(conversationId);
+    setShowChatPopup(true);
   };
 
   if (loading) {
@@ -69,7 +79,7 @@ export default function ClassDetailPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50">
       <div className="max-w-7xl mx-auto p-6 md:p-8 space-y-8">
-        
+
         {/* Header Card */}
         <div className="bg-gradient-to-r from-indigo-600 to-purple-600 rounded-3xl shadow-xl p-8 text-white">
           <div className="flex flex-col md:flex-row justify-between items-start gap-6">
@@ -175,25 +185,31 @@ export default function ClassDetailPage() {
         </div>
 
         {/* Members Section */}
-        <div className="bg-white rounded-2xl shadow-lg p-6 border border-blue-100">
+        <div className="bg-white rounded-2xl shadow-lg p-6 border border-blue-100 relative">
           <div className="flex items-center gap-3 mb-5">
             <Users className="w-6 h-6 text-blue-600" />
             <h2 className="text-2xl font-bold text-gray-800">Class Members</h2>
           </div>
+
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
             {members.map((m) => (
-              <div key={m.id} className="bg-gradient-to-br from-blue-50 to-indigo-50 p-4 rounded-xl text-center border border-blue-200 hover:shadow-md hover:scale-105 transition-all">
-                <Image
-                  src={DefaultAvatar}
-                  alt={m.full_name}
-                  width={60}
-                  height={60}
-                  className="mx-auto rounded-full ring-4 ring-white shadow-md"
-                />
-                <p className="mt-3 text-sm font-semibold text-gray-800 line-clamp-2">{m.full_name}</p>
-              </div>
+              <MemberCard
+                key={m.id}
+                member={m}
+                onConversationCreated={handleOpenConversation} // 👈 truyền callback
+              />
             ))}
           </div>
+
+          {/* Chat Popup hiển thị sau khi tạo hội thoại */}
+          {showChatPopup && activeConversationId && (
+            <div className="fixed bottom-6 right-6 z-50">
+              <ConversationPopup
+                onClose={() => setShowChatPopup(false)}
+                defaultConversationId={activeConversationId} // 👈 mở sẵn ChatWindow
+              />
+            </div>
+          )}
         </div>
 
         {/* Sessions Section */}
