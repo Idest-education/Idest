@@ -1,6 +1,32 @@
 import { http } from "./http";
 import { CreateSessionPayload, UpdateSessionPayload } from "@/types/session";
 
+/**
+ * Get all sessions (for teachers and admins)
+ */
+export async function getAllSessions() {
+  try {
+    const res = await http.get("/session");
+    return res.data;
+  } catch (error: any) {
+    if (error.response?.data) return error.response.data;
+    throw error;
+  }
+}
+
+/**
+ * Get user's sessions (hosted, attended, and upcoming)
+ */
+export async function getUserSessions() {
+  try {
+    const res = await http.get("/session/user");
+    return res.data;
+  } catch (error: any) {
+    if (error.response?.data) return error.response.data;
+    throw error;
+  }
+}
+
 export async function getUpcomingSessions() {
   const res = await http.get("/session/upcoming");
   return res.data;

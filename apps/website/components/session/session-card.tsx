@@ -1,8 +1,9 @@
 "use client";
 
 import { SessionData } from "@/types/session";
-import { Clock, Users, User } from "lucide-react";
+import { Clock, Users, User, Video } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useRouter } from "next/navigation";
 
 interface SessionCardProps {
   session: SessionData;
@@ -21,6 +22,8 @@ export default function SessionCard({
   currentUserId,
   showActions = true,
 }: SessionCardProps) {
+  const router = useRouter();
+  
   const formatDateTime = (dateStr: string) => {
     const date = new Date(dateStr);
     return date.toLocaleString("en-US", {
@@ -47,6 +50,10 @@ export default function SessionCard({
 
   const isHost = currentUserId === session.host_id;
   const isActive = session.end_time === null;
+
+  const handleJoinMeeting = () => {
+    router.push(`/sessions/${session.id}/meet`);
+  };
 
   return (
     <div className="border border-gray-200 rounded-lg p-4 hover:border-gray-900 transition-colors">
@@ -97,40 +104,55 @@ export default function SessionCard({
           </div>
         </div>
 
-        {showActions && isHost && (
-          <div className="flex flex-row md:flex-col gap-2">
-            {onEdit && (
-              <Button
-                onClick={() => onEdit(session)}
-                variant="outline"
-                size="sm"
-                className="text-sm"
-              >
-                Edit
-              </Button>
-            )}
-            {isActive && onEnd && (
-              <Button
-                onClick={() => onEnd(session.id)}
-                variant="outline"
-                size="sm"
-                className="text-sm"
-              >
-                End
-              </Button>
-            )}
-            {onDelete && (
-              <Button
-                onClick={() => onDelete(session.id)}
-                variant="outline"
-                size="sm"
-                className="text-sm text-red-600 hover:text-red-700 hover:bg-red-50"
-              >
-                Delete
-              </Button>
-            )}
-          </div>
-        )}
+        <div className="flex flex-col gap-2">
+          {/* Join Meeting button - shown for all users when session is active */}
+          {isActive && (
+            <Button
+              onClick={handleJoinMeeting}
+              className="bg-blue-600 hover:bg-blue-700 text-white font-semibold shadow-sm"
+              size="default"
+            >
+              <Video className="w-5 h-5 mr-2" />
+              Join Meeting
+            </Button>
+          )}
+
+          {/* Host actions */}
+          {showActions && isHost && (
+            <div className="flex flex-row md:flex-col gap-2">
+              {onEdit && (
+                <Button
+                  onClick={() => onEdit(session)}
+                  variant="outline"
+                  size="sm"
+                  className="text-sm"
+                >
+                  Edit
+                </Button>
+              )}
+              {isActive && onEnd && (
+                <Button
+                  onClick={() => onEnd(session.id)}
+                  variant="outline"
+                  size="sm"
+                  className="text-sm"
+                >
+                  End
+                </Button>
+              )}
+              {onDelete && (
+                <Button
+                  onClick={() => onDelete(session.id)}
+                  variant="outline"
+                  size="sm"
+                  className="text-sm text-red-600 hover:text-red-700 hover:bg-red-50"
+                >
+                  Delete
+                </Button>
+              )}
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );

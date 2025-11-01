@@ -3,11 +3,11 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
-  getUpcomingSessions,
+  getUserSessions,
   endSession,
   deleteSession,
 } from "@/services/session.service";
-import { SessionData } from "@/types/session";
+import { SessionData, UserSessionsResponse } from "@/types/session";
 import SessionCard from "@/components/session/session-card";
 import UpdateSessionModal from "@/components/session/update-session-modal";
 import LoadingScreen from "@/components/loading-screen";
@@ -38,10 +38,42 @@ export default function SessionsPage() {
 
   const loadSessions = async () => {
     try {
-      const res = await getUpcomingSessions();
-      setSessions(res.data || []);
+      const res: any = await getUserSessions();
+      console.log("Sessions API response:", res);
+      
+      let allSessions: SessionData[] = [];
+      
+      // Handle different response structures
+      // API returns: { status, message, data, statusCode }
+      // Service returns res.data from axios, so we get the API response object
+      if (res?.data) {
+        // Check if data is structured as { hosted, attended, upcoming }
+        if (res.data.hosted || res.data.attended || res.data.upcoming) {
+          // UserSessionsResponse format
+          allSessions = [
+            ...(res.data.hosted || []),
+            ...(res.data.attended || []),
+            ...(res.data.upcoming || []),
+          ];
+        } else if (Array.isArray(res.data)) {
+          // Direct array format (API returned { data: [...] })
+          allSessions = res.data;
+        }
+      } else if (Array.isArray(res)) {
+        // Response is directly an array (fallback)
+        allSessions = res;
+      }
+      
+      // Remove duplicates by session ID
+      const uniqueSessions = Array.from(
+        new Map(allSessions.map((s) => [s.id, s])).values()
+      );
+      
+      console.log("Processed sessions:", uniqueSessions);
+      setSessions(uniqueSessions);
     } catch (err) {
       console.error("Error fetching sessions:", err);
+      setSessions([]);
     } finally {
       setLoading(false);
     }
@@ -86,6 +118,7 @@ export default function SessionsPage() {
 
   const groupSessionsByDate = (sessions: SessionData[]) => {
     const now = new Date();
+    // Use local date for grouping
     const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
     const tomorrow = new Date(today);
     tomorrow.setDate(tomorrow.getDate() + 1);
@@ -94,9 +127,11 @@ export default function SessionsPage() {
       today: [] as SessionData[],
       tomorrow: [] as SessionData[],
       upcoming: [] as SessionData[],
+      past: [] as SessionData[],
     };
 
     sessions.forEach((session) => {
+      // Parse session start_time (UTC) and convert to local date
       const sessionDate = new Date(session.start_time);
       const sessionDay = new Date(
         sessionDate.getFullYear(),
@@ -104,11 +139,19 @@ export default function SessionsPage() {
         sessionDate.getDate()
       );
 
+      // Check if session has ended
+      const hasEnded = session.end_time && new Date(session.end_time) < now;
+
+      if (hasEnded) {
+        // Skip past sessions for now, or add to past group if needed
+        return;
+      }
+
       if (sessionDay.getTime() === today.getTime()) {
         groups.today.push(session);
       } else if (sessionDay.getTime() === tomorrow.getTime()) {
         groups.tomorrow.push(session);
-      } else {
+      } else if (sessionDay > today) {
         groups.upcoming.push(session);
       }
     });

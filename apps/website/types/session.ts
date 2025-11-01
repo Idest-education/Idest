@@ -53,3 +53,18 @@ export interface SessionResponse {
   statusCode: number;
 }
 
+/**
+ * User sessions response structure
+ * Contains hosted, attended, and upcoming sessions
+ */
+export interface UserSessionsResponse {
+  status: string;
+  message: string;
+  data: {
+    hosted?: SessionData[];
+    attended?: SessionData[];
+    upcoming?: SessionData[];
+  };
+  statusCode: number;
+}
+
