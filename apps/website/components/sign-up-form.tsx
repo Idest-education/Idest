@@ -2,18 +2,13 @@
 
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import Image from "next/image";
+import SignupImage from "@/assets/signup.jpg";
 import {
   Select,
   SelectContent,
@@ -41,7 +36,7 @@ export function SignUpForm({
     setError(null);
 
     if (password !== repeatPassword) {
-      setError("Mật khẩu không khớp");
+      setError("Passwords do not match");
       setIsLoading(false);
       return;
     }
@@ -56,194 +51,156 @@ export function SignUpForm({
       if (!res.ok) {
         const msg = await res.json();
         const errordata = msg.message;
-        throw new Error(errordata || `Đăng ký thất bại (${res.status})`);
+        throw new Error(errordata || `Sign up failed (${res.status})`);
       }
       router.push("/auth/sign-up-success");
     } catch (error: unknown) {
-      setError(error instanceof Error ? error.message : "Đã xảy ra lỗi");
+      setError(error instanceof Error ? error.message : "An error occurred");
     } finally {
       setIsLoading(false);
     }
   };
 
   return (
-    <div className={cn("flex flex-col gap-6", className)} {...props}>
-      {/* Background decoration */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-20 left-10 w-20 h-20 bg-purple-200 rounded-full opacity-20 animate-pulse"></div>
-        <div className="absolute top-40 right-20 w-16 h-16 bg-indigo-200 rounded-full opacity-20 animate-pulse" style={{animationDelay: '1s'}}></div>
-        <div className="absolute bottom-40 left-20 w-24 h-24 bg-blue-200 rounded-full opacity-20 animate-pulse" style={{animationDelay: '2s'}}></div>
-        <div className="absolute bottom-20 right-40 w-18 h-18 bg-purple-200 rounded-full opacity-20 animate-pulse" style={{animationDelay: '3s'}}></div>
-      </div>
-
-      {/* Header Logo */}
-      <div className="mb-8 text-center relative z-10">
-        <div className="flex items-center justify-center gap-3 mb-4">
-          <div className="w-16 h-16 bg-gradient-to-r from-indigo-600 to-purple-600 rounded-2xl flex items-center justify-center text-white text-2xl font-bold shadow-2xl">
-            🎓
+    <div className={cn("flex min-h-screen flex-col", className)} {...props}>
+      <div className="container relative grid min-h-screen flex-col items-center justify-center lg:max-w-none lg:grid-cols-2 lg:px-0">
+        <div className="relative hidden h-full flex-col bg-muted p-10 text-white lg:flex dark:border-r">
+          <div className="absolute inset-0 bg-gray-900">
+            <Image
+              src={SignupImage}
+              alt="Sign up"
+              fill
+              className="object-cover opacity-60"
+              priority
+            />
           </div>
-          <div className="flex flex-col">
-            <span className="text-3xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
-              Idest
-            </span>
-            <span className="text-sm text-gray-500 font-medium">
-              Learn • Practice • Excel
-            </span>
+          <div className="relative z-20 flex items-center text-lg font-medium">
+            <Link href="/" className="flex items-center gap-2">
+              <span className="text-2xl font-semibold">Idest</span>
+            </Link>
+          </div>
+          <div className="relative z-20 mt-auto">
+            <blockquote className="space-y-2">
+              <p className="text-lg">
+                &ldquo;Join thousands of learners improving their English with AI-powered tools and personalized learning paths.&rdquo;
+              </p>
+            </blockquote>
           </div>
         </div>
-        <p className="text-gray-600 text-lg">
-          Bắt đầu hành trình học tiếng Anh! 🚀
-        </p>
-      </div>
-
-      {/* Sign Up Card */}
-      <Card className="w-full max-w-md bg-white/80 backdrop-blur-sm border-indigo-100 shadow-2xl relative z-10">
-        <CardHeader className="text-center pb-4">
-          <CardTitle className="text-2xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
-            Đăng ký tài khoản
-          </CardTitle>
-          <CardDescription className="text-gray-600">
-            Tạo tài khoản mới để khám phá thế giới tiếng Anh
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleSignUp}>
-            <div className="flex flex-col gap-4">
-              <div className="grid gap-3">
-                <Label htmlFor="email" className="text-gray-700 font-medium">
-                  📧 Email
-                </Label>
-                <Input
-                  id="email"
-                  type="email"
-                  placeholder="your-email@example.com"
-                  required
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="h-11 text-gray-700 border-indigo-200 focus:border-indigo-500 focus:ring-indigo-500 bg-white/50 backdrop-blur-sm transition-all duration-200"
-                />
-              </div>
-
-              <div className="grid gap-3">
-                <Label htmlFor="fullName" className="text-gray-700 font-medium">
-                  👤 Họ và tên
-                </Label>
-                <Input
-                  id="fullName"
-                  type="text"
-                  placeholder="Nguyễn Văn A"
-                  required
-                  value={fullName}
-                  onChange={(e) => setFullName(e.target.value)}
-                  className="h-11 text-gray-700 border-indigo-200 focus:border-indigo-500 focus:ring-indigo-500 bg-white/50 backdrop-blur-sm transition-all duration-200"
-                />
-              </div>
-
-              <div className="grid gap-3">
-                <Label htmlFor="role" className="text-gray-700 font-medium">
-                  🎯 Vai trò
-                </Label>
-                <Select onValueChange={(val) => setRole(val as "student" | "teacher")}>
-                  <SelectTrigger id="role" className="h-11 border-indigo-200 focus:border-indigo-500 focus:ring-indigo-500 bg-white/50 backdrop-blur-sm">
-                    <SelectValue placeholder="Chọn vai trò của bạn" />
-                  </SelectTrigger>
-                  <SelectContent className="bg-white/95 backdrop-blur-sm border-indigo-100">
-                    <SelectItem value="STUDENT" className="hover:bg-indigo-50">
-                      <div className="flex text-gray-700 items-center gap-2">
-                        <span>👨‍🎓</span>
-                        <span>Học viên</span>
-                      </div>
-                    </SelectItem>
-                    <SelectItem value="TEACHER" className="hover:bg-purple-50">
-                      <div className="flex text-gray-700 items-center gap-2">
-                        <span>👨‍🏫</span>
-                        <span>Giáo viên</span>
-                      </div>
-                    </SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="grid gap-3">
-                <Label htmlFor="password" className="text-gray-700 font-medium">
-                  🔒 Mật khẩu
-                </Label>
-                <Input
-                  id="password"
-                  type="password"
-                  placeholder="••••••••"
-                  required
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="h-11 text-gray-700 border-indigo-200 focus:border-indigo-500 focus:ring-indigo-500 bg-white/50 backdrop-blur-sm transition-all duration-200"
-                />
-              </div>
-
-              <div className="grid gap-3">
-                <Label htmlFor="repeat-password" className="text-gray-700 font-medium">
-                  🔐 Xác nhận mật khẩu
-                </Label>
-                <Input
-                  id="repeat-password"
-                  type="password"
-                  placeholder="••••••••"
-                  required
-                  value={repeatPassword}
-                  onChange={(e) => setRepeatPassword(e.target.value)}
-                  className="h-11 text-gray-700 border-indigo-200 focus:border-indigo-500 focus:ring-indigo-500 bg-white/50 backdrop-blur-sm transition-all duration-200"
-                />
-              </div>
-
-              {error && (
-                <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
-                  <p className="text-sm text-red-600 flex items-center gap-2">
-                    <span>⚠️</span>
-                    {error}
-                  </p>
-                </div>
-              )}
-
-              <Button 
-                type="submit" 
-                className="w-full h-11 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white font-semibold rounded-lg shadow-lg hover:shadow-xl transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed" 
-                disabled={isLoading}
-              >
-                {isLoading ? (
-                  <div className="flex items-center gap-2">
-                    <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                    <span>Đang tạo tài khoản...</span>
-                  </div>
-                ) : (
-                  <div className="flex items-center gap-2">
-                    <span>🎉</span>
-                    <span>Tạo tài khoản</span>
-                  </div>
-                )}
-              </Button>
-            </div>
-
-            {/* Sign in link */}
-            <div className="mt-6 text-center">
-              <p className="text-gray-600">
-                Đã có tài khoản?{" "}
-                <Link
-                  href="/auth/login"
-                  className="font-semibold text-indigo-600 hover:text-purple-600 hover:underline underline-offset-4 transition-colors duration-200"
-                >
-                  Đăng nhập ngay
-                </Link>
+        <div className="lg:p-8">
+          <div className="mx-auto flex w-full flex-col justify-center space-y-6 sm:w-[400px]">
+            <div className="flex flex-col space-y-2 text-center">
+              <h1 className="text-2xl font-semibold tracking-tight">
+                Create an account
+              </h1>
+              <p className="text-sm text-muted-foreground">
+                Enter your information to get started
               </p>
             </div>
-          </form>
-        </CardContent>
-      </Card>
-
-      {/* Floating elements */}
-      <div className="absolute top-10 right-10 opacity-30 animate-bounce" style={{animationDelay: '0.5s'}}>
-        <div className="text-4xl">🎓</div>
-      </div>
-      <div className="absolute bottom-10 left-10 opacity-30 animate-bounce" style={{animationDelay: '1.5s'}}>
-        <div className="text-4xl">📝</div>
+            <div className="grid gap-6">
+              <form onSubmit={handleSignUp}>
+                <div className="grid gap-4">
+                  <div className="grid gap-2">
+                    <Label htmlFor="fullName">Full Name</Label>
+                    <Input
+                      id="fullName"
+                      placeholder="John Doe"
+                      type="text"
+                      autoCapitalize="words"
+                      autoComplete="name"
+                      disabled={isLoading}
+                      value={fullName}
+                      onChange={(e) => setFullName(e.target.value)}
+                      required
+                    />
+                  </div>
+                  <div className="grid gap-2">
+                    <Label htmlFor="email">Email</Label>
+                    <Input
+                      id="email"
+                      placeholder="name@example.com"
+                      type="email"
+                      autoCapitalize="none"
+                      autoComplete="email"
+                      autoCorrect="off"
+                      disabled={isLoading}
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      required
+                    />
+                  </div>
+                  <div className="grid gap-2">
+                    <Label htmlFor="role">Role</Label>
+                    <Select onValueChange={(val) => setRole(val as "student" | "teacher")} disabled={isLoading}>
+                      <SelectTrigger id="role">
+                        <SelectValue placeholder="Select your role" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="STUDENT">Student</SelectItem>
+                        <SelectItem value="TEACHER">Teacher</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="grid gap-2">
+                    <Label htmlFor="password">Password</Label>
+                    <Input
+                      id="password"
+                      type="password"
+                      disabled={isLoading}
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      required
+                    />
+                  </div>
+                  <div className="grid gap-2">
+                    <Label htmlFor="repeat-password">Confirm Password</Label>
+                    <Input
+                      id="repeat-password"
+                      type="password"
+                      disabled={isLoading}
+                      value={repeatPassword}
+                      onChange={(e) => setRepeatPassword(e.target.value)}
+                      required
+                    />
+                  </div>
+                  {error && (
+                    <div className="rounded-md bg-destructive/15 p-3 text-sm text-destructive">
+                      {error}
+                    </div>
+                  )}
+                  <Button disabled={isLoading} type="submit" className="w-full">
+                    {isLoading && (
+                      <div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-background border-t-transparent" />
+                    )}
+                    Create Account
+                  </Button>
+                </div>
+              </form>
+              <div className="relative">
+                <div className="absolute inset-0 flex items-center">
+                  <span className="w-full border-t" />
+                </div>
+                <div className="relative flex justify-center text-xs uppercase">
+                  <span className="bg-background px-2 text-muted-foreground">
+                    Or continue with
+                  </span>
+                </div>
+              </div>
+              <Button variant="outline" type="button" disabled={isLoading}>
+                Google
+              </Button>
+            </div>
+            <p className="px-8 text-center text-sm text-muted-foreground">
+              Already have an account?{" "}
+              <Link
+                href="/auth/login"
+                className="underline underline-offset-4 hover:text-primary"
+              >
+                Sign in
+              </Link>
+            </p>
+          </div>
+        </div>
       </div>
     </div>
   );
