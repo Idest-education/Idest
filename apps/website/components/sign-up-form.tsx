@@ -1,7 +1,6 @@
 "use client";
 
 import { cn } from "@/lib/utils";
-import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -38,7 +37,6 @@ export function SignUpForm({
 
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
-    const supabase = createClient();
     setIsLoading(true);
     setError(null);
 
@@ -86,7 +84,7 @@ export function SignUpForm({
           </div>
           <div className="flex flex-col">
             <span className="text-3xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
-              EnglishMaster
+              Idest
             </span>
             <span className="text-sm text-gray-500 font-medium">
               Learn • Practice • Excel

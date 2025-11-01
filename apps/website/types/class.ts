@@ -1,5 +1,6 @@
 export interface ClassData {
   id: string;
+  slug: string;
   name: string;
   description: string;
   invite_code: string;

@@ -1,51 +1,172 @@
-import { DeployButton } from "@/components/deploy-button";
-import { EnvVarWarning } from "@/components/env-var-warning";
-import { AuthButton } from "@/components/auth-button";
-import { Hero } from "@/components/hero";
-import { ThemeSwitcher } from "@/components/theme-switcher";
-import { ConnectSupabaseSteps } from "@/components/tutorial/connect-supabase-steps";
-import { SignUpUserSteps } from "@/components/tutorial/sign-up-user-steps";
-import { hasEnvVars } from "@/lib/utils";
 import Link from "next/link";
+import { ArrowRight, BookOpen, MessageSquare, Brain, Sparkles } from "lucide-react";
+import { createClient } from "@/lib/supabase/server";
+import { AuthButton } from "@/components/auth-button";
 
-export default function Home() {
+export default async function Home() {
+  const supabase = await createClient();
+  const { data } = await supabase.auth.getClaims();
+  const user = data?.claims;
+
   return (
-    <main className="min-h-screen flex flex-col items-center">
-      <div className="flex-1 w-full flex flex-col gap-20 items-center">
-        <nav className="w-full flex justify-center border-b border-b-foreground/10 h-16">
-          <div className="w-full max-w-5xl flex justify-between items-center p-3 px-5 text-sm">
-            <div className="flex gap-5 items-center font-semibold">
-              <Link href={"/"}>Next.js Supabase Starter</Link>
-              <div className="flex items-center gap-2">
-                <DeployButton />
-              </div>
-            </div>
-            {!hasEnvVars ? <EnvVarWarning /> : <AuthButton />}
+    <main className="min-h-screen bg-white">
+      {/* Navigation */}
+      <nav className="border-b border-gray-200">
+        <div className="max-w-7xl mx-auto px-6 py-4 flex justify-between items-center">
+          <Link href="/" className="text-2xl font-semibold text-gray-900">
+            Idest
+          </Link>
+          <div className="flex items-center gap-4">
+            {user ? (
+              <>
+                <Link
+                  href="/classes"
+                  className="px-4 py-2 text-sm text-gray-700 hover:text-gray-900 transition-colors"
+                >
+                  Dashboard
+                </Link>
+                <AuthButton />
+              </>
+            ) : (
+              <>
+                <Link
+                  href="/auth/login"
+                  className="px-4 py-2 text-sm text-gray-700 hover:text-gray-900 transition-colors"
+                >
+                  Log in
+                </Link>
+                <Link
+                  href="/auth/sign-up"
+                  className="px-4 py-2 text-sm bg-gray-900 text-white rounded-lg hover:bg-gray-800 transition-colors"
+                >
+                  Sign up
+                </Link>
+              </>
+            )}
           </div>
-        </nav>
-        <div className="flex-1 flex flex-col gap-20 max-w-5xl p-5">
-          <Hero />
-          <main className="flex-1 flex flex-col gap-6 px-4">
-            <h2 className="font-medium text-xl mb-4">Next steps</h2>
-            {hasEnvVars ? <SignUpUserSteps /> : <ConnectSupabaseSteps />}
-          </main>
         </div>
+      </nav>
 
-        <footer className="w-full flex items-center justify-center border-t mx-auto text-center text-xs gap-8 py-16">
-          <p>
-            Powered by{" "}
-            <a
-              href="https://supabase.com/?utm_source=create-next-app&utm_medium=template&utm_term=nextjs"
-              target="_blank"
-              className="font-bold hover:underline"
-              rel="noreferrer"
-            >
-              Supabase
-            </a>
+      {/* Hero Section */}
+      <section className="max-w-7xl mx-auto px-6 pt-20 pb-24">
+        <div className="max-w-3xl mx-auto text-center">
+          <div className="inline-flex items-center gap-2 px-4 py-2 bg-gray-100 rounded-full text-sm text-gray-700 mb-8">
+            <Sparkles className="w-4 h-4" />
+            AI-Powered English Learning
+          </div>
+          <h1 className="text-5xl md:text-6xl font-bold text-gray-900 mb-6 leading-tight">
+            Master English with
+            <span className="block mt-2">confidence and ease</span>
+          </h1>
+          <p className="text-xl text-gray-600 mb-10 leading-relaxed">
+            Practice speaking, writing, and comprehension with AI tutors that adapt to your learning style.
           </p>
-          <ThemeSwitcher />
-        </footer>
-      </div>
+          <div className="flex items-center justify-center gap-4">
+            {user ? (
+              <Link
+                href="/classes"
+                className="inline-flex items-center gap-2 px-6 py-3 bg-gray-900 text-white rounded-lg hover:bg-gray-800 transition-colors text-lg font-medium"
+              >
+                Go to Dashboard
+                <ArrowRight className="w-5 h-5" />
+              </Link>
+            ) : (
+              <>
+                <Link
+                  href="/auth/sign-up"
+                  className="inline-flex items-center gap-2 px-6 py-3 bg-gray-900 text-white rounded-lg hover:bg-gray-800 transition-colors text-lg font-medium"
+                >
+                  Get started
+                  <ArrowRight className="w-5 h-5" />
+                </Link>
+                <Link
+                  href="/auth/login"
+                  className="px-6 py-3 text-gray-700 hover:text-gray-900 transition-colors text-lg font-medium"
+                >
+                  Learn more
+                </Link>
+              </>
+            )}
+          </div>
+        </div>
+      </section>
+
+      {/* Features Section */}
+      <section className="max-w-7xl mx-auto px-6 py-24 border-t border-gray-200">
+        <div className="grid md:grid-cols-3 gap-12">
+          <div className="text-center">
+            <div className="inline-flex items-center justify-center w-12 h-12 bg-gray-100 rounded-lg mb-4">
+              <MessageSquare className="w-6 h-6 text-gray-900" />
+            </div>
+            <h3 className="text-xl font-semibold text-gray-900 mb-3">
+              Speaking Practice
+            </h3>
+            <p className="text-gray-600 leading-relaxed">
+              Have natural conversations with AI tutors and receive instant feedback on pronunciation and fluency.
+            </p>
+          </div>
+
+          <div className="text-center">
+            <div className="inline-flex items-center justify-center w-12 h-12 bg-gray-100 rounded-lg mb-4">
+              <BookOpen className="w-6 h-6 text-gray-900" />
+            </div>
+            <h3 className="text-xl font-semibold text-gray-900 mb-3">
+              Writing Assistance
+            </h3>
+            <p className="text-gray-600 leading-relaxed">
+              Improve your writing skills with AI-powered suggestions, grammar corrections, and style recommendations.
+            </p>
+          </div>
+
+          <div className="text-center">
+            <div className="inline-flex items-center justify-center w-12 h-12 bg-gray-100 rounded-lg mb-4">
+              <Brain className="w-6 h-6 text-gray-900" />
+            </div>
+            <h3 className="text-xl font-semibold text-gray-900 mb-3">
+              Personalized Learning
+            </h3>
+            <p className="text-gray-600 leading-relaxed">
+              Adaptive curriculum that adjusts to your level and learning pace for optimal progress.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      {/* CTA Section */}
+      <section className="max-w-7xl mx-auto px-6 py-24 border-t border-gray-200">
+        <div className="max-w-3xl mx-auto text-center">
+          <h2 className="text-4xl font-bold text-gray-900 mb-6">
+            Ready to get started?
+          </h2>
+          <p className="text-xl text-gray-600 mb-8">
+            Join thousands of learners improving their English every day.
+          </p>
+          {user ? (
+            <Link
+              href="/classes"
+              className="inline-flex items-center gap-2 px-6 py-3 bg-gray-900 text-white rounded-lg hover:bg-gray-800 transition-colors text-lg font-medium"
+            >
+              Go to Dashboard
+              <ArrowRight className="w-5 h-5" />
+            </Link>
+          ) : (
+            <Link
+              href="/auth/sign-up"
+              className="inline-flex items-center gap-2 px-6 py-3 bg-gray-900 text-white rounded-lg hover:bg-gray-800 transition-colors text-lg font-medium"
+            >
+              Start learning for free
+              <ArrowRight className="w-5 h-5" />
+            </Link>
+          )}
+        </div>
+      </section>
+
+      {/* Footer */}
+      <footer className="border-t border-gray-200 mt-24">
+        <div className="max-w-7xl mx-auto px-6 py-8 text-center text-sm text-gray-600">
+          <p>© {new Date().getFullYear()} Idest. All rights reserved.</p>
+        </div>
+      </footer>
     </main>
   );
 }

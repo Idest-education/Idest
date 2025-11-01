@@ -20,6 +20,26 @@ export interface AddParticipantDto {
   userIds: string[];           // Danh sách ID user cần thêm
 }
 
+// Chỉnh sửa tin nhắn
+export interface EditMessageDto {
+  content: string;             // Nội dung tin nhắn mới
+}
+
+// Trạng thái typing
+export interface TypingStatusDto {
+  conversationId: string;
+  userId: string;
+  userName: string;
+  isTyping: boolean;
+}
+
+// Trạng thái đọc tin nhắn
+export interface MessageReadStatus {
+  messageId: string;
+  userId: string;
+  readAt: string;
+}
+
 // ====================
 // 🎯 DTO (Response)
 // ====================
@@ -47,6 +67,9 @@ export interface MessageDto {
   content: string;
   attachments?: string[];
   createdAt: string;
+  isDeleted?: boolean;         // 🆕 Đánh dấu tin nhắn đã xóa
+  editedAt?: string;           // 🆕 Thời gian chỉnh sửa
+  readBy?: string[];           // 🆕 Danh sách user IDs đã đọc tin nhắn
 }
 
 // Danh sách tin nhắn (phân trang)

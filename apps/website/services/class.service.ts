@@ -11,6 +11,11 @@ export async function getClassById(id: string) {
   return res.data;
 }
 
+export async function getClassBySlug(slug: string) {
+  const res = await http.get(`/class/slug/${slug}`);
+  return res.data;
+}
+
 export const searchClasses = async (q: string) => {
   if (!q.trim()) return [];
   const res = await http.get(`/class/search?q=${encodeURIComponent(q)}`);

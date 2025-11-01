@@ -51,7 +51,7 @@ export function LoginForm({
       }
 
       // Chuyển hướng sau khi login thành công
-      router.push("/protected");
+      router.push("/classes");
     } catch (error: unknown) {
       setError(error instanceof Error ? error.message : "An error occurred");
     } finally {
@@ -77,7 +77,7 @@ export function LoginForm({
           </div>
           <div className="flex flex-col">
             <span className="text-3xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
-              EnglishMaster
+              Idest
             </span>
             <span className="text-sm text-gray-500 font-medium">
               Learn • Practice • Excel

@@ -5,6 +5,7 @@ import { conversationService } from "@/services/conversation.service";
 import { ConversationDto } from "@/types/conversation";
 import ChatWindow from "./ChatWindow";
 import { X } from "lucide-react";
+import { socket, connectSocket } from "@/lib/socket";
 
 interface ConversationPopupProps {
     onClose: () => void;
@@ -31,7 +32,35 @@ export default function ConversationPopup({
             .getUserConversations()
             .then((res) => setConversations(res.items))
             .finally(() => setLoading(false));
-    }, []);
+
+        // Connect socket and listen for real-time updates
+        const token = localStorage.getItem("access_token");
+        if (token) {
+            connectSocket(token);
+
+            // Listen for new conversations
+            socket.on("conversation-created", (conversation: ConversationDto) => {
+                setConversations((prev) => {
+                    if (prev.find((c) => c.id === conversation.id)) return prev;
+                    return [conversation, ...prev];
+                });
+            });
+
+            // Listen for deleted conversations
+            socket.on("conversation-deleted", (data: { conversationId: string }) => {
+                setConversations((prev) => prev.filter((c) => c.id !== data.conversationId));
+                // Close chat window if deleted conversation is currently open
+                if (selectedId === data.conversationId) {
+                    setSelectedId(null);
+                }
+            });
+        }
+
+        return () => {
+            socket.off("conversation-created");
+            socket.off("conversation-deleted");
+        };
+    }, [selectedId]);
 
     // Nếu popup được dùng để hiển thị ChatWindow mini
     if (defaultConversationId) {

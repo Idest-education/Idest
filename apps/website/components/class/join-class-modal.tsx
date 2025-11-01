@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { joinClass } from "@/services/class.service";
 import { toast } from "sonner";
-import { LogIn, Key, Users, Sparkles } from "lucide-react";
+import { LogIn, Key } from "lucide-react";
 import { DialogClose } from "@/components/ui/dialog";
 import { X } from "lucide-react";
 

@@ -4,7 +4,6 @@ import {
   InfoIcon,
   ShieldCheckIcon,
   UserIcon,
-  ClockIcon,
   KeyIcon,
   CheckIcon
 } from "lucide-react";

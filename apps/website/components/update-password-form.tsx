@@ -42,7 +42,7 @@ export function UpdatePasswordForm({
       const { error } = await supabase.auth.updateUser({ password });
       if (error) throw error;
       // Update this route to redirect to an authenticated route. The user already has an active session.
-      router.push("/protected");
+      router.push("/classes");
     } catch (error: unknown) {
       setError(error instanceof Error ? error.message : "Đã xảy ra lỗi");
     } finally {
@@ -80,7 +80,7 @@ export function UpdatePasswordForm({
           </div>
           <div className="flex flex-col">
             <span className="text-3xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
-              EnglishMaster
+              Idest
             </span>
             <span className="text-sm text-gray-500 font-medium">
               Learn • Practice • Excel
