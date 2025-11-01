@@ -88,17 +88,25 @@ export class MeetGateway
       // Validate JWT token
       const userPayload = await this.meetService.validateToken(data.token);
 
+      // Validate that the token has a user ID (sub field)
+      if (!userPayload.sub) {
+        throw new UnauthorizedException('Invalid token: missing user ID');
+      }
+
+      // Store the user ID after validation
+      const userId = userPayload.sub;
+
       // Validate session exists and is active
       await this.meetService.validateSession(data.sessionId);
 
       // Validate user has access to this session
       await this.meetService.validateUserSessionAccess(
-        userPayload.sub,
+        userId,
         data.sessionId,
       );
 
       // Get user details from database
-      const userDetails = await this.meetService.getUserDetails(userPayload.sub);
+      const userDetails = await this.meetService.getUserDetails(userId);
       if (!userDetails) {
         throw new NotFoundException('User not found in database');
       }
@@ -108,7 +116,7 @@ export class MeetGateway
 
       // Create connected user object
       const connectedUser: ConnectedUser = {
-        userId: userPayload.sub,
+        userId: userId,
         socketId: client.id,
         userFullName: userDetails.full_name,
         userAvatar: userDetails.avatar_url,
@@ -123,7 +131,7 @@ export class MeetGateway
       // Notify other users in the room
       const userJoinedData: UserJoinedDto = {
         sessionId: data.sessionId,
-        userId: userPayload.sub,
+        userId: userId,
         userFullName: userDetails.full_name,
         userAvatar: userDetails.avatar_url,
         role: userDetails.role,
@@ -181,12 +189,12 @@ export class MeetGateway
       // Confirm successful join
       client.emit('join-room-success', {
         sessionId: data.sessionId,
-        userId: userPayload.sub,
+        userId: userId,
         message: 'Successfully joined the session',
       });
 
       this.logger.log(
-        `User ${userPayload.sub} successfully joined session ${data.sessionId}`,
+        `User ${userId} successfully joined session ${data.sessionId}`,
       );
     } catch (error) {
       this.logger.error(`Failed to join room: ${error.message}`);
