@@ -93,12 +93,12 @@ export class MeetGateway
 
       // Validate user has access to this session
       await this.meetService.validateUserSessionAccess(
-        userPayload.id,
+        userPayload.sub,
         data.sessionId,
       );
 
       // Get user details from database
-      const userDetails = await this.meetService.getUserDetails(userPayload.id);
+      const userDetails = await this.meetService.getUserDetails(userPayload.sub);
       if (!userDetails) {
         throw new NotFoundException('User not found in database');
       }
@@ -108,7 +108,7 @@ export class MeetGateway
 
       // Create connected user object
       const connectedUser: ConnectedUser = {
-        userId: userPayload.id,
+        userId: userPayload.sub,
         socketId: client.id,
         userFullName: userDetails.full_name,
         userAvatar: userDetails.avatar_url,
@@ -123,7 +123,7 @@ export class MeetGateway
       // Notify other users in the room
       const userJoinedData: UserJoinedDto = {
         sessionId: data.sessionId,
-        userId: userPayload.id,
+        userId: userPayload.sub,
         userFullName: userDetails.full_name,
         userAvatar: userDetails.avatar_url,
         role: userDetails.role,
@@ -181,12 +181,12 @@ export class MeetGateway
       // Confirm successful join
       client.emit('join-room-success', {
         sessionId: data.sessionId,
-        userId: userPayload.id,
+        userId: userPayload.sub,
         message: 'Successfully joined the session',
       });
 
       this.logger.log(
-        `User ${userPayload.id} successfully joined session ${data.sessionId}`,
+        `User ${userPayload.sub} successfully joined session ${data.sessionId}`,
       );
     } catch (error) {
       this.logger.error(`Failed to join room: ${error.message}`);
