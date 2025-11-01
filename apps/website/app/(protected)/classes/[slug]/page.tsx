@@ -4,12 +4,22 @@ import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import Image from "next/image";
 import { getClassBySlug } from "@/services/class.service";
+import {
+  getClassSessions,
+  endSession,
+  deleteSession,
+} from "@/services/session.service";
 import { ClassDetail } from "@/types/class";
+import { SessionData } from "@/types/session";
 import DefaultAvatar from "@/assets/default-avatar.png";
-import { BookOpen, Users, Calendar, Clock, Award, Video, Copy, CheckCircle2 } from "lucide-react";
+import { BookOpen, Users, Clock, Award, Copy, CheckCircle2, PlusCircle } from "lucide-react";
 import LoadingScreen from "@/components/loading-screen";
 import MemberCard from "@/components/class/member-card";
 import ConversationPopup from "@/components/conversation/ConversationPopup";
+import SessionCard from "@/components/session/session-card";
+import CreateSessionModal from "@/components/session/create-session-modal";
+import UpdateSessionModal from "@/components/session/update-session-modal";
+import { Button } from "@/components/ui/button";
 
 export default function ClassDetailPage() {
   const { slug } = useParams();
@@ -20,6 +30,28 @@ export default function ClassDetailPage() {
   const [showChatPopup, setShowChatPopup] = useState(false);
   const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
 
+  const [classSessions, setClassSessions] = useState<SessionData[]>([]);
+  const [sessionFilter, setSessionFilter] = useState<"upcoming" | "past">("upcoming");
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [showUpdateModal, setShowUpdateModal] = useState(false);
+  const [selectedSession, setSelectedSession] = useState<SessionData | null>(null);
+  const [currentUserId, setCurrentUserId] = useState<string>("");
+  const [userRole, setUserRole] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchUserData = async () => {
+      try {
+        const res = await fetch("/api/session");
+        const data = await res.json();
+        setCurrentUserId(data.user?.id || "");
+        setUserRole(data.user?.user_metadata?.role || null);
+      } catch (err) {
+        console.error("Error fetching user data:", err);
+      }
+    };
+    fetchUserData();
+  }, []);
+
   useEffect(() => {
     if (!slug) return;
     getClassBySlug(slug as string)
@@ -28,23 +60,30 @@ export default function ClassDetailPage() {
       .finally(() => setLoading(false));
   }, [slug]);
 
-  const formatDateTime = (dateStr: string) => {
-    const date = new Date(dateStr);
-    return date.toLocaleString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
-  };
+  useEffect(() => {
+    const loadSessions = async () => {
+      if (!classData?.id) return;
+      try {
+        const res = await getClassSessions(classData.id);
+        setClassSessions(res.data || []);
+      } catch (err) {
+        console.error("Error fetching sessions:", err);
+      }
+    };
 
-  const formatTime = (dateStr: string) => {
-    const date = new Date(dateStr);
-    return date.toLocaleString('en-US', {
-      hour: '2-digit',
-      minute: '2-digit'
-    });
+    if (classData?.id) {
+      loadSessions();
+    }
+  }, [classData?.id]);
+
+  const refreshSessions = async () => {
+    if (!classData?.id) return;
+    try {
+      const res = await getClassSessions(classData.id);
+      setClassSessions(res.data || []);
+    } catch (err) {
+      console.error("Error fetching sessions:", err);
+    }
   };
 
   const handleCopyCode = () => {
@@ -57,6 +96,41 @@ export default function ClassDetailPage() {
   const handleOpenConversation = (conversationId: string) => {
     setActiveConversationId(conversationId);
     setShowChatPopup(true);
+  };
+
+  const handleEditSession = (session: SessionData) => {
+    setSelectedSession(session);
+    setShowUpdateModal(true);
+  };
+
+  const handleEndSession = async (sessionId: string) => {
+    try {
+      const res = await endSession(sessionId);
+      if (res.statusCode === 200) {
+        refreshSessions();
+      } else {
+        alert(res.message || "Failed to end session");
+      }
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : "An error occurred";
+      alert(errorMessage);
+    }
+  };
+
+  const handleDeleteSession = async (sessionId: string) => {
+    if (!confirm("Are you sure you want to delete this session?")) return;
+
+    try {
+      const res = await deleteSession(sessionId);
+      if (res.statusCode === 200) {
+        refreshSessions();
+      } else {
+        alert(res.message || "Failed to delete session");
+      }
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : "An error occurred";
+      alert(errorMessage);
+    }
   };
 
   if (loading) {
@@ -74,7 +148,7 @@ export default function ClassDetailPage() {
     );
   }
 
-  const { name, description, creator, schedule, _count, members, teachers, sessions } = classData;
+  const { name, description, creator, schedule, _count, members, teachers } = classData;
 
   return (
     <div className="min-h-screen bg-white">
@@ -202,45 +276,87 @@ export default function ClassDetailPage() {
 
         {/* Sessions Section */}
         <div className="border border-gray-200 rounded-lg p-6">
-          <h2 className="text-xl font-semibold text-gray-900 mb-4">Sessions</h2>
-          <div className="space-y-3">
-            {sessions.map((s) => (
-              <div key={s.id} className="border border-gray-200 rounded-lg p-4 hover:border-gray-900 transition-colors">
-                <div className="flex flex-col md:flex-row justify-between md:items-center gap-4">
-                  <div className="flex-1">
-                    <h3 className="font-medium text-gray-900 mb-2">
-                      {s.metadata?.topic || "Untitled session"}
-                    </h3>
-                    <div className="space-y-1 text-sm text-gray-600">
-                      <p className="flex items-center gap-2">
-                        <Calendar className="w-4 h-4" />
-                        {formatDateTime(s.start_time)} → {formatTime(s.end_time)}
-                      </p>
-                      <p className="flex items-center gap-2">
-                        <Users className="w-4 h-4" />
-                        Host: <span className="font-medium text-gray-900">{s.host.full_name}</span>
-                        <span className="mx-2">•</span>
-                        Attendees: <span className="font-medium text-gray-900">{s.metadata?.attendees_count ?? 0}</span>
-                      </p>
-                    </div>
-                  </div>
-                  {s.is_recorded && (
-                    <a
-                      href={s.recording_url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex items-center gap-2 px-4 py-2 bg-gray-900 text-white rounded-lg hover:bg-gray-800 transition-colors text-sm font-medium"
-                    >
-                      <Video className="w-4 h-4" />
-                      Watch Recording
-                    </a>
-                  )}
-                </div>
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-xl font-semibold text-gray-900">Sessions</h2>
+            <div className="flex items-center gap-3">
+              <div className="flex gap-2">
+                <Button
+                  variant={sessionFilter === "upcoming" ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setSessionFilter("upcoming")}
+                >
+                  Upcoming
+                </Button>
+                <Button
+                  variant={sessionFilter === "past" ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setSessionFilter("past")}
+                >
+                  Past
+                </Button>
               </div>
-            ))}
+              {(userRole === "TEACHER" || userRole === "ADMIN") && (
+                <Button
+                  onClick={() => setShowCreateModal(true)}
+                  className="bg-gray-900 text-white hover:bg-gray-800 font-medium flex items-center gap-2"
+                  size="sm"
+                >
+                  <PlusCircle className="w-4 h-4" />
+                  Create Session
+                </Button>
+              )}
+            </div>
+          </div>
+
+          <div className="space-y-3">
+            {classSessions.length === 0 ? (
+              <p className="text-gray-500 text-center py-8">
+                No sessions yet
+              </p>
+            ) : (
+              classSessions
+                .filter((s) => {
+                  const now = new Date();
+                  const startTime = new Date(s.start_time);
+                  if (sessionFilter === "upcoming") {
+                    return startTime >= now || s.end_time === null;
+                  } else {
+                    return s.end_time !== null && new Date(s.end_time) < now;
+                  }
+                })
+                .map((s) => (
+                  <SessionCard
+                    key={s.id}
+                    session={s}
+                    onEdit={handleEditSession}
+                    onEnd={handleEndSession}
+                    onDelete={handleDeleteSession}
+                    currentUserId={currentUserId}
+                  />
+                ))
+            )}
           </div>
         </div>
       </div>
+
+      {/* Session Modals */}
+      {classData && (
+        <>
+          <CreateSessionModal
+            open={showCreateModal}
+            onClose={() => setShowCreateModal(false)}
+            onCreated={refreshSessions}
+            classId={classData.id}
+            className={classData.name}
+          />
+          <UpdateSessionModal
+            open={showUpdateModal}
+            onClose={() => setShowUpdateModal(false)}
+            onUpdated={refreshSessions}
+            session={selectedSession}
+          />
+        </>
+      )}
     </div>
   );
 }
