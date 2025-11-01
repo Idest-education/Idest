@@ -35,8 +35,13 @@ import {
 } from './dto/message-history.dto';
 import { ConnectedUser } from './utils/connected-users-manager';
 
-@WebSocketGateway(3002, {
-  cors: true,
+@WebSocketGateway({
+  cors: {
+    origin: process.env.CORS_ORIGINS?.split(',').map((s) => s.trim()) || [
+      'http://localhost:3000',
+    ],
+    credentials: true,
+  },
   namespace: '/meet',
 })
 export class MeetGateway
@@ -50,7 +55,7 @@ export class MeetGateway
   constructor(private readonly meetService: MeetService) {}
 
   afterInit() {
-    this.logger.log('WebSocket Meet Gateway initialized on port 3002');
+    this.logger.log('WebSocket Meet Gateway initialized on shared HTTP port');
   }
 
   handleConnection(client: Socket) {

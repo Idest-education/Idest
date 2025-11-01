@@ -12,8 +12,13 @@ import { PrismaService } from 'src/prisma/prisma.service';
 import * as JWT from 'jsonwebtoken';
 import { checkClassAccess } from './conversation.util';
 
-@WebSocketGateway(8001, {
-  cors: true,
+@WebSocketGateway({
+  cors: {
+    origin: process.env.CORS_ORIGINS?.split(',').map((s) => s.trim()) || [
+      'http://localhost:3000',
+    ],
+    credentials: true,
+  },
   namespace: '/conversation',
 })
 export class ConversationGateway implements OnGatewayInit {
