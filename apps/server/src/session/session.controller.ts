@@ -63,6 +63,45 @@ export class SessionController {
     return this.sessionService.createSession(user, dto);
   }
 
+  @Get('')
+  @ApiOperation({
+    summary: 'Get all sessions',
+    description:
+      'Retrieves all sessions across all classes. Only teachers/admins can access this endpoint.',
+  })
+  @ApiOkResponse({
+    description: 'Successfully retrieved all sessions',
+    type: [SessionResponseDto],
+  })
+  @ApiForbiddenResponse({
+    description: 'Access denied - only teachers/admins can access all sessions',
+  })
+  @ApiUnauthorizedResponse({ description: 'Authentication required' })
+  @ApiInternalServerErrorResponse({ description: 'Internal server error' })
+  async getAllSessions(
+    @CurrentUser() user: userPayload,
+  ): Promise<SessionResponseDto[]> {
+    return this.sessionService.getAllSessions(user.id);
+  }
+
+  @Get('user')
+  @ApiOperation({
+    summary: 'Get all user sessions',
+    description:
+      'Retrieves all sessions for the authenticated user including hosted, attended, and upcoming sessions.',
+  })
+  @ApiOkResponse({
+    description: 'Successfully retrieved all user sessions',
+    type: [SessionResponseDto],
+  })
+  @ApiUnauthorizedResponse({ description: 'Authentication required' })
+  @ApiInternalServerErrorResponse({ description: 'Internal server error' })
+  async getAllUserSessions(
+    @CurrentUser() user: userPayload,
+  ): Promise<SessionResponseDto[]> {
+    return this.sessionService.getAllUserSessions(user.id);
+  }
+
   @Get('upcoming')
   @ApiOperation({
     summary: 'Get upcoming sessions',
@@ -228,4 +267,5 @@ export class SessionController {
   ): Promise<SessionResponseDto[]> {
     return this.sessionService.getClassSessions(classId, user.id);
   }
+
 }

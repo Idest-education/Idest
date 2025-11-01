@@ -510,4 +510,100 @@ export class SessionService {
 
     return !!isTeacher;
   }
+
+  /**
+   * Get all sessions (for teachers/admins only)
+   */
+  async getAllSessions(userId: string): Promise<SessionResponseDto[]> {
+    try {
+      // Check if user is a teacher or admin
+      const user = await this.prisma.user.findUnique({
+        where: { id: userId },
+        select: { role: true },
+      });
+
+      if (!user) {
+        throw new ForbiddenException('User not found');
+      }
+
+      if (user.role !== 'TEACHER' && user.role !== 'ADMIN') {
+        throw new ForbiddenException(
+          'Only teachers and admins can access all sessions',
+        );
+      }
+
+      const sessions: SessionResponseDto[] = await this.prisma.session.findMany({
+        include: {
+          host: {
+            select: {
+              id: true,
+              full_name: true,
+              email: true,
+            },
+          },
+          class: {
+            select: {
+              id: true,
+              name: true,
+            },
+          },
+        },
+        orderBy: { start_time: 'desc' },
+      });
+
+      return sessions;
+    } catch (error) {
+      console.error('Error getting all sessions:', error);
+      if (error instanceof ForbiddenException) {
+        throw error;
+      }
+      throw new InternalServerErrorException('Failed to retrieve all sessions');
+    }
+  }
+
+  /**
+   * Get all user sessions (hosted, attended, upcoming, past)
+   */
+  async getAllUserSessions(userId: string): Promise<SessionResponseDto[]> {
+    try {
+      // Get all sessions where user is involved (hosted or member/teacher)
+      const sessions: SessionResponseDto[] = await this.prisma.session.findMany({
+        where: {
+          OR: [
+            { host_id: userId },
+            {
+              class: {
+                OR: [
+                  { created_by: userId },
+                  { teachers: { some: { teacher_id: userId } } },
+                  { members: { some: { student_id: userId, status: 'active' } } },
+                ],
+              },
+            },
+          ],
+        },
+        include: {
+          host: {
+            select: {
+              id: true,
+              full_name: true,
+              email: true,
+            },
+          },
+          class: {
+            select: {
+              id: true,
+              name: true,
+            },
+          },
+        },
+        orderBy: { start_time: 'desc' },
+      });
+
+      return sessions;
+    } catch (error) {
+      console.error('Error getting all user sessions:', error);
+      throw new InternalServerErrorException('Failed to retrieve user sessions');
+    }
+  }
 }
