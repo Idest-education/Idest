@@ -27,12 +27,19 @@ import {
   UserJoinedDto,
   UserLeftDto,
   SessionParticipantsDto,
+  ScreenShareResponseDto,
+  MediaToggleResponseDto,
 } from './dto/room-events.dto';
 import {
   GetMeetingMessagesDto,
   MessageHistoryListDto,
   MessageHistoryResponseDto,
 } from './dto/message-history.dto';
+import {
+  StartScreenShareDto,
+  StopScreenShareDto,
+  ToggleMediaDto,
+} from './dto/media-controls.dto';
 import { ConnectedUser } from './utils/connected-users-manager';
 
 @WebSocketGateway({
@@ -514,6 +521,115 @@ export class MeetGateway
       client.emit('message-history-error', {
         message: 'Failed to load message history',
       });
+    }
+  }
+
+  /**
+   * Start Screen Share - Notify participants that user started sharing screen
+   */
+  @SubscribeMessage('start-screen-share')
+  async handleStartScreenShare(
+    @ConnectedSocket() client: Socket,
+    @MessageBody() data: StartScreenShareDto,
+  ) {
+    try {
+      // Validate user is in this session
+      const user = this.meetService.getUserBySocket(client.id);
+      if (!user || user.sessionId !== data.sessionId) {
+        client.emit('screen-share-error', { message: 'Not in this session' });
+        return;
+      }
+
+      const screenShareResponse: ScreenShareResponseDto = {
+        sessionId: data.sessionId,
+        userId: user.userId,
+        userFullName: user.userFullName,
+        userAvatar: user.userAvatar,
+        isSharing: true,
+      };
+
+      // Broadcast to all users in the session (including sender)
+      this.server.to(data.sessionId).emit('screen-share-started', screenShareResponse);
+
+      this.logger.log(
+        `User ${user.userId} started screen sharing in session ${data.sessionId}`,
+      );
+    } catch (error) {
+      this.logger.error(`Failed to start screen share: ${error.message}`);
+      client.emit('screen-share-error', { message: 'Failed to start screen share' });
+    }
+  }
+
+  /**
+   * Stop Screen Share - Notify participants that user stopped sharing screen
+   */
+  @SubscribeMessage('stop-screen-share')
+  async handleStopScreenShare(
+    @ConnectedSocket() client: Socket,
+    @MessageBody() data: StopScreenShareDto,
+  ) {
+    try {
+      // Validate user is in this session
+      const user = this.meetService.getUserBySocket(client.id);
+      if (!user || user.sessionId !== data.sessionId) {
+        client.emit('screen-share-error', { message: 'Not in this session' });
+        return;
+      }
+
+      const screenShareResponse: ScreenShareResponseDto = {
+        sessionId: data.sessionId,
+        userId: user.userId,
+        userFullName: user.userFullName,
+        userAvatar: user.userAvatar,
+        isSharing: false,
+      };
+
+      // Broadcast to all users in the session (including sender)
+      this.server.to(data.sessionId).emit('screen-share-stopped', screenShareResponse);
+
+      this.logger.log(
+        `User ${user.userId} stopped screen sharing in session ${data.sessionId}`,
+      );
+    } catch (error) {
+      this.logger.error(`Failed to stop screen share: ${error.message}`);
+      client.emit('screen-share-error', { message: 'Failed to stop screen share' });
+    }
+  }
+
+  /**
+   * Toggle Media - Toggle audio/video media state
+   */
+  @SubscribeMessage('toggle-media')
+  async handleToggleMedia(
+    @ConnectedSocket() client: Socket,
+    @MessageBody() data: ToggleMediaDto,
+  ) {
+    try {
+      // Validate user is in this session
+      const user = this.meetService.getUserBySocket(client.id);
+      if (!user || user.sessionId !== data.sessionId) {
+        client.emit('media-toggle-error', { message: 'Not in this session' });
+        return;
+      }
+
+      const mediaToggleResponse: MediaToggleResponseDto = {
+        sessionId: data.sessionId,
+        userId: user.userId,
+        userFullName: user.userFullName,
+        userAvatar: user.userAvatar,
+        type: data.type,
+        isEnabled: data.isEnabled,
+      };
+
+      // Broadcast to all users in the session (including sender)
+      this.server.to(data.sessionId).emit('media-toggled', mediaToggleResponse);
+
+      this.logger.log(
+        `User ${user.userId} toggled ${data.type} to ${data.isEnabled ? 'enabled' : 'disabled'} in session ${data.sessionId}`,
+      );
+    } catch (error) {
+      this.logger.error(`Failed to toggle media: ${error.message}`);
+      client.emit('media-toggle-error', { message: 'Failed to toggle media' });
     }
   }
 
