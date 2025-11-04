@@ -9,7 +9,7 @@ export default function ChatButtonClient() {
     const [showList, setShowList] = useState(false);
     const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
 
-    // 🧠 thêm cờ kiểm tra để render mini-chat sau khi DOM mount
+    // thêm cờ kiểm tra để render mini-chat sau khi DOM mount
     const [mounted, setMounted] = useState(false);
     useEffect(() => setMounted(true), []);
 
@@ -38,7 +38,7 @@ export default function ChatButtonClient() {
                 )}
             </div>
 
-            {/* ✅ Mini ChatWindow popup render global (fixed trên toàn màn hình) */}
+            {/* Mini ChatWindow popup render global (fixed trên toàn màn hình) */}
             {mounted && activeConversationId &&
                 createPortal(
                     <div className="fixed bottom-6 right-6 z-[10000]">

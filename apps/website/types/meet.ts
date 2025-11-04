@@ -71,6 +71,9 @@ export interface Participant {
   role: "student" | "teacher" | "admin";
   socketId: string;
   isOnline: boolean;
+  isScreenSharing?: boolean;
+  isAudioEnabled?: boolean;
+  isVideoEnabled?: boolean;
 }
 
 export interface SessionParticipantsDto {
@@ -118,5 +121,89 @@ export interface ICECandidateResponse {
 export interface ErrorResponse {
   message: string;
   details?: string;
+}
+
+// Screen sharing DTOs
+export interface StartScreenShareDto {
+  sessionId: string;
+  streamId?: string;
+}
+
+export interface StopScreenShareDto {
+  sessionId: string;
+}
+
+export interface ScreenShareResponseDto {
+  sessionId: string;
+  userId: string;
+  userFullName: string;
+  userAvatar?: string | null;
+  isSharing: boolean;
+}
+
+export interface ScreenShareErrorDto {
+  message: string;
+}
+
+// Media toggle DTOs
+export interface ToggleMediaDto {
+  sessionId: string;
+  type: 'audio' | 'video';
+  isEnabled: boolean;
+}
+
+export interface MediaToggleResponseDto {
+  sessionId: string;
+  userId: string;
+  userFullName: string;
+  userAvatar?: string | null;
+  type: 'audio' | 'video';
+  isEnabled: boolean;
+}
+
+export interface MediaToggleErrorDto {
+  message: string;
+}
+
+// Session ended event
+export interface SessionEndedDto {
+  sessionId: string;
+  message?: string;
+}
+
+// Attendee count update event
+export interface AttendeeCountUpdatedDto {
+  sessionId: string;
+  count: number;
+}
+
+// Connected user type
+export interface ConnectedUser {
+  userId: string;
+  socketId: string;
+  userFullName: string;
+  userAvatar?: string;
+  role: string;
+  sessionId: string;
+  connectedAt: Date;
+}
+
+// Participant info for session participants
+export interface ParticipantInfo {
+  userId: string;
+  userFullName: string;
+  userAvatar?: string;
+  role: string;
+  socketId: string;
+  isOnline: boolean;
+  joinedAt?: Date;
+}
+
+// User payload from token validation
+export interface UserPayload {
+  id: string;
+  email: string;
+  avatar?: string;
+  role: "student" | "teacher" | "admin";
 }
 

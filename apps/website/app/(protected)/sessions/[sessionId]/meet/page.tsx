@@ -5,6 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import MeetingRoom from "@/components/meeting/MeetingRoom";
 import LoadingScreen from "@/components/loading-screen";
+import { getSessionById } from "@/services/session.service";
 
 export default function MeetingPage() {
   const params = useParams();
@@ -15,8 +16,9 @@ export default function MeetingPage() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const getToken = async () => {
+    const validateAndGetToken = async () => {
       try {
+        // First, get the authentication token
         const supabase = createClient();
         const {
           data: { session },
@@ -35,9 +37,54 @@ export default function MeetingPage() {
           return;
         }
 
-        setToken(accessToken);
+        // Validate session exists and user has access
+        try {
+          const sessionResponse = await getSessionById(sessionId);
+          
+          if (!sessionResponse || sessionResponse.statusCode !== 200) {
+            setError("Session not found or you don't have access to this session.");
+            setTimeout(() => router.push("/sessions"), 2000);
+            return;
+          }
+
+          const sessionData = sessionResponse.data;
+          
+          // Check if session has ended
+          if (sessionData.end_time) {
+            const endTime = new Date(sessionData.end_time);
+            if (endTime < new Date()) {
+              setError("This session has already ended.");
+              setTimeout(() => router.push("/sessions"), 2000);
+              return;
+            }
+          }
+
+          // Check if session hasn't started yet (allow joining 5 minutes early)
+          const startTime = new Date(sessionData.start_time);
+          const now = new Date();
+          const fiveMinutesEarly = new Date(startTime.getTime() - 5 * 60 * 1000);
+          
+          if (now < fiveMinutesEarly) {
+            const minutesUntilStart = Math.ceil((fiveMinutesEarly.getTime() - now.getTime()) / (1000 * 60));
+            setError(`Session hasn't started yet. You can join in ${minutesUntilStart} minutes.`);
+            return;
+          }
+
+          // All validations passed
+          setToken(accessToken);
+        } catch (validationError: any) {
+          console.error("Session validation error:", validationError);
+          if (validationError.response?.status === 404) {
+            setError("Session not found.");
+          } else if (validationError.response?.status === 403) {
+            setError("You don't have permission to join this session.");
+          } else {
+            setError("Failed to validate session access.");
+          }
+          setTimeout(() => router.push("/sessions"), 2000);
+        }
       } catch (err: any) {
-        console.error("Error getting token:", err);
+        console.error("Error in session validation:", err);
         setError(err.message || "Failed to authenticate");
       } finally {
         setLoading(false);
@@ -45,7 +92,7 @@ export default function MeetingPage() {
     };
 
     if (sessionId) {
-      getToken();
+      validateAndGetToken();
     }
   }, [sessionId, router]);
 

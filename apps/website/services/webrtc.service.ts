@@ -6,15 +6,48 @@ export interface PeerConnection {
   stream?: MediaStream;
 }
 
-const STUN_SERVERS = {
-  iceServers: [{ urls: "stun:stun.l.google.com:19302" }],
+const ICE_SERVERS = {
+  iceServers: [
+    { urls: "stun:stun.l.google.com:19302" },
+    { urls: "stun:stun1.l.google.com:19302" },
+    { urls: "stun:stun2.l.google.com:19302" },
+    { urls: "stun:stun3.l.google.com:19302" },
+    { urls: "stun:stun4.l.google.com:19302" },
+    { urls: "stun:stun.cloudflare.com:3478" },
+    { urls: "stun:stun.services.mozilla.com" },
+    ...(process.env.NEXT_PUBLIC_TURN_SERVER_URL ? [{
+      urls: process.env.NEXT_PUBLIC_TURN_SERVER_URL,
+      username: process.env.NEXT_PUBLIC_TURN_USERNAME || "",
+      credential: process.env.NEXT_PUBLIC_TURN_CREDENTIAL || ""
+    }] : [])
+  ],
+  iceCandidatePoolSize: 10,
 };
 
 /**
  * Create a new RTCPeerConnection for a peer
  */
 export function createPeerConnection(userId: string): RTCPeerConnection {
-  const pc = new RTCPeerConnection(STUN_SERVERS);
+  const pc = new RTCPeerConnection(ICE_SERVERS);
+  
+  // Add connection state monitoring
+  pc.addEventListener('connectionstatechange', () => {
+    console.log(`Peer connection state for ${userId}: ${pc.connectionState}`);
+  });
+  
+  pc.addEventListener('iceconnectionstatechange', () => {
+    console.log(`ICE connection state for ${userId}: ${pc.iceConnectionState}`);
+    
+    // Handle connection failures
+    if (pc.iceConnectionState === 'failed') {
+      console.error(`ICE connection failed for ${userId}`);
+    }
+  });
+  
+  pc.addEventListener('icegatheringstatechange', () => {
+    console.log(`ICE gathering state for ${userId}: ${pc.iceGatheringState}`);
+  });
+  
   return pc;
 }
 

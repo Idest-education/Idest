@@ -28,6 +28,12 @@ import {
   WebRTCAnswerResponse,
   ICECandidateResponse,
   ErrorResponse,
+  ScreenShareResponseDto,
+  ScreenShareErrorDto,
+  MediaToggleResponseDto,
+  MediaToggleErrorDto,
+  SessionEndedDto,
+  AttendeeCountUpdatedDto,
 } from "@/types/meet";
 
 export interface UseMeetingReturn {
@@ -38,6 +44,7 @@ export interface UseMeetingReturn {
   
   // Media state
   localStream: MediaStream | null;
+  localScreenShareStream: MediaStream | null;
   isAudioEnabled: boolean;
   isVideoEnabled: boolean;
   isScreenSharing: boolean;
@@ -52,6 +59,9 @@ export interface UseMeetingReturn {
   
   // Remote streams (userId -> MediaStream)
   remoteStreams: Map<string, MediaStream>;
+  
+  // Remote screen share streams (userId -> MediaStream)
+  remoteScreenShareStreams: Map<string, MediaStream>;
   
   // Actions
   joinRoom: (sessionId: string, token: string) => Promise<void>;
@@ -69,6 +79,7 @@ export function useMeeting(): UseMeetingReturn {
   const [error, setError] = useState<string | null>(null);
   
   const [localStream, setLocalStream] = useState<MediaStream | null>(null);
+  const [localScreenShareStream, setLocalScreenShareStream] = useState<MediaStream | null>(null);
   const [isAudioEnabled, setIsAudioEnabled] = useState(true);
   const [isVideoEnabled, setIsVideoEnabled] = useState(true);
   const [isScreenSharing, setIsScreenSharing] = useState(false);
@@ -79,6 +90,7 @@ export function useMeeting(): UseMeetingReturn {
   const [messages, setMessages] = useState<ChatMessageResponse[]>([]);
   const [messageHistory, setMessageHistory] = useState<MessageHistoryResponse[]>([]);
   const [remoteStreams, setRemoteStreams] = useState<Map<string, MediaStream>>(new Map());
+  const [remoteScreenShareStreams, setRemoteScreenShareStreams] = useState<Map<string, MediaStream>>(new Map());
   
   const peerConnectionsRef = useRef<Map<string, RTCPeerConnection>>(new Map());
   const socketRef = useRef<Socket | null>(null);
@@ -87,7 +99,12 @@ export function useMeeting(): UseMeetingReturn {
   const screenShareStreamRef = useRef<MediaStream | null>(null);
   const joinRoomInProgressRef = useRef<boolean>(false);
   const localStreamRef = useRef<MediaStream | null>(null);
-  const originalCameraTrackRef = useRef<MediaStreamTrack | null>(null);
+  const reconnectAttemptsRef = useRef<number>(0);
+  const maxReconnectAttempts = 3;
+  const reconnectTimeoutRef = useRef<NodeJS.Timeout | undefined>(undefined);
+  const currentTokenRef = useRef<string | null>(null);
+  // Queue for ICE candidates that arrive before remote description is set
+  const queuedIceCandidatesRef = useRef<Map<string, RTCIceCandidate[]>>(new Map());
 
   // Initialize local media stream
   const initializeLocalStream = useCallback(async () => {
@@ -97,29 +114,79 @@ export function useMeeting(): UseMeetingReturn {
         audio: true,
       });
       localStreamRef.current = stream;
-      originalCameraTrackRef.current = stream.getVideoTracks()[0] || null;
       setLocalStream(stream);
       return stream;
-    } catch (err) {
+    } catch (err: unknown) {
       console.error("Failed to get user media:", err);
-      setError("Failed to access camera/microphone. Please check permissions.");
+      
+      // Provide specific error messages based on the error type
+      let errorMessage = "Failed to access camera/microphone.";
+      
+      if (err && typeof err === 'object' && 'name' in err) {
+        const errorName = (err as { name: string }).name;
+        if (errorName === "NotAllowedError" || errorName === "PermissionDeniedError") {
+          errorMessage = "Camera/microphone access denied. Please grant permissions and refresh the page.";
+        } else if (errorName === "NotFoundError" || errorName === "DevicesNotFoundError") {
+          errorMessage = "No camera or microphone found. Please connect a device and try again.";
+        } else if (errorName === "NotReadableError" || errorName === "TrackStartError") {
+          errorMessage = "Camera/microphone is already in use by another application.";
+        } else if (errorName === "OverconstrainedError") {
+          errorMessage = "Camera/microphone doesn't support the required settings.";
+        }
+      }
+      
+      setError(errorMessage);
       throw err;
+    }
+  }, []);
+
+  // Process queued ICE candidates for a peer connection
+  const processQueuedIceCandidates = useCallback(async (userId: string, pc: RTCPeerConnection) => {
+    const queued = queuedIceCandidatesRef.current.get(userId);
+    if (queued && queued.length > 0) {
+      console.log(`Processing ${queued.length} queued ICE candidates for ${userId}`);
+      for (const candidate of queued) {
+        try {
+          // candidate is already an RTCIceCandidate object
+          await pc.addIceCandidate(candidate);
+          console.log(`Added queued ICE candidate from ${userId}`);
+        } catch (err) {
+          console.error(`Error adding queued ICE candidate from ${userId}:`, err);
+        }
+      }
+      // Clear the queue after processing
+      queuedIceCandidatesRef.current.delete(userId);
     }
   }, []);
 
   // Setup WebRTC peer connection handlers
   const setupPeerConnection = useCallback((userId: string, pc: RTCPeerConnection) => {
-    // Handle remote stream
+    // Handle remote stream - can receive multiple tracks from same peer
     pc.ontrack = (event) => {
-      console.log(`📹 Received track from ${userId}:`, event);
+      console.log(`Received track from ${userId}:`, event);
       const stream = event.streams[0];
       if (stream) {
-        console.log(`✅ Adding remote stream for ${userId}, tracks:`, stream.getTracks().map(t => ({ kind: t.kind, enabled: t.enabled, readyState: t.readyState })));
-        setRemoteStreams((prev) => {
-          const next = new Map(prev);
-          next.set(userId, stream);
-          return next;
-        });
+        const tracks = stream.getTracks();
+        console.log(`Adding remote stream for ${userId}, tracks:`, tracks.map(t => ({ kind: t.kind, enabled: t.enabled, readyState: t.readyState })));
+        
+        // Check if this is a screen share track
+        const hasScreenTrack = tracks.some(t => t.kind === 'video' && t.label.toLowerCase().includes('screen'));
+        
+        if (hasScreenTrack) {
+          // This is a screen share stream
+          setRemoteScreenShareStreams((prev) => {
+            const next = new Map(prev);
+            next.set(userId, stream);
+            return next;
+          });
+        } else {
+          // This is the user's video/audio stream
+          setRemoteStreams((prev) => {
+            const next = new Map(prev);
+            next.set(userId, stream);
+            return next;
+          });
+        }
       }
     };
 
@@ -147,11 +214,11 @@ export function useMeeting(): UseMeetingReturn {
 
       // Check if peer connection already exists
       if (peerConnectionsRef.current.has(userId)) {
-        console.log(`🔗 Peer connection with ${userId} already exists, skipping`);
+        console.log(`Peer connection with ${userId} already exists, skipping`);
         return;
       }
 
-      console.log(`🔗 Establishing peer connection with ${userId}, isInitiator: ${isInitiator}`);
+      console.log(`Establishing peer connection with ${userId}, isInitiator: ${isInitiator}`);
       const pc = createPeerConnection(userId);
       peerConnectionsRef.current.set(userId, pc);
       setupPeerConnection(userId, pc);
@@ -159,18 +226,30 @@ export function useMeeting(): UseMeetingReturn {
       // Add local stream if available (use ref to get the latest value)
       const currentLocalStream = localStreamRef.current;
       if (currentLocalStream) {
-        console.log(`📤 Adding local stream to peer ${userId}, tracks:`, currentLocalStream.getTracks().map(t => ({ kind: t.kind, enabled: t.enabled, readyState: t.readyState })));
+        console.log(`Adding local stream to peer ${userId}, tracks:`, currentLocalStream.getTracks().map(t => ({ kind: t.kind, enabled: t.enabled, readyState: t.readyState })));
         addLocalStreamToPeer(pc, currentLocalStream);
       } else {
-        console.warn(`⚠️ No local stream available when connecting to ${userId}`);
+        console.warn(`No local stream available when connecting to ${userId}`);
       }
 
       if (isInitiator) {
         // Create and send offer
         try {
-          console.log(`📤 Creating offer for ${userId}`);
+          // Check if we're in a valid state to create an offer
+          const signalingState = pc.signalingState;
+          if (signalingState !== "stable") {
+            console.warn(`Cannot create offer in ${signalingState} state for ${userId}`);
+            // If we're in a weird state, log it but continue
+            if (signalingState === "have-local-offer") {
+              console.log(`Already have local offer for ${userId}, skipping`);
+              return;
+            }
+          }
+          
+          console.log(`Creating offer for ${userId}`);
           const offer = await pc.createOffer();
           await pc.setLocalDescription(offer);
+          console.log(`Set local description (offer) for ${userId}`);
 
           if (socketRef.current && currentSessionIdRef.current) {
             socketRef.current.emit("webrtc-offer", {
@@ -178,10 +257,14 @@ export function useMeeting(): UseMeetingReturn {
               targetUserId: userId,
               offer: offer,
             });
-            console.log(`✅ Offer sent to ${userId}`);
+            console.log(`Offer sent to ${userId}`);
           }
         } catch (err) {
           console.error("Error creating offer:", err);
+          // Log the current state for debugging
+          console.error(`Current signaling state: ${pc.signalingState}`);
+          console.error(`Local description: ${pc.localDescription ? "set" : "not set"}`);
+          console.error(`Remote description: ${pc.remoteDescription ? "set" : "not set"}`);
         }
       }
     },
@@ -202,6 +285,13 @@ export function useMeeting(): UseMeetingReturn {
       socket.off("webrtc-offer");
       socket.off("webrtc-answer");
       socket.off("ice-candidate");
+      socket.off("screen-share-started");
+      socket.off("screen-share-stopped");
+      socket.off("screen-share-error");
+      socket.off("media-toggled");
+      socket.off("media-toggle-error");
+      socket.off("session-ended");
+      socket.off("attendee-count-updated");
       socket.off("disconnect");
       socket.off("connect_error");
       
@@ -233,7 +323,7 @@ export function useMeeting(): UseMeetingReturn {
       // User joined
       socket.on("user-joined", async (data: UserJoinedDto) => {
         if (data.userId === currentUserIdRef.current) {
-          // This is us, update local participant
+          // This is me, update local participant
           setLocalParticipant({
             userId: data.userId,
             userFullName: data.userFullName,
@@ -275,8 +365,14 @@ export function useMeeting(): UseMeetingReturn {
           peerConnectionsRef.current.delete(data.userId);
         }
 
-        // Remove remote stream
+        // Remove remote streams (both regular and screen share)
         setRemoteStreams((prev) => {
+          const next = new Map(prev);
+          next.delete(data.userId);
+          return next;
+        });
+        
+        setRemoteScreenShareStreams((prev) => {
           const next = new Map(prev);
           next.delete(data.userId);
           return next;
@@ -314,7 +410,7 @@ export function useMeeting(): UseMeetingReturn {
 
       // WebRTC offer
       socket.on("webrtc-offer", async (data: WebRTCOfferResponse) => {
-        console.log(`📥 Received offer from ${data.fromUserId}`);
+        console.log(`Received offer from ${data.fromUserId}`);
         let pc = peerConnectionsRef.current.get(data.fromUserId);
         
         // Only create new peer connection if it doesn't exist
@@ -325,34 +421,127 @@ export function useMeeting(): UseMeetingReturn {
 
           const currentLocalStream = localStreamRef.current;
           if (currentLocalStream) {
-            console.log(`📤 Adding local stream when responding to ${data.fromUserId}`);
+            console.log(`Adding local stream when responding to ${data.fromUserId}`);
             addLocalStreamToPeer(pc, currentLocalStream);
+          }
+        } else {
+          // If peer connection exists, check its state
+          const signalingState = pc.signalingState;
+          console.log(`Existing peer connection signaling state for ${data.fromUserId}: ${signalingState}`);
+          
+          // If we already have a local offer (we initiated), ignore this offer
+          if (signalingState === "have-local-offer") {
+            console.warn(`Already have local offer for ${data.fromUserId}, ignoring incoming offer`);
+            return;
+          }
+          
+          // If we're in stable state with a remote description, connection is already established
+          if (signalingState === "stable" && pc.remoteDescription) {
+            // Check if this is a duplicate offer
+            if (pc.remoteDescription.sdp === data.offer.sdp) {
+              console.log(`Duplicate offer detected for ${data.fromUserId}, ignoring`);
+              return;
+            }
+            // If it's a different offer, log it but continue processing (might be a renegotiation)
+            console.warn(`Received new offer for ${data.fromUserId} but connection already established`);
           }
         }
 
-        await pc.setRemoteDescription(data.offer);
-        const answer = await pc.createAnswer();
-        await pc.setLocalDescription(answer);
+        try {
+          // Check signaling state before setting remote description (offer)
+          const signalingState = pc.signalingState;
+          console.log(`Processing offer, signaling state: ${signalingState}`);
+          
+          // We can process an offer if we're in stable state (no description set) 
+          // or if we're replacing an old remote offer
+          if (signalingState === "stable" || signalingState === "have-remote-offer") {
+            // If we already have a remote offer, check if it's a duplicate
+            if (signalingState === "have-remote-offer" && pc.remoteDescription) {
+              if (pc.remoteDescription.sdp === data.offer.sdp) {
+                console.log(`Duplicate offer detected for ${data.fromUserId}, ignoring`);
+                return;
+              }
+              // Different offer - this might be a renegotiation, we'll replace it
+              console.log(`Replacing existing remote offer for ${data.fromUserId}`);
+            }
+            
+            await pc.setRemoteDescription(data.offer);
+            console.log(`Set remote description (offer) for ${data.fromUserId}`);
+            
+            // Process any queued ICE candidates now that remote description is set
+            await processQueuedIceCandidates(data.fromUserId, pc);
+            
+            const answer = await pc.createAnswer();
+            await pc.setLocalDescription(answer);
+            console.log(`Set local description (answer) for ${data.fromUserId}`);
 
-        socket.emit("webrtc-answer", {
-          sessionId: data.sessionId,
-          targetUserId: data.fromUserId,
-          answer: answer,
-        });
-        console.log(`✅ Answer sent to ${data.fromUserId}`);
+            socket.emit("webrtc-answer", {
+              sessionId: data.sessionId,
+              targetUserId: data.fromUserId,
+              answer: answer,
+            });
+            console.log(`Answer sent to ${data.fromUserId}`);
+          } else {
+            console.warn(`Cannot set offer in ${signalingState} state for ${data.fromUserId}`);
+          }
+        } catch (err) {
+          console.error("Error handling offer:", err);
+          if (pc) {
+            console.error(`Current signaling state: ${pc.signalingState}`);
+            console.error(`Local description: ${pc.localDescription ? "set" : "not set"}`);
+            console.error(`Remote description: ${pc.remoteDescription ? "set" : "not set"}`);
+          }
+        }
       });
 
       // WebRTC answer
       socket.on("webrtc-answer", async (data: WebRTCAnswerResponse) => {
-        console.log(`📥 Received answer from ${data.fromUserId}`);
+        console.log(`Received answer from ${data.fromUserId}`);
         const pc = peerConnectionsRef.current.get(data.fromUserId);
         if (pc) {
           try {
-            await pc.setRemoteDescription(data.answer);
-            console.log(`✅ Set remote description for ${data.fromUserId}`);
+            // Check signaling state before setting remote description
+            const signalingState = pc.signalingState;
+            console.log(`Signaling state for ${data.fromUserId}: ${signalingState}`);
+            
+            // We can only set remote description (answer) if we're in "have-local-offer" state
+            // This means we've already set a local offer and are waiting for the answer
+            if (signalingState === "have-local-offer") {
+              await pc.setRemoteDescription(data.answer);
+              console.log(`Set remote description for ${data.fromUserId}`);
+              
+              // Process any queued ICE candidates now that remote description is set
+              await processQueuedIceCandidates(data.fromUserId, pc);
+            } else if (signalingState === "stable") {
+              // If we're in stable state, we might have already processed this answer
+              // or the offer was never sent. Check if remote description is already set
+              if (pc.remoteDescription) {
+                console.log(`Remote description already set for ${data.fromUserId}, skipping`);
+              } else {
+                console.warn(`Cannot set answer in stable state for ${data.fromUserId}. Local description may not be set.`);
+                // Try to check if we have a local description
+                if (!pc.localDescription) {
+                  console.error(`No local description found for ${data.fromUserId}. Offer may not have been sent.`);
+                }
+              }
+            } else if (signalingState === "have-remote-offer") {
+              // This shouldn't happen - we're receiving an answer but we have a remote offer
+              // This means both sides are trying to be the initiator
+              console.warn(`Received answer but in "have-remote-offer" state for ${data.fromUserId}. Connection may be in wrong state.`);
+            } else {
+              console.warn(`Cannot set answer in ${signalingState} state for ${data.fromUserId}`);
+            }
           } catch (err) {
             console.error("Error setting remote description:", err);
+            // Log the current state for debugging
+            if (pc) {
+              console.error(`Current signaling state: ${pc.signalingState}`);
+              console.error(`Local description: ${pc.localDescription ? "set" : "not set"}`);
+              console.error(`Remote description: ${pc.remoteDescription ? "set" : "not set"}`);
+            }
           }
+        } else {
+          console.warn(`No peer connection found for ${data.fromUserId} when receiving answer`);
         }
       });
 
@@ -361,25 +550,180 @@ export function useMeeting(): UseMeetingReturn {
         const pc = peerConnectionsRef.current.get(data.fromUserId);
         if (pc && data.candidate) {
           try {
-            await pc.addIceCandidate(data.candidate);
-            console.log(`🧊 Added ICE candidate from ${data.fromUserId}`);
+            // Convert RTCIceCandidateInit to RTCIceCandidate
+            const candidate = new RTCIceCandidate(data.candidate);
+            
+            // Check if remote description is set before adding ICE candidate
+            if (!pc.remoteDescription) {
+              // Queue the candidate if remote description isn't set yet
+              console.log(`Queuing ICE candidate from ${data.fromUserId} (waiting for remote description)`);
+              const queue = queuedIceCandidatesRef.current.get(data.fromUserId) || [];
+              queue.push(candidate);
+              queuedIceCandidatesRef.current.set(data.fromUserId, queue);
+              return;
+            }
+            
+            // Remote description is set, add the candidate immediately
+            await pc.addIceCandidate(candidate);
+            console.log(`Added ICE candidate from ${data.fromUserId}`);
           } catch (err) {
             console.error("Error adding ICE candidate:", err);
+            // If adding fails, try to queue it for retry later
+            try {
+              const candidate = new RTCIceCandidate(data.candidate);
+              const queue = queuedIceCandidatesRef.current.get(data.fromUserId) || [];
+              queue.push(candidate);
+              queuedIceCandidatesRef.current.set(data.fromUserId, queue);
+            } catch (queueErr) {
+              console.error("Error queuing ICE candidate:", queueErr);
+            }
           }
         }
       });
 
-      // Connection errors
-      socket.on("disconnect", () => {
+      // Screen share started
+      socket.on("screen-share-started", (data: ScreenShareResponseDto) => {
+        console.log(`Screen share started by ${data.userFullName}`);
+        // Update UI to show screen sharing indicator for remote user
+        setParticipants((prev) =>
+          prev.map((p) =>
+            p.userId === data.userId ? { ...p, isScreenSharing: true } : p
+          )
+        );
+      });
+
+      // Screen share stopped
+      socket.on("screen-share-stopped", (data: ScreenShareResponseDto) => {
+        console.log(`Screen share stopped by ${data.userFullName}`);
+        // Update UI to hide screen sharing indicator for remote user
+        setParticipants((prev) =>
+          prev.map((p) =>
+            p.userId === data.userId ? { ...p, isScreenSharing: false } : p
+          )
+        );
+      });
+
+      // Screen share error
+      socket.on("screen-share-error", (data: ScreenShareErrorDto) => {
+        console.error("Screen share error:", data.message);
+        setError(data.message);
+      });
+
+      // Media toggled
+      socket.on("media-toggled", (data: MediaToggleResponseDto) => {
+        console.log(`${data.userFullName} toggled ${data.type} to ${data.isEnabled}`);
+        // Update participants to reflect media state changes
+        setParticipants((prev) =>
+          prev.map((p) =>
+            p.userId === data.userId
+              ? {
+                  ...p,
+                  isAudioEnabled: data.type === "audio" ? data.isEnabled : p.isAudioEnabled,
+                  isVideoEnabled: data.type === "video" ? data.isEnabled : p.isVideoEnabled,
+                }
+              : p
+          )
+        );
+      });
+
+      // Media toggle error
+      socket.on("media-toggle-error", (data: MediaToggleErrorDto) => {
+        console.error("Media toggle error:", data.message);
+        setError(data.message);
+      });
+
+      // Session ended
+      socket.on("session-ended", (data: SessionEndedDto) => {
+        console.log("Session ended:", data);
+        setError(data.message || "The session has ended.");
+        
+        // Clean up and redirect after a short delay
+        setTimeout(() => {
+          if (currentSessionIdRef.current === data.sessionId) {
+            window.location.href = "/sessions";
+          }
+        }, 3000);
+      });
+
+      // Attendee count updated
+      socket.on("attendee-count-updated", (data: AttendeeCountUpdatedDto) => {
+        console.log(`Attendee count updated for session ${data.sessionId}: ${data.count}`);
+        // You can emit a custom event or update state here if needed
+      });
+
+      // Connection errors with reconnection logic
+      socket.on("disconnect", (reason) => {
         setIsConnected(false);
+        
+        // Handle different disconnect reasons
+        if (reason === "io server disconnect") {
+          // Server initiated disconnect, don't reconnect
+          setError("Disconnected by server. The session may have ended.");
+        } else if (reason === "io client disconnect") {
+          // Client initiated disconnect, don't reconnect
+          console.log("Client disconnected");
+        } else {
+          // Unexpected disconnect, attempt reconnection
+          console.log("Unexpected disconnect, attempting reconnection...");
+          handleReconnection.current?.();
+        }
       });
 
       socket.on("connect_error", (err) => {
+        console.error("Socket connection error:", err);
         setError(`Connection error: ${err.message}`);
+        
+        // Attempt reconnection on connection errors
+        if (reconnectAttemptsRef.current < maxReconnectAttempts) {
+          handleReconnection.current?.();
+        }
       });
     },
-    [establishPeerConnection, setupPeerConnection]
+    [establishPeerConnection, setupPeerConnection, processQueuedIceCandidates]
   );
+
+  // Handle reconnection attempts
+  const handleReconnection = useRef<(() => void) | undefined>(undefined);
+  
+  if (!handleReconnection.current) {
+    handleReconnection.current = () => {
+    if (reconnectAttemptsRef.current >= maxReconnectAttempts) {
+      setError("Failed to reconnect after multiple attempts. Please refresh the page.");
+      return;
+    }
+
+    // Clear any existing reconnect timeout
+    if (reconnectTimeoutRef.current) {
+      clearTimeout(reconnectTimeoutRef.current);
+    }
+
+    reconnectAttemptsRef.current++;
+    const delay = Math.min(1000 * Math.pow(2, reconnectAttemptsRef.current - 1), 5000); // Exponential backoff
+    
+    setError(`Connection lost. Reconnecting... (Attempt ${reconnectAttemptsRef.current}/${maxReconnectAttempts})`);
+    
+    reconnectTimeoutRef.current = setTimeout(() => {
+      if (socketRef.current && currentSessionIdRef.current) {
+        console.log(`Reconnection attempt ${reconnectAttemptsRef.current}`);
+        
+        // Reconnect the socket
+        socketRef.current.connect();
+        
+        // Re-emit join room after reconnection
+        socketRef.current.once("connect", () => {
+          if (currentSessionIdRef.current && currentTokenRef.current && socketRef.current) {
+            socketRef.current.emit("join-room", { 
+              sessionId: currentSessionIdRef.current, 
+              token: currentTokenRef.current
+            });
+            setError(null);
+            reconnectAttemptsRef.current = 0;
+          }
+        });
+      }
+    }, delay);
+    };
+  }
 
   // Join room
   const joinRoom = useCallback(
@@ -394,6 +738,7 @@ export function useMeeting(): UseMeetingReturn {
       setIsJoining(true);
       setError(null);
       currentSessionIdRef.current = sessionId;
+      currentTokenRef.current = token;
 
       try {
         console.log("Starting to join room:", sessionId);
@@ -423,19 +768,19 @@ export function useMeeting(): UseMeetingReturn {
           };
 
           const onConnect = () => {
-            console.log("✅ Socket connected, setting up listeners");
+            console.log("Socket connected, setting up listeners");
             cleanup();
             resolve();
           };
 
           const onError = (err: Error) => {
-            console.error("❌ Socket connection error:", err);
+            console.error("Socket connection error:", err);
             cleanup();
             reject(err);
           };
 
           const onDisconnect = (reason: string) => {
-            console.error("❌ Socket disconnected before join:", reason);
+            console.error("Socket disconnected before join:", reason);
             if (reason === "io server disconnect") {
               cleanup();
               reject(new Error("Server disconnected: " + reason));
@@ -485,9 +830,20 @@ export function useMeeting(): UseMeetingReturn {
   const leaveRoom = useCallback((sessionId: string) => {
     joinRoomInProgressRef.current = false;
     
+    // Clear reconnect timeout if exists
+    if (reconnectTimeoutRef.current) {
+      clearTimeout(reconnectTimeoutRef.current);
+      reconnectTimeoutRef.current = undefined;
+    }
+    
     if (socketRef.current) {
       socketRef.current.emit("leave-room", sessionId);
+      
+      // Remove all socket listeners before disconnecting
+      socketRef.current.removeAllListeners();
+      
       disconnectMeetSocket();
+      socketRef.current = null;
     }
 
     // Close all peer connections
@@ -496,9 +852,19 @@ export function useMeeting(): UseMeetingReturn {
     });
     peerConnectionsRef.current.clear();
 
+    // Clear queued ICE candidates
+    queuedIceCandidatesRef.current.clear();
+
     // Stop local stream
-    stopMediaStream(localStreamRef.current);
-    stopMediaStream(screenShareStreamRef.current);
+    if (localStreamRef.current) {
+      stopMediaStream(localStreamRef.current);
+      localStreamRef.current = null;
+    }
+    
+    if (screenShareStreamRef.current) {
+      stopMediaStream(screenShareStreamRef.current);
+      screenShareStreamRef.current = null;
+    }
 
     // Reset state
     setIsConnected(false);
@@ -508,12 +874,14 @@ export function useMeeting(): UseMeetingReturn {
     setMessages([]);
     setMessageHistory([]);
     setRemoteStreams(new Map());
+    setRemoteScreenShareStreams(new Map());
     setLocalStream(null);
-    localStreamRef.current = null;
-    originalCameraTrackRef.current = null;
+    setLocalScreenShareStream(null);
     setIsScreenSharing(false);
     currentSessionIdRef.current = null;
     currentUserIdRef.current = null;
+    currentTokenRef.current = null;
+    reconnectAttemptsRef.current = 0;
   }, []);
 
   // Send message
@@ -541,6 +909,15 @@ export function useMeeting(): UseMeetingReturn {
           }
         });
       }
+
+      // Emit socket event to notify others
+      if (socketRef.current && currentSessionIdRef.current) {
+        socketRef.current.emit("toggle-media", {
+          sessionId: currentSessionIdRef.current,
+          type: "audio",
+          isEnabled: newState,
+        });
+      }
     }
   }, [isAudioEnabled]);
 
@@ -562,6 +939,15 @@ export function useMeeting(): UseMeetingReturn {
           }
         });
       }
+
+      // Emit socket event to notify others
+      if (socketRef.current && currentSessionIdRef.current) {
+        socketRef.current.emit("toggle-media", {
+          sessionId: currentSessionIdRef.current,
+          type: "video",
+          isEnabled: newState,
+        });
+      }
     }
   }, [isVideoEnabled]);
 
@@ -569,61 +955,107 @@ export function useMeeting(): UseMeetingReturn {
   const toggleScreenShare = useCallback(async () => {
     try {
       if (isScreenSharing) {
-        // Stop screen sharing
+        // Stop screen sharing - restore camera track
         stopMediaStream(screenShareStreamRef.current);
         screenShareStreamRef.current = null;
+        setLocalScreenShareStream(null);
 
-        // Restore camera track in peer connections
-        const cameraTrack = originalCameraTrackRef.current;
-        console.log(`🔄 Restoring camera track:`, cameraTrack ? { readyState: cameraTrack.readyState } : 'null');
-        if (cameraTrack && cameraTrack.readyState === 'live') {
-          peerConnectionsRef.current.forEach((pc) => {
-            const sender = pc.getSenders().find((s) => s.track?.kind === "video");
-            if (sender && cameraTrack) {
-              sender.replaceTrack(cameraTrack);
-            }
-          });
-        } else {
-          console.warn('⚠️ Cannot restore camera track:', cameraTrack ? cameraTrack.readyState : 'null');
+        // Restore camera track in all peer connections
+        const currentLocalStream = localStreamRef.current;
+        if (currentLocalStream) {
+          const cameraTrack = currentLocalStream.getVideoTracks()[0];
+          if (cameraTrack) {
+            console.log('Restoring camera track after stopping screen share');
+            peerConnectionsRef.current.forEach((pc) => {
+              const videoSenders = pc.getSenders().filter((s) => s.track && s.track.kind === 'video');
+              // Find the sender that's currently sharing screen
+              const screenSender = videoSenders.find((s) => 
+                s.track && s.track.label.toLowerCase().includes('screen')
+              );
+              if (screenSender && cameraTrack) {
+                screenSender.replaceTrack(cameraTrack);
+              }
+            });
+          }
         }
 
         setIsScreenSharing(false);
+
+        // Emit socket event to notify others
+        if (socketRef.current && currentSessionIdRef.current) {
+          socketRef.current.emit("stop-screen-share", {
+            sessionId: currentSessionIdRef.current,
+          });
+        }
       } else {
         // Start screen sharing
         const screenStream = await getDisplayMedia();
         screenShareStreamRef.current = screenStream;
+        setLocalScreenShareStream(screenStream);
 
-        // Replace video track with screen share in peer connections only
+        // Replace camera track with screen share track in all peer connections
         const screenTrack = screenStream.getVideoTracks()[0];
         if (screenTrack) {
-          // Store camera track before replacing if not already stored
-          if (!originalCameraTrackRef.current) {
-            const currentLocalStream = localStreamRef.current;
-            if (currentLocalStream) {
-              originalCameraTrackRef.current = currentLocalStream.getVideoTracks()[0] || null;
-              console.log(`📹 Storing original camera track:`, originalCameraTrackRef.current ? { readyState: originalCameraTrackRef.current.readyState } : 'null');
-            }
-          }
-
-          // Replace track in all peer connections
-          console.log(`🖥️ Replacing with screen track in ${peerConnectionsRef.current.size} peer connections`);
+          console.log(`Replacing camera with screen share in ${peerConnectionsRef.current.size} peer connections`);
           peerConnectionsRef.current.forEach((pc) => {
-            const sender = pc.getSenders().find((s) => s.track?.kind === "video");
-            if (sender && screenTrack) {
-              sender.replaceTrack(screenTrack);
+            const senders = pc.getSenders();
+            // Find video sender (should only be one for camera)
+            const videoSender = senders.find((s) => s.track && s.track.kind === 'video');
+            if (videoSender && screenTrack) {
+              // Replace the camera track with screen share track
+              videoSender.replaceTrack(screenTrack);
             }
           });
         }
 
         setIsScreenSharing(true);
 
-        // Stop screen share when user stops sharing
-        screenStream.getVideoTracks()[0].onended = () => {
-          toggleScreenShare();
+        // Emit socket event to notify others
+        if (socketRef.current && currentSessionIdRef.current) {
+          socketRef.current.emit("start-screen-share", {
+            sessionId: currentSessionIdRef.current,
+          });
+        }
+
+        // Stop screen share when user stops sharing via browser button
+        screenStream.getVideoTracks()[0].onended = async () => {
+          stopMediaStream(screenShareStreamRef.current);
+          screenShareStreamRef.current = null;
+          setLocalScreenShareStream(null);
+
+          // Restore camera track
+          const currentLocalStream = localStreamRef.current;
+          if (currentLocalStream) {
+            const cameraTrack = currentLocalStream.getVideoTracks()[0];
+            if (cameraTrack) {
+              peerConnectionsRef.current.forEach((pc) => {
+                const videoSenders = pc.getSenders().filter((s) => s.track && s.track.kind === 'video');
+                const screenSender = videoSenders.find((s) => 
+                  s.track && s.track.label.toLowerCase().includes('screen')
+                );
+                if (screenSender && cameraTrack) {
+                  screenSender.replaceTrack(cameraTrack);
+                }
+              });
+            }
+          }
+
+          setIsScreenSharing(false);
+
+          if (socketRef.current && currentSessionIdRef.current) {
+            socketRef.current.emit("stop-screen-share", {
+              sessionId: currentSessionIdRef.current,
+            });
+          }
         };
       }
     } catch (err) {
       console.error("Error toggling screen share:", err);
+      if (socketRef.current) {
+        socketRef.current.emit("screen-share-error", {
+          message: err instanceof Error ? err.message : "Failed to toggle screen share",
+        });
+      }
     }
   }, [isScreenSharing]);
 
@@ -652,6 +1084,7 @@ export function useMeeting(): UseMeetingReturn {
     isJoining,
     error,
     localStream,
+    localScreenShareStream,
     isAudioEnabled,
     isVideoEnabled,
     isScreenSharing,
@@ -660,6 +1093,7 @@ export function useMeeting(): UseMeetingReturn {
     messages,
     messageHistory,
     remoteStreams,
+    remoteScreenShareStreams,
     joinRoom,
     leaveRoom,
     sendMessage,

@@ -77,12 +77,20 @@ export default function ParticipantList({
                     <div className="flex items-center gap-3 mt-1">
                       {/* Audio indicator */}
                       <div className="flex items-center gap-1">
-                        <Mic className="w-3 h-3 text-gray-400" />
+                        {participant.isAudioEnabled !== false ? (
+                          <Mic className="w-3 h-3 text-green-500" />
+                        ) : (
+                          <MicOff className="w-3 h-3 text-red-500" />
+                        )}
                         <span className="text-xs text-gray-500">Audio</span>
                       </div>
                       {/* Video indicator */}
                       <div className="flex items-center gap-1">
-                        <Video className="w-3 h-3 text-gray-400" />
+                        {participant.isVideoEnabled !== false ? (
+                          <Video className="w-3 h-3 text-green-500" />
+                        ) : (
+                          <VideoOff className="w-3 h-3 text-red-500" />
+                        )}
                         <span className="text-xs text-gray-500">Video</span>
                       </div>
                     </div>

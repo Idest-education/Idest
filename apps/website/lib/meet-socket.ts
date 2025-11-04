@@ -77,12 +77,12 @@ export function getMeetSocket(): Socket {
     
     // Add connection error logging (only once)
     meetSocket.on("connect_error", (error) => {
-      console.error("❌ Meet socket connection error:", error.message, error);
+      console.error("Meet socket connection error:", error.message, error);
     });
     
     // Log all disconnect events (only once)
     meetSocket.on("disconnect", (reason, details) => {
-      console.log("⚠️ Meet socket disconnected:", reason, details);
+      console.log("Meet socket disconnected:", reason, details);
     });
   }
   return meetSocket;
@@ -112,7 +112,7 @@ export function connectMeetSocket(token: string): Socket {
   
   // Validate token before connecting
   if (!token || token.trim() === "") {
-    console.error("❌ Invalid token provided");
+    console.error("Invalid token provided");
     isConnecting = false;
     throw new Error("Invalid authentication token");
   }
@@ -130,15 +130,15 @@ export function connectMeetSocket(token: string): Socket {
   // Add event listeners for debugging (only once per connection attempt)
   socket.once("connect", () => {
     isConnecting = false;
-    console.log("✅ Meet socket connected successfully, ID:", socket.id);
+    console.log("Meet socket connected successfully, ID:", socket.id);
   });
   
   socket.once("disconnect", (reason) => {
     isConnecting = false;
     if (reason === "io client disconnect") {
-      console.log("⚠️ Socket disconnected by client");
+      console.log("Socket disconnected by client");
     } else {
-      console.log("⚠️ Meet socket disconnected:", reason);
+      console.log("Meet socket disconnected:", reason);
     }
   });
   
