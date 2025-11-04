@@ -8,6 +8,7 @@ import { createPortal } from "react-dom";
 export default function ChatButtonClient() {
     const [showList, setShowList] = useState(false);
     const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
+    const [displayName, setDisplayName] = useState<string | null>(null);
 
     // thêm cờ kiểm tra để render mini-chat sau khi DOM mount
     const [mounted, setMounted] = useState(false);
@@ -32,6 +33,7 @@ export default function ChatButtonClient() {
                             onSelectConversation={(id) => {
                                 setActiveConversationId(id);
                                 setShowList(false);
+                                setDisplayName(displayName);
                             }}
                         />
                     </div>
@@ -45,6 +47,7 @@ export default function ChatButtonClient() {
                         <ConversationPopup
                             onClose={() => setActiveConversationId(null)}
                             defaultConversationId={activeConversationId}
+                            receiverName={displayName!}
                         />
                     </div>,
                     document.body

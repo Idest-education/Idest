@@ -9,18 +9,21 @@ import { socket, connectSocket } from "@/lib/socket";
 
 interface ConversationPopupProps {
     onClose: () => void;
-    onSelectConversation?: (conversationId: string) => void; // 👈 callback khi chọn hội thoại
+    onSelectConversation?: (conversationId: string, displayName: string) => void; // 👈 callback khi chọn hội thoại
     defaultConversationId?: string; // 👈 dùng khi hiển thị ChatWindow mini
+    receiverName?: string;
 }
 
 export default function ConversationPopup({
     onClose,
     onSelectConversation,
     defaultConversationId,
+    receiverName
 }: ConversationPopupProps) {
     const [conversations, setConversations] = useState<ConversationDto[]>([]);
     const [selectedId, setSelectedId] = useState<string | null>(defaultConversationId ?? null);
     const [loading, setLoading] = useState(true);
+    const currentUserId = localStorage.getItem("user_id");
 
     // Nếu có defaultConversationId thì mở luôn ChatWindow
     useEffect(() => {
@@ -67,6 +70,7 @@ export default function ConversationPopup({
         return (
             <div className="w-[380px] bg-white border border-indigo-100 rounded-2xl shadow-2xl overflow-hidden animate-fadeIn">
                 <div className="flex justify-between items-center px-4 py-3 border-b bg-gradient-to-r from-indigo-600 to-purple-600 text-white">
+                    <span className="font-semibold text-lg truncate">{receiverName}</span>
                     <button
                         onClick={onClose}
                         className="text-sm hover:bg-white/20 rounded-lg px-2 py-1"
@@ -97,20 +101,31 @@ export default function ConversationPopup({
                     <p className="text-gray-400 text-sm italic">No conversations yet.</p>
                 )}
 
-                {conversations.map((conv) => (
-                    <button
-                        key={conv.id}
-                        onClick={() => onSelectConversation?.(conv.id)} // 👈 gọi callback thay vì set state
-                        className="w-full text-left px-3 py-2 rounded-lg hover:bg-indigo-50 transition"
-                    >
-                        <p className="font-semibold text-gray-800">
-                            {conv.title || "Untitled Chat"}
-                        </p>
-                        <p className="text-sm text-gray-500 truncate">
-                            {conv.messages?.at(-1)?.content || "No messages yet"}
-                        </p>
-                    </button>
-                ))}
+                {conversations.map((conv) => {
+                    // Lấy participant còn lại
+                    const other = conv.participants.find(
+                        (p) => p.userId !== currentUserId
+                    );
+
+                    const displayName = conv.isGroup
+                        ? (conv.title || "Untitled Chat")
+                        : (other?.user.full_name || "Unknown User");
+
+                    return (
+                        <button
+                            key={conv.id}
+                            onClick={() => onSelectConversation?.(conv.id, displayName)}
+                            className="w-full text-left px-3 py-2 rounded-lg hover:bg-indigo-50 transition"
+                        >
+                            <p className="font-semibold text-gray-800">
+                                {displayName}
+                            </p>
+                            <p className="text-sm text-gray-500 truncate">
+                                {conv.messages?.at(-1)?.content || "No messages yet"}
+                            </p>
+                        </button>
+                    );
+                })}
             </div>
         </div>
     );

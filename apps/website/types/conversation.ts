@@ -47,8 +47,16 @@ export interface MessageReadStatus {
 // Thông tin một hội thoại
 export interface ConversationDto {
   id: string;
+  isGroup: boolean;
   title?: string;
-  participants: string[];
+  participants: {
+    userId: string;
+    user: {
+      id: string;
+      full_name: string;
+      avatar_url?: string | null;
+    };
+  }[];
   messages?: MessageDto[];    // 🆕 thêm messages để preview ở ConversationList
   createdAt: string;
   updatedAt: string;

@@ -11,7 +11,7 @@ interface MemberCardProps {
         id: string;
         full_name: string;
     };
-    onConversationCreated?: (conversationId: string) => void;
+    onConversationCreated?: (conversationId: string, fullName: string) => void;
 }
 
 export default function MemberCard({ member, onConversationCreated }: MemberCardProps) {
@@ -35,7 +35,7 @@ export default function MemberCard({ member, onConversationCreated }: MemberCard
 
             const conversation = await conversationService.createConversation(dto);
 
-            onConversationCreated?.(conversation.id);
+            onConversationCreated?.(conversation.id, member.full_name);
             setShowMenu(false);
         } catch (err) {
             console.error("Lỗi tạo cuộc hội thoại:", err);

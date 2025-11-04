@@ -38,6 +38,7 @@ export default function ClassDetailPage() {
   const [selectedSession, setSelectedSession] = useState<SessionData | null>(null);
   const [currentUserId, setCurrentUserId] = useState<string>("");
   const [userRole, setUserRole] = useState<string | null>(null);
+  const [receiverName, setReceiverName] = useState<string>("");
 
   useEffect(() => {
     const fetchUserData = async () => {
@@ -66,7 +67,7 @@ export default function ClassDetailPage() {
       if (!classData?.id) return;
       try {
         let sessions: SessionData[] = [];
-        
+
         // For teachers and admins, use getAllSessions() and filter by class
         // For students, use getClassSessions() to get class-specific sessions
         if (userRole === "TEACHER" || userRole === "ADMIN") {
@@ -78,7 +79,7 @@ export default function ClassDetailPage() {
           const res = await getClassSessions(classData.id);
           sessions = Array.isArray(res.data) ? res.data : [];
         }
-        
+
         setClassSessions(sessions);
       } catch (err) {
         console.error("Error fetching sessions:", err);
@@ -94,7 +95,7 @@ export default function ClassDetailPage() {
     if (!classData?.id) return;
     try {
       let sessions: SessionData[] = [];
-      
+
       // For teachers and admins, use getAllSessions() and filter by class
       // For students, use getClassSessions() to get class-specific sessions
       if (userRole === "TEACHER" || userRole === "ADMIN") {
@@ -106,7 +107,7 @@ export default function ClassDetailPage() {
         const res = await getClassSessions(classData.id);
         sessions = Array.isArray(res.data) ? res.data : [];
       }
-      
+
       setClassSessions(sessions);
     } catch (err) {
       console.error("Error fetching sessions:", err);
@@ -120,9 +121,10 @@ export default function ClassDetailPage() {
     setTimeout(() => setCopied(false), 2000);
   };
 
-  const handleOpenConversation = (conversationId: string) => {
+  const handleOpenConversation = (conversationId: string, fullName: string) => {
     setActiveConversationId(conversationId);
     setShowChatPopup(true);
+    setReceiverName(fullName);
   };
 
   const handleEditSession = (session: SessionData) => {
@@ -296,6 +298,7 @@ export default function ClassDetailPage() {
               <ConversationPopup
                 onClose={() => setShowChatPopup(false)}
                 defaultConversationId={activeConversationId} // 👈 mở sẵn ChatWindow
+                receiverName={receiverName}
               />
             </div>
           )}
