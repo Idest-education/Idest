@@ -322,7 +322,9 @@ export function useMeeting(): UseMeetingReturn {
 
       // User joined
       socket.on("user-joined", async (data: UserJoinedDto) => {
-        if (data.userId === currentUserIdRef.current) {
+        const isSelfByUserId = data.userId === currentUserIdRef.current;
+        const isSelfBySocketId = socketRef.current && data.socketId === socketRef.current.id;
+        if (isSelfByUserId || isSelfBySocketId) {
           // This is me, update local participant
           setLocalParticipant({
             userId: data.userId,
@@ -349,8 +351,9 @@ export function useMeeting(): UseMeetingReturn {
             ];
           });
 
-          // Establish peer connection
-          await establishPeerConnection(data.userId, true);
+          // Establish peer connection but do not initiate offer here.
+          // The newly joined user will initiate offers to existing participants
+          await establishPeerConnection(data.userId, false);
         }
       });
 
@@ -382,18 +385,30 @@ export function useMeeting(): UseMeetingReturn {
       // Session participants
       socket.on("session-participants", async (data: SessionParticipantsDto) => {
         const currentUserId = currentUserIdRef.current;
+        const currentSocketId = socketRef.current?.id;
         
         // Separate local and remote participants
-        const local = data.participants.find((p) => p.userId === currentUserId);
-        const remote = data.participants.filter((p) => p.userId !== currentUserId);
+        let local = currentUserId
+          ? data.participants.find((p) => p.userId === currentUserId)
+          : undefined;
+        if (!local && currentSocketId) {
+          local = data.participants.find((p) => p.socketId === currentSocketId);
+        }
+        const remote = data.participants.filter((p) => {
+          if (local) return p.userId !== local.userId;
+          if (currentUserId) return p.userId !== currentUserId;
+          if (currentSocketId) return p.socketId !== currentSocketId;
+          return true;
+        });
 
         if (local) {
           setLocalParticipant(local);
         }
         setParticipants(remote);
 
-        // Establish connections with all existing participants
-        for (const participant of remote) {
+        // Only initiate connections to ONLINE participants in the session
+        const onlineRemote = remote.filter((p) => p.isOnline && !!p.socketId);
+        for (const participant of onlineRemote) {
           await establishPeerConnection(participant.userId, true);
         }
       });
@@ -410,6 +425,10 @@ export function useMeeting(): UseMeetingReturn {
 
       // WebRTC offer
       socket.on("webrtc-offer", async (data: WebRTCOfferResponse) => {
+        if (data.fromUserId === currentUserIdRef.current) {
+          console.warn("Ignoring self-originated offer");
+          return;
+        }
         console.log(`Received offer from ${data.fromUserId}`);
         let pc = peerConnectionsRef.current.get(data.fromUserId);
         
@@ -967,13 +986,10 @@ export function useMeeting(): UseMeetingReturn {
           if (cameraTrack) {
             console.log('Restoring camera track after stopping screen share');
             peerConnectionsRef.current.forEach((pc) => {
-              const videoSenders = pc.getSenders().filter((s) => s.track && s.track.kind === 'video');
-              // Find the sender that's currently sharing screen
-              const screenSender = videoSenders.find((s) => 
-                s.track && s.track.label.toLowerCase().includes('screen')
-              );
-              if (screenSender && cameraTrack) {
-                screenSender.replaceTrack(cameraTrack);
+              // Replace the first video sender's track with the camera track
+              const videoSender = pc.getSenders().find((s) => s.track && s.track.kind === 'video');
+              if (videoSender) {
+                videoSender.replaceTrack(cameraTrack);
               }
             });
           }
@@ -1029,12 +1045,9 @@ export function useMeeting(): UseMeetingReturn {
             const cameraTrack = currentLocalStream.getVideoTracks()[0];
             if (cameraTrack) {
               peerConnectionsRef.current.forEach((pc) => {
-                const videoSenders = pc.getSenders().filter((s) => s.track && s.track.kind === 'video');
-                const screenSender = videoSenders.find((s) => 
-                  s.track && s.track.label.toLowerCase().includes('screen')
-                );
-                if (screenSender && cameraTrack) {
-                  screenSender.replaceTrack(cameraTrack);
+                const videoSender = pc.getSenders().find((s) => s.track && s.track.kind === 'video');
+                if (videoSender) {
+                  videoSender.replaceTrack(cameraTrack);
                 }
               });
             }

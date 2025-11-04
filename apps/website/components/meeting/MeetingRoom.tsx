@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useMeeting } from "@/hooks/use-meeting";
 import VideoGrid from "./VideoGrid";
 import MeetingControls from "./MeetingControls";
@@ -8,6 +8,7 @@ import MeetingChat from "./MeetingChat";
 import ParticipantList from "./ParticipantList";
 import LoadingScreen from "@/components/loading-screen";
 import { AlertCircle } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 interface MeetingRoomProps {
   sessionId: string;
@@ -20,6 +21,7 @@ export default function MeetingRoom({ sessionId, token }: MeetingRoomProps) {
   const [unreadMessageCount, setUnreadMessageCount] = useState(0);
   const [lastMessageCount, setLastMessageCount] = useState(0);
   const [isMediaInitializing, setIsMediaInitializing] = useState(true);
+  const [showDebug, setShowDebug] = useState(false);
   const {
     isConnected,
     isJoining,
@@ -43,6 +45,61 @@ export default function MeetingRoom({ sessionId, token }: MeetingRoomProps) {
     toggleScreenShare,
     loadMessageHistory,
   } = useMeeting();
+
+  const debugState = useMemo(() => {
+    const summarizeStream = (stream: MediaStream | null) => {
+      if (!stream) return null;
+      return {
+        id: stream.id,
+        tracks: stream.getTracks().map((t) => ({
+          id: t.id,
+          kind: t.kind,
+          enabled: t.enabled,
+          readyState: t.readyState,
+          label: t.label,
+        })),
+      };
+    };
+    return {
+      isConnected,
+      isJoining,
+      error,
+      isAudioEnabled,
+      isVideoEnabled,
+      isScreenSharing,
+      sessionId,
+      participants,
+      localParticipant,
+      messagesCount: messages.length,
+      messageHistoryCount: messageHistory.length,
+      localStream: summarizeStream(localStream),
+      localScreenShareStream: summarizeStream(localScreenShareStream),
+      remoteStreams: Array.from(remoteStreams.entries()).map(([userId, stream]) => ({
+        userId,
+        stream: summarizeStream(stream),
+      })),
+      remoteScreenShareStreams: Array.from(remoteScreenShareStreams.entries()).map(([userId, stream]) => ({
+        userId,
+        stream: summarizeStream(stream),
+      })),
+    };
+  }, [
+    isConnected,
+    isJoining,
+    error,
+    isAudioEnabled,
+    isVideoEnabled,
+    isScreenSharing,
+    sessionId,
+    participants,
+    localParticipant,
+    messages,
+    messageHistory,
+    localStream,
+    localScreenShareStream,
+    remoteStreams,
+    remoteScreenShareStreams,
+  ]);
 
   // Join room on mount - only run once per sessionId/token change
   useEffect(() => {
@@ -142,6 +199,27 @@ export default function MeetingRoom({ sessionId, token }: MeetingRoomProps) {
 
   return (
     <div className="h-screen flex flex-col bg-gray-50">
+      {/* Debug Toggle */}
+      <div className="absolute top-3 right-3 z-50">
+        <Button variant="secondary" size="sm" onClick={() => setShowDebug((v) => !v)}>
+          {showDebug ? "Hide Debug" : "Show Debug"}
+        </Button>
+      </div>
+
+      {showDebug && (
+        <div className="fixed bottom-3 right-3 z-50 w-[520px] max-h-[60vh] bg-white border border-gray-200 rounded-lg shadow-xl p-3">
+          <div className="flex items-center justify-between mb-2">
+            <div className="text-sm font-medium text-gray-700">Meeting Debug State</div>
+            <Button variant="ghost" size="sm" onClick={() => setShowDebug(false)}>Close</Button>
+          </div>
+          <div className="overflow-auto max-h-[50vh]">
+            <pre className="text-xs leading-relaxed whitespace-pre-wrap break-words">
+{JSON.stringify(debugState, null, 2)}
+            </pre>
+          </div>
+        </div>
+      )}
+
       {/* Main content area */}
       <div className="flex-1 flex overflow-hidden">
         {/* Video grid - main area */}

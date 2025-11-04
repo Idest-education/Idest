@@ -162,15 +162,26 @@ export function toggleVideoTrack(
  * Close peer connection and cleanup
  */
 export function closePeerConnection(pc: RTCPeerConnection): void {
-  // Close all tracks
-  pc.getSenders().forEach((sender) => {
-    const track = sender.track;
-    if (track) {
-      track.stop();
-    }
-  });
-  
-  // Close connection
-  pc.close();
+  // Remove all senders from the peer connection without stopping tracks
+  // Stopping tracks here would kill the shared local camera/mic for all peers
+  try {
+    const senders = pc.getSenders();
+    senders.forEach((sender) => {
+      try {
+        pc.removeTrack(sender);
+      } catch {
+        // ignore
+      }
+    });
+  } catch {
+    // ignore
+  }
+
+  // Finally, close the RTCPeerConnection
+  try {
+    pc.close();
+  } catch {
+    // ignore
+  }
 }
 
