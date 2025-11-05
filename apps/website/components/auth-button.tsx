@@ -5,14 +5,15 @@ import { Button } from "./ui/button";
 import { createClient } from "@/lib/supabase/client";
 import { LogoutButton } from "./logout-button";
 import { useEffect, useState } from "react";
+import type { User } from "@supabase/supabase-js";
 
 export function AuthButton() {
-  const [user, setUser] = useState<any>(null);
+  const [user, setUser] = useState<User | null>(null);
   const supabase = createClient();
 
   useEffect(() => {
     // Lấy user khi component mount
-    supabase.auth.getUser().then(({ data }) => setUser(data?.user ?? null));
+    supabase.auth.getUser().then(({ data }) => setUser(data.user ?? null));
 
     // Theo dõi thay đổi đăng nhập/đăng xuất
     const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
@@ -40,4 +41,3 @@ export function AuthButton() {
     </div>
   );
 }
-
