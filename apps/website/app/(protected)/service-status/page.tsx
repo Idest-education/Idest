@@ -37,7 +37,7 @@ export default function ServiceStatusPage() {
     { name: "Classes API", endpoint: "/class", status: "idle" },
     { name: "Sessions - Upcoming", endpoint: "/session/upcoming", status: "idle" },
     { name: "Conversations API", endpoint: "/conversation", status: "idle" },
-    { name: "User Profile", endpoint: "/user/profile", status: "idle" },
+    { name: "User Profile", endpoint: "/user", status: "idle" },
   ]);
 
   const [logs, setLogs] = useState<LogEntry[]>([]);
