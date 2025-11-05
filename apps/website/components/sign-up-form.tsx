@@ -42,7 +42,7 @@ export function SignUpForm({
     }
 
     try {
-      const res = await fetch("http://localhost:8000/user/serverside-create", {
+      const res = await fetch("https://ie-backend.fly.dev/user/serverside-create", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, password, fullName, role }),
