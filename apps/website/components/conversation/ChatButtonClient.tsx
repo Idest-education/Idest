@@ -30,7 +30,7 @@ export default function ChatButtonClient() {
                     <div className="absolute top-12 right-0 z-[9999]">
                         <ConversationPopup
                             onClose={() => setShowList(false)}
-                            onSelectConversation={(id) => {
+                            onSelectConversation={(id, displayName) => {
                                 setActiveConversationId(id);
                                 setShowList(false);
                                 setDisplayName(displayName);
