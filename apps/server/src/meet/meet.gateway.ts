@@ -119,7 +119,7 @@ export class MeetGateway
       }
 
       // Join the socket room
-      await client.join(data.sessionId);  
+      await client.join(data.sessionId);
 
       // Create connected user object
       const connectedUser: ConnectedUser = {
@@ -299,10 +299,11 @@ export class MeetGateway
     }
   }
 
+  // DEPRECATED
   /**
    * WebRTC Offer - Send WebRTC offer to specific peer
    */
-  @SubscribeMessage('webrtc-offer')
+  @SubscribeMessage('z')
   async handleWebRTCOffer(
     @ConnectedSocket() client: Socket,
     @MessageBody() data: WebRTCOfferDto,
@@ -341,6 +342,7 @@ export class MeetGateway
     }
   }
 
+  // DEPRECATED
   /**
    * WebRTC Answer - Send WebRTC answer to specific peer
    */
@@ -385,6 +387,7 @@ export class MeetGateway
     }
   }
 
+  // DEPRECATED
   /**
    * ICE Candidate - Send ICE candidate to specific peer
    */
