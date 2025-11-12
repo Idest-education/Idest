@@ -615,4 +615,60 @@ export class UserService {
       );
     }
   }
+
+  async deleteAccount(
+    deletedUserId: string,
+    deleter: userPayload,
+    allowSelfDelete = false,
+  ): Promise<boolean> {
+    try {
+      const userToDelete = await this.prisma.user.findUnique({
+        where: { id: deletedUserId },
+      });
+
+      if (!userToDelete) {
+        throw new NotFoundException(`User with ID ${deletedUserId} not found`);
+      }
+
+      const isSelfDelete = deleter.id === deletedUserId;
+
+      if (isSelfDelete && !allowSelfDelete) {
+        throw new UnprocessableEntityException(
+          `User with ID ${deletedUserId} cannot delete their own account`,
+        );
+      }
+
+      if (!allowSelfDelete && deleter.role !== Role.ADMIN) {
+        throw new UnprocessableEntityException(
+          `Only administrators can delete other users' accounts`,
+        );
+      }
+
+      // Extract the part before @ from the email and append user ID to ensure uniqueness
+      const emailPrefix = userToDelete.email.split('@')[0];
+      const newEmail = `${emailPrefix}-${deletedUserId}@bannedAccount.com`;
+
+      await this.prisma.user.update({
+        where: { id: deletedUserId },
+        data: {
+          email: newEmail,
+          full_name: 'Inactive',
+          is_active: false,
+          avatar_url: null,
+        },
+      });
+
+      return true;
+    } catch (error) {
+      if (
+        error instanceof UnprocessableEntityException ||
+        error instanceof NotFoundException
+      ) {
+        throw error;
+      }
+      throw new InternalServerErrorException(
+        `Error deleting account: ${error}`,
+      );
+    }
+  }
 }

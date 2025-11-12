@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   Param,
   Post,
@@ -289,6 +290,53 @@ export class UserController {
     @CurrentUser() unbanner: userPayload,
   ): Promise<boolean> {
     return await this.userService.unbanUser(unbanned, unbanner);
+  }
+
+  @Delete('delete/:id')
+  @Roles(Role.ADMIN)
+  @ApiOperation({
+    summary: 'Delete account (soft delete)',
+    description:
+      'Soft deletes a user account by anonymizing their data: changes email to @bannedAccount.com, sets name to "Inactive", sets is_active to false, and removes avatar. Only accessible by users with ADMIN role.',
+  })
+  @ApiParam({
+    name: 'id',
+    description: 'ID of user account to delete',
+    example: 'uuid-string',
+  })
+  @ApiOkResponse({
+    description: 'Account successfully deleted',
+    schema: { type: 'boolean', example: true },
+  })
+  @ApiNotFoundResponse({ description: 'User not found' })
+  @ApiUnprocessableEntityResponse({
+    description: 'Cannot delete your own account or failed to delete account',
+  })
+  @ApiForbiddenResponse({ description: 'Access denied - ADMIN role required' })
+  @ApiUnauthorizedResponse({ description: 'Authentication required' })
+  @ApiInternalServerErrorResponse({ description: 'Internal server error' })
+  async deleteAccount(
+    @Param('id') deletedUserId: string,
+    @CurrentUser() deleter: userPayload,
+  ): Promise<boolean> {
+    return await this.userService.deleteAccount(deletedUserId, deleter);
+  }
+
+  @Delete('me')
+  @ApiOperation({
+    summary: 'Delete own account (soft delete)',
+    description:
+      'Allows the current authenticated user to anonymize and deactivate their own account.',
+  })
+  @ApiOkResponse({
+    description: 'Account successfully deleted',
+    schema: { type: 'boolean', example: true },
+  })
+  @ApiNotFoundResponse({ description: 'User not found' })
+  @ApiUnauthorizedResponse({ description: 'Authentication required' })
+  @ApiInternalServerErrorResponse({ description: 'Internal server error' })
+  async deleteOwnAccount(@CurrentUser() user: userPayload): Promise<boolean> {
+    return await this.userService.deleteAccount(user.id, user, true);
   }
 
   @Get('all')
