@@ -6,14 +6,20 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { UserService } from 'src/user/user.service';
-import { userPayload } from 'src/common/types/userPayload.interface';
 import {
   ConnectedUsersManager,
   ConnectedUser,
 } from './utils/connected-users-manager';
+import { LiveKitService } from './utils/livekit.service';
 import { verifyTokenAsync } from 'src/common/guard/auth.guard';
 import { JwtPayload } from 'jsonwebtoken';
 
+
+export interface LiveKitCredentials {
+  url: string;
+  roomName: string;
+  accessToken: string;
+}
 
 @Injectable()
 export class MeetService {
@@ -21,6 +27,7 @@ export class MeetService {
     private readonly prisma: PrismaService,
     private readonly userService: UserService,
     private readonly connectedUsersManager: ConnectedUsersManager,
+    private readonly liveKitService: LiveKitService,
   ) {}
   /**
    * Validate JWT token
@@ -134,6 +141,46 @@ export class MeetService {
    */
   async getUserDetails(userId: string) {
     return this.userService.getUserDetails(userId);
+  }
+
+  async prepareLiveKitCredentials(
+    userId: string,
+    sessionId: string,
+    userDetails: {
+      full_name: string;
+      role: string;
+      email: string;
+      avatar_url?: string;
+    },
+  ): Promise<LiveKitCredentials> {
+    const { roomName } = await this.liveKitService.ensureSessionRoom({
+      sessionId,
+      metadata: {
+        sessionId,
+      },
+    });
+
+    const accessToken = await this.liveKitService.generateToken({
+      roomName,
+      identity: userId,
+      name: userDetails.full_name,
+      metadata: {
+        sessionId,
+        userId,
+        role: userDetails.role,
+        email: userDetails.email,
+        avatarUrl: userDetails.avatar_url,
+      },
+      canPublish: true,
+      canSubscribe: true,
+      canPublishData: true,
+    });
+
+    return {
+      url: this.liveKitService.url,
+      roomName,
+      accessToken,
+    };
   }
 
   /**
