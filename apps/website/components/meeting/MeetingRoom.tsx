@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { useMeeting } from "@/hooks/use-meeting";
 import VideoGrid from "./VideoGrid";
 import MeetingControls from "./MeetingControls";
@@ -22,6 +22,7 @@ export default function MeetingRoom({ sessionId, token }: MeetingRoomProps) {
   const [lastMessageCount, setLastMessageCount] = useState(0);
   const [isMediaInitializing, setIsMediaInitializing] = useState(true);
   const [showDebug, setShowDebug] = useState(false);
+  const joinAttemptedRef = useRef(false);
   const {
     isConnected,
     isJoining,
@@ -103,15 +104,20 @@ export default function MeetingRoom({ sessionId, token }: MeetingRoomProps) {
 
   // Join room on mount - only run once per sessionId/token change
   useEffect(() => {
-    let isMounted = true;
-    
-    if (isMounted) {
-      joinRoom(sessionId, token);
+    // Skip if already attempted to join (prevents React Strict Mode duplicates)
+    if (joinAttemptedRef.current) {
+      console.log("Join already attempted, skipping duplicate call");
+      return;
     }
+    
+    // Mark as attempted immediately
+    joinAttemptedRef.current = true;
+    
+    joinRoom(sessionId, token);
 
     return () => {
-      isMounted = false;
       leaveRoom(sessionId);
+      // Don't reset the flag here - we want to prevent rejoins on re-renders
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sessionId, token]); // Only depend on sessionId and token, not the functions

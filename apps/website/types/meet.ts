@@ -34,10 +34,17 @@ export interface GetMeetingMessagesDto {
 }
 
 // Response DTOs
+export interface LiveKitCredentials {
+  url: string;
+  roomName: string;
+  accessToken: string;
+}
+
 export interface JoinRoomSuccessResponse {
   sessionId: string;
   userId: string;
   message: string;
+  livekit: LiveKitCredentials;
 }
 
 export interface ChatMessageResponse {

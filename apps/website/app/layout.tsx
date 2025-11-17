@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
+import { Nunito } from "next/font/google";
 import { ThemeProvider } from "next-themes";
 import "./globals.css";
 import { Toaster } from "sonner";
@@ -10,12 +10,12 @@ const defaultUrl = process.env.VERCEL_URL
 
 export const metadata: Metadata = {
   metadataBase: new URL(defaultUrl),
-  title: "Idest - Master English with AI",
+  title: "Idest",
   description: "AI-powered English learning platform",
 };
 
-const inter = Inter({
-  variable: "--font-inter",
+const nunito = Nunito({
+  variable: "--font-nunito",
   display: "swap",
   subsets: ["latin"],
 });
@@ -27,7 +27,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className={`${inter.className} antialiased`}>
+      <body className={`${nunito.className} antialiased`}>
         <ThemeProvider
           attribute="class"
           defaultTheme="light"
