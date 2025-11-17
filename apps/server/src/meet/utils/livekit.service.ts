@@ -1,11 +1,13 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { Buffer } from 'node:buffer';
 import {
   AccessToken,
   type CreateOptions,
   RoomServiceClient,
   type Room,
   type ParticipantInfo,
+  DataPacket_Kind,
 } from 'livekit-server-sdk';
 import type { VideoGrant } from 'livekit-server-sdk';
 
@@ -30,6 +32,13 @@ export interface LiveKitTokenOptions {
   recorder?: boolean;
 }
 
+export interface LiveKitDataMessageOptions {
+  topic?: string;
+  destinationIdentities?: string[];
+  destinationSids?: string[];
+  kind?: DataPacket_Kind;
+}
+
 @Injectable()
 export class LiveKitService {
   private readonly logger = new Logger(LiveKitService.name);
@@ -49,6 +58,17 @@ export class LiveKitService {
       this.apiKey,
       this.apiSecret,
     );
+  }
+
+  async sendSessionDataMessage(
+    sessionId: string,
+    payload: unknown,
+    options?: LiveKitDataMessageOptions,
+  ): Promise<void> {
+    const { roomName } = await this.ensureSessionRoom({
+      sessionId,
+    });
+    await this.sendData(roomName, payload, options);
   }
 
   private requireEnv(key: string): string {
@@ -157,6 +177,31 @@ export class LiveKitService {
     }
   }
 
+  private async sendData(
+    roomName: string,
+    payload: unknown,
+    options?: LiveKitDataMessageOptions,
+  ): Promise<void> {
+    const serialized = this.serializePayload(payload);
+    if (!serialized) {
+      this.logger.warn(
+        `Skipping LiveKit data message for room ${roomName} due to serialization failure`,
+      );
+      return;
+    }
+
+    await this.roomServiceClient.sendData(
+      roomName,
+      serialized,
+      options?.kind ?? DataPacket_Kind.RELIABLE,
+      {
+        topic: options?.topic,
+        destinationIdentities: options?.destinationIdentities,
+        destinationSids: options?.destinationSids,
+      },
+    );
+  }
+
   private async findRoom(roomName: string): Promise<Room | null> {
     const rooms = await this.roomServiceClient.listRooms([roomName]);
     return rooms.find((room) => room.name === roomName) ?? null;
@@ -180,6 +225,17 @@ export class LiveKitService {
         `Failed to serialize metadata for LiveKit token: ${error instanceof Error ? error.message : error}`,
       );
       return undefined;
+    }
+  }
+
+  private serializePayload(payload: unknown): Uint8Array | null {
+    try {
+      return Buffer.from(JSON.stringify(payload));
+    } catch (error) {
+      this.logger.error(
+        `Failed to serialize LiveKit data payload: ${error instanceof Error ? error.message : error}`,
+      );
+      return null;
     }
   }
 

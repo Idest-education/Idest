@@ -10,10 +10,12 @@ import {
   ConnectedUsersManager,
   ConnectedUser,
 } from './utils/connected-users-manager';
-import { LiveKitService } from './utils/livekit.service';
+import {
+  LiveKitService,
+  type LiveKitDataMessageOptions,
+} from './utils/livekit.service';
 import { verifyTokenAsync } from 'src/common/guard/auth.guard';
 import { JwtPayload } from 'jsonwebtoken';
-
 
 export interface LiveKitCredentials {
   url: string;
@@ -181,6 +183,24 @@ export class MeetService {
       roomName,
       accessToken,
     };
+  }
+
+  async broadcastLiveKitEvent(
+    sessionId: string,
+    type: string,
+    payload: unknown,
+    options?: LiveKitDataMessageOptions,
+  ): Promise<void> {
+    await this.liveKitService.sendSessionDataMessage(
+      sessionId,
+      {
+        type,
+        payload,
+        sessionId,
+        timestamp: new Date().toISOString(),
+      },
+      options,
+    );
   }
 
   /**

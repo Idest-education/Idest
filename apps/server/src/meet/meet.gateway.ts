@@ -19,11 +19,6 @@ import { MeetService } from './meet.service';
 import { JoinRoomDto } from './dto/join-room.dto';
 import { ChatMessageDto, ChatMessageResponseDto } from './dto/chat-message.dto';
 import {
-  WebRTCOfferDto,
-  WebRTCAnswerDto,
-  ICECandidateDto,
-} from './dto/webrtc.dto';
-import {
   UserJoinedDto,
   UserLeftDto,
   SessionParticipantsDto,
@@ -41,6 +36,7 @@ import {
   ToggleMediaDto,
 } from './dto/media-controls.dto';
 import { ConnectedUser } from './utils/connected-users-manager';
+import { LiveKitCredentials } from './meet.service';
 
 @WebSocketGateway({
   cors: {
@@ -107,10 +103,7 @@ export class MeetGateway
       await this.meetService.validateSession(data.sessionId);
 
       // Validate user has access to this session
-      await this.meetService.validateUserSessionAccess(
-        userId,
-        data.sessionId,
-      );
+      await this.meetService.validateUserSessionAccess(userId, data.sessionId);
 
       // Get user details from database
       const userDetails = await this.meetService.getUserDetails(userId);
@@ -162,6 +155,21 @@ export class MeetGateway
 
       client.emit('session-participants', participantsData);
 
+      // Prepare LiveKit credentials for this participant
+      let liveKitCredentials: LiveKitCredentials | null = null;
+      try {
+        liveKitCredentials = await this.meetService.prepareLiveKitCredentials(
+          userId,
+          data.sessionId,
+          userDetails,
+        );
+      } catch (error) {
+        this.logger.error(
+          `Failed to prepare LiveKit credentials for session ${data.sessionId}: ${error instanceof Error ? error.message : error}`,
+        );
+        throw new Error('LiveKit initialization failed');
+      }
+
       // Load and send recent chat messages
       try {
         const recentMessages = await this.meetService.getMeetingMessages(
@@ -198,6 +206,7 @@ export class MeetGateway
         sessionId: data.sessionId,
         userId: userId,
         message: 'Successfully joined the session',
+        livekit: liveKitCredentials,
       });
 
       this.logger.log(
@@ -290,6 +299,19 @@ export class MeetGateway
       // Broadcast to all users in the session (including sender)
       this.server.to(data.sessionId).emit('chat-message', chatResponse);
 
+      // Relay through LiveKit data channel so clients connected via SFU receive chat
+      try {
+        await this.meetService.broadcastLiveKitEvent(
+          data.sessionId,
+          'chat-message',
+          chatResponse,
+        );
+      } catch (error) {
+        this.logger.error(
+          `Failed to relay chat via LiveKit for session ${data.sessionId}: ${error instanceof Error ? error.message : error}`,
+        );
+      }
+
       this.logger.log(
         `Chat message from ${user.userId} in session ${data.sessionId} ${savedMessage ? 'saved to DB' : 'broadcast only'}`,
       );
@@ -299,139 +321,6 @@ export class MeetGateway
     }
   }
 
-  // DEPRECATED
-  /**
-   * WebRTC Offer - Send WebRTC offer to specific peer
-   */
-  @SubscribeMessage('z')
-  async handleWebRTCOffer(
-    @ConnectedSocket() client: Socket,
-    @MessageBody() data: WebRTCOfferDto,
-  ) {
-    try {
-      // Validate user is in this session
-      const sender = this.meetService.getUserBySocket(client.id);
-      if (!sender || sender.sessionId !== data.sessionId) {
-        client.emit('webrtc-offer-error', { message: 'Not in this session' });
-        return;
-      }
-
-      const targetSocketId = this.meetService.getUserSocketId(
-        data.targetUserId,
-        data.sessionId,
-      );
-      if (!targetSocketId) {
-        client.emit('webrtc-offer-error', { message: 'Target user not found' });
-        return;
-      }
-
-      // Send offer to target user
-      this.server.to(targetSocketId).emit('webrtc-offer', {
-        sessionId: data.sessionId,
-        fromUserId: sender.userId,
-        fromUserName: sender.userFullName,
-        offer: data.offer,
-      });
-
-      this.logger.log(
-        `WebRTC offer from ${sender.userId} to ${data.targetUserId} in session ${data.sessionId}`,
-      );
-    } catch (error) {
-      this.logger.error(`Failed to send WebRTC offer: ${error.message}`);
-      client.emit('webrtc-offer-error', { message: 'Failed to send offer' });
-    }
-  }
-
-  // DEPRECATED
-  /**
-   * WebRTC Answer - Send WebRTC answer to specific peer
-   */
-  @SubscribeMessage('webrtc-answer')
-  async handleWebRTCAnswer(
-    @ConnectedSocket() client: Socket,
-    @MessageBody() data: WebRTCAnswerDto,
-  ) {
-    try {
-      // Validate user is in this session
-      const sender = this.meetService.getUserBySocket(client.id);
-      if (!sender || sender.sessionId !== data.sessionId) {
-        client.emit('webrtc-answer-error', { message: 'Not in this session' });
-        return;
-      }
-
-      const targetSocketId = this.meetService.getUserSocketId(
-        data.targetUserId,
-        data.sessionId,
-      );
-      if (!targetSocketId) {
-        client.emit('webrtc-answer-error', {
-          message: 'Target user not found',
-        });
-        return;
-      }
-
-      // Send answer to target user
-      this.server.to(targetSocketId).emit('webrtc-answer', {
-        sessionId: data.sessionId,
-        fromUserId: sender.userId,
-        fromUserName: sender.userFullName,
-        answer: data.answer,
-      });
-
-      this.logger.log(
-        `WebRTC answer from ${sender.userId} to ${data.targetUserId} in session ${data.sessionId}`,
-      );
-    } catch (error) {
-      this.logger.error(`Failed to send WebRTC answer: ${error.message}`);
-      client.emit('webrtc-answer-error', { message: 'Failed to send answer' });
-    }
-  }
-
-  // DEPRECATED
-  /**
-   * ICE Candidate - Send ICE candidate to specific peer
-   */
-  @SubscribeMessage('ice-candidate')
-  async handleICECandidate(
-    @ConnectedSocket() client: Socket,
-    @MessageBody() data: ICECandidateDto,
-  ) {
-    try {
-      // Validate user is in this session
-      const sender = this.meetService.getUserBySocket(client.id);
-      if (!sender || sender.sessionId !== data.sessionId) {
-        client.emit('ice-candidate-error', { message: 'Not in this session' });
-        return;
-      }
-
-      const targetSocketId = this.meetService.getUserSocketId(
-        data.targetUserId,
-        data.sessionId,
-      );
-      if (!targetSocketId) {
-        client.emit('ice-candidate-error', {
-          message: 'Target user not found',
-        });
-        return;
-      }
-
-      // Send ICE candidate to target user
-      this.server.to(targetSocketId).emit('ice-candidate', {
-        sessionId: data.sessionId,
-        fromUserId: sender.userId,
-        candidate: data.candidate,
-      });
-
-      this.logger.log(
-        `ICE candidate from ${sender.userId} to ${data.targetUserId} in session ${data.sessionId}`,
-      );
-    } catch (error) {
-      this.logger.error(`Failed to send ICE candidate: ${error.message}`);
-      client.emit('ice-candidate-error', {
-        message: 'Failed to send ICE candidate',
-      });
-    }
-  }
 
   /**
    * Get Session Participants - Get list of all participants in session
@@ -552,14 +441,30 @@ export class MeetGateway
       };
 
       // Broadcast to all users in the session (including sender)
-      this.server.to(data.sessionId).emit('screen-share-started', screenShareResponse);
+      this.server
+        .to(data.sessionId)
+        .emit('screen-share-started', screenShareResponse);
+
+      try {
+        await this.meetService.broadcastLiveKitEvent(
+          data.sessionId,
+          'screen-share-started',
+          screenShareResponse,
+        );
+      } catch (error) {
+        this.logger.error(
+          `Failed to relay screen-share-started via LiveKit for session ${data.sessionId}: ${error instanceof Error ? error.message : error}`,
+        );
+      }
 
       this.logger.log(
         `User ${user.userId} started screen sharing in session ${data.sessionId}`,
       );
     } catch (error) {
       this.logger.error(`Failed to start screen share: ${error.message}`);
-      client.emit('screen-share-error', { message: 'Failed to start screen share' });
+      client.emit('screen-share-error', {
+        message: 'Failed to start screen share',
+      });
     }
   }
 
@@ -588,14 +493,30 @@ export class MeetGateway
       };
 
       // Broadcast to all users in the session (including sender)
-      this.server.to(data.sessionId).emit('screen-share-stopped', screenShareResponse);
+      this.server
+        .to(data.sessionId)
+        .emit('screen-share-stopped', screenShareResponse);
+
+      try {
+        await this.meetService.broadcastLiveKitEvent(
+          data.sessionId,
+          'screen-share-stopped',
+          screenShareResponse,
+        );
+      } catch (error) {
+        this.logger.error(
+          `Failed to relay screen-share-stopped via LiveKit for session ${data.sessionId}: ${error instanceof Error ? error.message : error}`,
+        );
+      }
 
       this.logger.log(
         `User ${user.userId} stopped screen sharing in session ${data.sessionId}`,
       );
     } catch (error) {
       this.logger.error(`Failed to stop screen share: ${error.message}`);
-      client.emit('screen-share-error', { message: 'Failed to stop screen share' });
+      client.emit('screen-share-error', {
+        message: 'Failed to stop screen share',
+      });
     }
   }
 
@@ -651,4 +572,112 @@ export class MeetGateway
 
     this.logger.log(`User ${user.userId} left session ${user.sessionId}`);
   }
+
+  // ============================== DEPRECATED ==============================
+  // DEPRECATED: Legacy manual WebRTC signaling handlers retained for reference.
+  /*
+  @SubscribeMessage('webrtc-offer')
+  async handleWebRTCOffer(
+    @ConnectedSocket() client: Socket,
+    @MessageBody() data: WebRTCOfferDto,
+  ) {
+    try {
+      const sender = this.meetService.getUserBySocket(client.id);
+      if (!sender || sender.sessionId !== data.sessionId) {
+        client.emit('webrtc-offer-error', { message: 'Not in this session' });
+        return;
+      }
+
+      const targetSocketId = this.meetService.getUserSocketId(
+        data.targetUserId,
+        data.sessionId,
+      );
+      if (!targetSocketId) {
+        client.emit('webrtc-offer-error', { message: 'Target user not found' });
+        return;
+      }
+
+      this.server.to(targetSocketId).emit('webrtc-offer', {
+        sessionId: data.sessionId,
+        fromUserId: sender.userId,
+        fromUserName: sender.userFullName,
+        offer: data.offer,
+      });
+    } catch (error) {
+      this.logger.error(`Failed to send WebRTC offer: ${error.message}`);
+      client.emit('webrtc-offer-error', { message: 'Failed to send offer' });
+    }
+  }
+
+  @SubscribeMessage('webrtc-answer')
+  async handleWebRTCAnswer(
+    @ConnectedSocket() client: Socket,
+    @MessageBody() data: WebRTCAnswerDto,
+  ) {
+    try {
+      const sender = this.meetService.getUserBySocket(client.id);
+      if (!sender || sender.sessionId !== data.sessionId) {
+        client.emit('webrtc-answer-error', { message: 'Not in this session' });
+        return;
+      }
+
+      const targetSocketId = this.meetService.getUserSocketId(
+        data.targetUserId,
+        data.sessionId,
+      );
+      if (!targetSocketId) {
+        client.emit('webrtc-answer-error', {
+          message: 'Target user not found',
+        });
+        return;
+      }
+
+      this.server.to(targetSocketId).emit('webrtc-answer', {
+        sessionId: data.sessionId,
+        fromUserId: sender.userId,
+        fromUserName: sender.userFullName,
+        answer: data.answer,
+      });
+    } catch (error) {
+      this.logger.error(`Failed to send WebRTC answer: ${error.message}`);
+      client.emit('webrtc-answer-error', { message: 'Failed to send answer' });
+    }
+  }
+
+  @SubscribeMessage('ice-candidate')
+  async handleICECandidate(
+    @ConnectedSocket() client: Socket,
+    @MessageBody() data: ICECandidateDto,
+  ) {
+    try {
+      const sender = this.meetService.getUserBySocket(client.id);
+      if (!sender || sender.sessionId !== data.sessionId) {
+        client.emit('ice-candidate-error', { message: 'Not in this session' });
+        return;
+      }
+
+      const targetSocketId = this.meetService.getUserSocketId(
+        data.targetUserId,
+        data.sessionId,
+      );
+      if (!targetSocketId) {
+        client.emit('ice-candidate-error', {
+          message: 'Target user not found',
+        });
+        return;
+      }
+
+      this.server.to(targetSocketId).emit('ice-candidate', {
+        sessionId: data.sessionId,
+        fromUserId: sender.userId,
+        candidate: data.candidate,
+      });
+    } catch (error) {
+      this.logger.error(`Failed to send ICE candidate: ${error.message}`);
+      client.emit('ice-candidate-error', {
+        message: 'Failed to send ICE candidate',
+      });
+    }
+  }
+  */
 }
