@@ -113,14 +113,24 @@ export default function MeetingRoom({ sessionId, token }: MeetingRoomProps) {
     // Mark as attempted immediately
     joinAttemptedRef.current = true;
     
-    joinRoom(sessionId, token);
+    // Small delay to prevent issues with Fast Refresh
+    const joinTimeout = setTimeout(() => {
+      if (joinAttemptedRef.current) {
+        joinRoom(sessionId, token);
+      }
+    }, 100);
 
     return () => {
-      leaveRoom(sessionId);
-      // Don't reset the flag here - we want to prevent rejoins on re-renders
+      clearTimeout(joinTimeout);
+      
+      // Only leave if we actually joined
+      if (joinAttemptedRef.current) {
+        leaveRoom(sessionId);
+      }
+      joinAttemptedRef.current = false; // Reset for next mount/prop change
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sessionId, token]); // Only depend on sessionId and token, not the functions
+  }, [sessionId, token]); // Don't include functions - they change every render
 
   // Load message history on join
   useEffect(() => {
@@ -136,9 +146,9 @@ export default function MeetingRoom({ sessionId, token }: MeetingRoomProps) {
     }
   }, [localStream]);
 
-  // Track unread messages when chat is hidden
+  // Track unread messages when chat is hidden (only track new real-time messages, not history)
   useEffect(() => {
-    const currentMessageCount = messages.length + messageHistory.length;
+    const currentMessageCount = messages.length; // Don't count history
     
     if (!showChat && currentMessageCount > lastMessageCount) {
       // Increase unread count when new messages arrive while chat is hidden
@@ -147,7 +157,7 @@ export default function MeetingRoom({ sessionId, token }: MeetingRoomProps) {
     }
     
     setLastMessageCount(currentMessageCount);
-  }, [messages, messageHistory, showChat, lastMessageCount]);
+  }, [messages, showChat, lastMessageCount]); // Removed messageHistory dependency
 
   // Reset unread count when chat is opened
   useEffect(() => {

@@ -1,77 +1,8 @@
 "use client";
 
-export interface PeerConnection {
-  connection: RTCPeerConnection;
-  userId: string;
-  stream?: MediaStream;
-}
-
-const ICE_SERVERS = {
-  iceServers: [
-    { urls: "stun:stun.l.google.com:19302" },
-    { urls: "stun:stun1.l.google.com:19302" },
-    { urls: "stun:stun2.l.google.com:19302" },
-    { urls: "stun:stun3.l.google.com:19302" },
-    { urls: "stun:stun4.l.google.com:19302" },
-    { urls: "stun:stun.cloudflare.com:3478" },
-    { urls: "stun:stun.services.mozilla.com" },
-    ...(process.env.NEXT_PUBLIC_TURN_SERVER_URL ? [{
-      urls: process.env.NEXT_PUBLIC_TURN_SERVER_URL,
-      username: process.env.NEXT_PUBLIC_TURN_USERNAME || "",
-      credential: process.env.NEXT_PUBLIC_TURN_CREDENTIAL || ""
-    }] : [])
-  ],
-  iceCandidatePoolSize: 10,
-};
-
-/**
- * Create a new RTCPeerConnection for a peer
- */
-export function createPeerConnection(userId: string): RTCPeerConnection {
-  const pc = new RTCPeerConnection(ICE_SERVERS);
-  
-  // Add connection state monitoring
-  pc.addEventListener('connectionstatechange', () => {
-    console.log(`Peer connection state for ${userId}: ${pc.connectionState}`);
-  });
-  
-  pc.addEventListener('iceconnectionstatechange', () => {
-    console.log(`ICE connection state for ${userId}: ${pc.iceConnectionState}`);
-    
-    // Handle connection failures
-    if (pc.iceConnectionState === 'failed') {
-      console.error(`ICE connection failed for ${userId}`);
-    }
-  });
-  
-  pc.addEventListener('icegatheringstatechange', () => {
-    console.log(`ICE gathering state for ${userId}: ${pc.iceGatheringState}`);
-  });
-  
-  return pc;
-}
-
-/**
- * Add local stream tracks to peer connection
- */
-export function addLocalStreamToPeer(
-  pc: RTCPeerConnection,
-  stream: MediaStream
-): void {
-  stream.getTracks().forEach((track) => {
-    pc.addTrack(track, stream);
-  });
-}
-
-/**
- * Remove all tracks from peer connection
- */
-export function removeAllTracks(pc: RTCPeerConnection): void {
-  const senders = pc.getSenders();
-  senders.forEach((sender) => {
-    pc.removeTrack(sender);
-  });
-}
+// DEPRECATED: Legacy WebRTC utilities for custom P2P signaling
+// The application now uses LiveKit Cloud for media routing
+// These functions are retained for reference only
 
 /**
  * Get user media (camera and microphone)
@@ -92,6 +23,7 @@ export async function getUserMedia(
 
 /**
  * Get display media (screen sharing)
+ * DEPRECATED: Use LiveKit's screen share APIs instead
  */
 export async function getDisplayMedia(): Promise<MediaStream> {
   try {
@@ -118,6 +50,7 @@ export function stopMediaStream(stream: MediaStream | null | undefined): void {
 
 /**
  * Replace audio/video track in a stream
+ * DEPRECATED: Utility function, not currently used
  */
 export function replaceTrack(
   stream: MediaStream,
@@ -160,6 +93,7 @@ export function toggleVideoTrack(
 
 /**
  * Close peer connection and cleanup
+ * DEPRECATED: Utility function for legacy WebRTC, not currently used
  */
 export function closePeerConnection(pc: RTCPeerConnection): void {
   // Remove all senders from the peer connection without stopping tracks
@@ -184,4 +118,3 @@ export function closePeerConnection(pc: RTCPeerConnection): void {
     // ignore
   }
 }
-

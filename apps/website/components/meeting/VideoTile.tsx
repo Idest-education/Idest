@@ -30,9 +30,36 @@ export default function VideoTile({
   const videoRef = useRef<HTMLVideoElement>(null);
 
   useEffect(() => {
-    if (videoRef.current && stream) {
-      videoRef.current.srcObject = stream;
+    const video = videoRef.current;
+
+    if (!video) {
+      return;
     }
+
+    if (!stream || !isVideoEnabled) {
+      if (video.srcObject) {
+        video.srcObject = null;
+      }
+      return;
+    }
+
+    if (video.srcObject !== stream) {
+      video.srcObject = stream;
+    }
+
+    const playVideo = () => {
+      requestAnimationFrame(async () => {
+        try {
+          if (video.paused || video.readyState < 2) {
+            await video.play();
+          }
+        } catch (err) {
+          console.warn("Video playback prevented:", err);
+        }
+      });
+    };
+
+    playVideo();
   }, [stream, isVideoEnabled]);
 
   const displayName = participant.userFullName || "Unknown";

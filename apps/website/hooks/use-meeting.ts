@@ -36,6 +36,8 @@ export interface UseMeetingReturn {
   isAudioEnabled: boolean;
   isVideoEnabled: boolean;
   isScreenSharing: boolean;
+  isScreenShareLoading: boolean;
+  connectionQuality: 'excellent' | 'good' | 'poor' | 'unknown';
   
   // participants
   participants: Participant[];
@@ -85,6 +87,78 @@ function getParticipantUserId(participant: RemoteParticipant | LocalParticipant)
   return metadata.userId || participant.identity || null;
 }
 
+// Helper to check if JWT token is expired
+function isTokenExpired(token: string): boolean {
+  try {
+    // Simple JWT decode without library (just parse payload)
+    const parts = token.split('.');
+    if (parts.length !== 3) return true;
+    
+    const payload = JSON.parse(atob(parts[1]));
+    if (!payload.exp) return false; // No expiry
+    
+    const now = Math.floor(Date.now() / 1000);
+    // Add 60s buffer
+    return payload.exp < now + 60;
+  } catch {
+    return true; // Can't decode = assume expired
+  }
+}
+
+// Helper to create message dedupe key
+function createMessageDedupeKey(chatData: ChatMessageResponse): string {
+  // Use message ID if available (most reliable)
+  if (chatData.id) {
+    return chatData.id;
+  }
+  
+  // Fallback: Create hash from full content to avoid collisions
+  const timestamp = new Date(chatData.timestamp).toISOString();
+  const content = `${timestamp}-${chatData.userId}-${chatData.message}`;
+  
+  // Simple hash (for browser, no crypto needed)
+  let hash = 0;
+  for (let i = 0; i < content.length; i++) {
+    const char = content.charCodeAt(i);
+    hash = ((hash << 5) - hash) + char;
+    hash = hash & hash; // Convert to 32bit integer
+  }
+  return `msg_${Math.abs(hash).toString(36)}`;
+}
+
+function cloneStreamWithTracks(sourceStream: MediaStream | undefined, extraTrack?: MediaStreamTrack): MediaStream {
+  const newStream = new MediaStream();
+
+  if (sourceStream) {
+    sourceStream.getTracks().forEach((track) => {
+      if (!newStream.getTracks().some((t) => t.id === track.id)) {
+        newStream.addTrack(track);
+      }
+    });
+  }
+
+  if (extraTrack && !newStream.getTracks().some((t) => t.id === extraTrack.id)) {
+    newStream.addTrack(extraTrack);
+  }
+
+  return newStream;
+}
+
+function cloneStreamWithoutTrack(sourceStream: MediaStream | undefined, trackToRemove: MediaStreamTrack): MediaStream | null {
+  if (!sourceStream) {
+    return null;
+  }
+
+  const newStream = new MediaStream();
+  sourceStream.getTracks().forEach((track) => {
+    if (track.id !== trackToRemove.id) {
+      newStream.addTrack(track);
+    }
+  });
+
+  return newStream.getTracks().length > 0 ? newStream : null;
+}
+
 export function useMeeting(): UseMeetingReturn {
   const [isConnected, setIsConnected] = useState(false);
   const [isJoining, setIsJoining] = useState(false);
@@ -95,6 +169,8 @@ export function useMeeting(): UseMeetingReturn {
   const [isAudioEnabled, setIsAudioEnabled] = useState(true);
   const [isVideoEnabled, setIsVideoEnabled] = useState(true);
   const [isScreenSharing, setIsScreenSharing] = useState(false);
+  const [isScreenShareLoading, setIsScreenShareLoading] = useState(false);
+  const [connectionQuality, setConnectionQuality] = useState<'excellent' | 'good' | 'poor' | 'unknown'>('unknown');
   
   const [participants, setParticipants] = useState<Participant[]>([]);
   const [localParticipant, setLocalParticipant] = useState<Participant | null>(null);
@@ -116,12 +192,19 @@ export function useMeeting(): UseMeetingReturn {
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | undefined>(undefined);
   const currentTokenRef = useRef<string | null>(null);
   const liveKitCredentialsRef = useRef<LiveKitCredentials | null>(null);
-  // Track processed message IDs to prevent duplicates
-  const processedMessageIdsRef = useRef<Set<string>>(new Set());
+  // Track processed message IDs with timestamp for LRU eviction
+  const processedMessageIdsRef = useRef<Map<string, number>>(new Map());
+  const MAX_DEDUPE_ENTRIES = 500;
+  const DEDUPE_EXPIRY_MS = 60000;
   // Ref for LiveKit reconnection handler to avoid circular dependency
   const handleLiveKitReconnectionRef = useRef<(() => Promise<void>) | null>(null);
   // Flag to prevent multiple simultaneous reconnection attempts
   const isReconnectingRef = useRef<boolean>(false);
+  // Track if component is mounted to prevent state updates after unmount
+  const isMountedRef = useRef<boolean>(true);
+  // Debounce refs for media toggles
+  const audioToggleTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const videoToggleTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // Initialize local media stream
   const initializeLocalStream = useCallback(async () => {
@@ -160,100 +243,185 @@ export function useMeeting(): UseMeetingReturn {
   const setupLiveKitRoomHandlers = useCallback((room: Room) => {
     // Handle remote participant connected
     room.on(RoomEvent.ParticipantConnected, (participant: RemoteParticipant) => {
-      console.log("LiveKit participant connected:", participant.identity);
-      const userId = getParticipantUserId(participant);
-      const metadata = parseParticipantMetadata(participant);
-      
-      if (userId && userId !== currentUserIdRef.current) {
-        setParticipants((prev) => {
-          if (prev.find((p) => p.userId === userId)) return prev;
-          return [
-            ...prev,
-            {
-              userId,
-              userFullName: participant.name || metadata.email || userId,
-              userAvatar: metadata.avatarUrl,
-              role: (metadata.role as "student" | "teacher" | "admin") || "student",
-              socketId: "", // LiveKit doesn't use socket IDs
-              isOnline: true,
-            },
-          ];
+      try {
+        console.log("LiveKit participant connected:", participant.identity);
+        const userId = getParticipantUserId(participant);
+        const metadata = parseParticipantMetadata(participant);
+        
+        if (userId && userId !== currentUserIdRef.current) {
+          if (!isMountedRef.current) return;
+          setParticipants((prev) => {
+            if (prev.find((p) => p.userId === userId)) return prev;
+            return [
+              ...prev,
+              {
+                userId,
+                userFullName: participant.name || metadata.email || userId,
+                userAvatar: metadata.avatarUrl,
+                role: (metadata.role as "student" | "teacher" | "admin") || "student",
+                socketId: "", // LiveKit doesn't use socket IDs
+                isOnline: true,
+              },
+            ];
+          });
+        }
+      } catch (err) {
+        console.error("Error handling participant connection:", err, {
+          participantId: participant?.identity,
         });
       }
     });
 
     // Handle remote participant disconnected
     room.on(RoomEvent.ParticipantDisconnected, (participant: RemoteParticipant) => {
-      console.log("LiveKit participant disconnected:", participant.identity);
-      const userId = getParticipantUserId(participant);
-      
-      if (userId) {
-        setParticipants((prev) => prev.filter((p) => p.userId !== userId));
-        setRemoteStreams((prev) => {
-          const next = new Map(prev);
-          next.delete(userId);
-          return next;
-        });
-        setRemoteScreenShareStreams((prev) => {
-          const next = new Map(prev);
-          next.delete(userId);
-          return next;
+      try {
+        console.log("LiveKit participant disconnected:", participant.identity);
+        const userId = getParticipantUserId(participant);
+        
+        if (userId && isMountedRef.current) {
+          setParticipants((prev) => prev.filter((p) => p.userId !== userId));
+          setRemoteStreams((prev) => {
+            const next = new Map(prev);
+            next.delete(userId);
+            return next;
+          });
+          setRemoteScreenShareStreams((prev) => {
+            const next = new Map(prev);
+            next.delete(userId);
+            return next;
+          });
+        }
+      } catch (err) {
+        console.error("Error handling participant disconnection:", err, {
+          participantId: participant?.identity,
         });
       }
     });
 
     // Handle track subscribed (remote tracks)
     room.on(RoomEvent.TrackSubscribed, (track: RemoteTrack, publication: RemoteTrackPublication, participant: RemoteParticipant) => {
-      console.log("LiveKit track subscribed:", track.kind, "from", participant.identity);
-      const userId = getParticipantUserId(participant);
-      
-      if (!userId) return;
-
-      // Attach track to DOM element or create MediaStream
-      if (track.kind === Track.Kind.Video || track.kind === Track.Kind.Audio) {
-        const stream = new MediaStream([track.mediaStreamTrack]);
+      try {
+        console.log("LiveKit track subscribed:", track.kind, "from", participant.identity);
+        const userId = getParticipantUserId(participant);
         
-        // Check if it's a screen share track
-        if (publication.source === Track.Source.ScreenShare || publication.source === Track.Source.ScreenShareAudio) {
-          setRemoteScreenShareStreams((prev) => {
-            const next = new Map(prev);
-            next.set(userId, stream);
-            return next;
-          });
-          // Update participant screen sharing state
-          setParticipants((prev) =>
-            prev.map((p) =>
-              p.userId === userId ? { ...p, isScreenSharing: true } : p
-            )
-          );
-        } else {
-          setRemoteStreams((prev) => {
-            const next = new Map(prev);
-            next.set(userId, stream);
-            return next;
-          });
+        if (!userId) return;
+        if (!isMountedRef.current) return;
+
+        // Attach track to DOM element or create MediaStream
+        if (track.kind === Track.Kind.Video || track.kind === Track.Kind.Audio) {
+          // Check if it's a screen share track
+          if (publication.source === Track.Source.ScreenShare || publication.source === Track.Source.ScreenShareAudio) {
+            setRemoteScreenShareStreams((prev) => {
+              const next = new Map(prev);
+              const existingStream = next.get(userId);
+              const updatedStream = cloneStreamWithTracks(existingStream, track.mediaStreamTrack);
+              next.set(userId, updatedStream);
+
+              console.log(
+                `${existingStream ? 'Added' : 'Created'} ${track.kind} track for screen share stream ${userId}. Total tracks: ${updatedStream.getTracks().length}`,
+              );
+
+              return next;
+            });
+            // Update participant screen sharing state
+            setParticipants((prev) =>
+              prev.map((p) =>
+                p.userId === userId ? { ...p, isScreenSharing: true } : p
+              )
+            );
+          } else {
+            // Regular camera/microphone track
+            setRemoteStreams((prev) => {
+              const next = new Map(prev);
+              const existingStream = next.get(userId);
+              const updatedStream = cloneStreamWithTracks(existingStream, track.mediaStreamTrack);
+              next.set(userId, updatedStream);
+
+              console.log(
+                `${existingStream ? 'Added' : 'Created'} ${track.kind} track for stream ${userId}. Total tracks: ${updatedStream.getTracks().length}`,
+              );
+
+              return next;
+            });
+          }
+        }
+      } catch (err) {
+        console.error("Error handling track subscription:", err, {
+          trackKind: track?.kind,
+          participantId: participant?.identity,
+        });
+        // Optionally set error state
+        if (isMountedRef.current) {
+          setError("Failed to receive participant video. Please refresh if issues persist.");
         }
       }
     });
 
     // Handle track unsubscribed
     room.on(RoomEvent.TrackUnsubscribed, (track: RemoteTrack, publication: RemoteTrackPublication, participant: RemoteParticipant) => {
-      console.log("LiveKit track unsubscribed:", track.kind, "from", participant.identity);
-      const userId = getParticipantUserId(participant);
-      
-      if (!userId) return;
+      try {
+        console.log("LiveKit track unsubscribed:", track.kind, "from", participant.identity);
+        const userId = getParticipantUserId(participant);
+        
+        if (!userId) return;
+        if (!isMountedRef.current) return;
 
-      if (publication.source === Track.Source.ScreenShare || publication.source === Track.Source.ScreenShareAudio) {
-        setRemoteScreenShareStreams((prev) => {
-          const next = new Map(prev);
-          next.delete(userId);
-          return next;
+        if (publication.source === Track.Source.ScreenShare || publication.source === Track.Source.ScreenShareAudio) {
+          setRemoteScreenShareStreams((prev) => {
+            const next = new Map(prev);
+            const existingStream = next.get(userId);
+            
+            if (existingStream) {
+              const updatedStream = cloneStreamWithoutTrack(existingStream, track.mediaStreamTrack);
+              
+              if (updatedStream) {
+                next.set(userId, updatedStream);
+                console.log(
+                  `Removed ${track.kind} track from screen share stream for ${userId}. Remaining tracks: ${updatedStream.getTracks().length}`,
+                );
+              } else {
+                next.delete(userId);
+                console.log(`Removed empty screen share stream for ${userId}`);
+              }
+            }
+            
+            return next;
+          });
+          
+          // Update participant screen sharing state only if no more screen share tracks
+          setParticipants((prev) =>
+            prev.map((p) =>
+              p.userId === userId ? { ...p, isScreenSharing: false } : p
+            )
+          );
+        } else {
+          // Regular camera/microphone track
+          setRemoteStreams((prev) => {
+            const next = new Map(prev);
+            const existingStream = next.get(userId);
+            
+            if (existingStream) {
+              const updatedStream = cloneStreamWithoutTrack(existingStream, track.mediaStreamTrack);
+              
+              if (updatedStream) {
+                next.set(userId, updatedStream);
+                console.log(
+                  `Removed ${track.kind} track from stream for ${userId}. Remaining tracks: ${updatedStream.getTracks().length}`,
+                );
+              } else {
+                next.delete(userId);
+                console.log(`Removed empty stream for ${userId}`);
+              }
+            }
+            
+            return next;
+          });
+        }
+      } catch (err) {
+        console.error("Error handling track unsubscription:", err, {
+          trackKind: track?.kind,
+          participantId: participant?.identity,
         });
-        setParticipants((prev) =>
-          prev.map((p) =>
-            p.userId === userId ? { ...p, isScreenSharing: false } : p
-          )
-        );
       }
     });
 
@@ -264,39 +432,83 @@ export function useMeeting(): UseMeetingReturn {
         const text = decoder.decode(payload);
         const data = JSON.parse(text);
         
-        console.log("LiveKit data received:", data.type, data);
+        // Validate structure
+        if (!data.type || !data.payload || !data.sessionId) {
+          console.warn("Invalid LiveKit data packet structure:", data);
+          return;
+        }
+        
+        if (process.env.NODE_ENV === 'development') {
+          console.log("LiveKit data received:", data.type);
+        }
         
         if (data.type === 'chat-message') {
           const chatData = data.payload as ChatMessageResponse;
           
-          // Create a unique ID for deduplication (use timestamp + userId + message content hash)
-          const messageId = `${chatData.timestamp}-${chatData.userId}-${chatData.message.substring(0, 20)}`;
+          // Validate chat payload
+          if (!chatData.userId || !chatData.message || !chatData.timestamp) {
+            console.warn("Invalid chat message payload:", chatData);
+            return;
+          }
           
-          // Skip if already processed
+          // Create dedupe key using improved hash
+          const messageId = createMessageDedupeKey(chatData);
+          
+          // Check if already processed (with timestamp for expiry)
+          const now = Date.now();
           if (processedMessageIdsRef.current.has(messageId)) {
-            console.log("Skipping duplicate chat message from LiveKit:", messageId);
-        return;
-      }
+            if (process.env.NODE_ENV === 'development') {
+              console.log("Skipping duplicate chat message from LiveKit");
+            }
+            return;
+          }
 
-          processedMessageIdsRef.current.add(messageId);
+          // Add to dedupe map with timestamp
+          processedMessageIdsRef.current.set(messageId, now);
           
-          // Add to messages (only if not from Socket.IO echo)
+          // Prune old entries (LRU-style)
+          if (processedMessageIdsRef.current.size > MAX_DEDUPE_ENTRIES) {
+            // Remove entries older than DEDUPE_EXPIRY_MS
+            for (const [key, timestamp] of processedMessageIdsRef.current.entries()) {
+              if (now - timestamp > DEDUPE_EXPIRY_MS) {
+                processedMessageIdsRef.current.delete(key);
+              }
+            }
+            
+            // If still too large, remove oldest entries
+            if (processedMessageIdsRef.current.size > MAX_DEDUPE_ENTRIES) {
+              const entries = Array.from(processedMessageIdsRef.current.entries());
+              entries.sort((a, b) => a[1] - b[1]);
+              const toRemove = entries.slice(0, entries.length - MAX_DEDUPE_ENTRIES);
+              toRemove.forEach(([key]) => processedMessageIdsRef.current.delete(key));
+            }
+          }
+          
+          // Normalize timestamp to string
+          const normalizedChat = {
+            ...chatData,
+            timestamp: new Date(chatData.timestamp).toISOString(),
+          };
+          
+          // Add to messages if not already present
+          if (!isMountedRef.current) return;
+          
           setMessages((prev) => {
-            // Check if message already exists (from Socket.IO)
+            // Double-check for duplicates in existing messages
             const exists = prev.some(
               (m) =>
-                m.userId === chatData.userId &&
-                m.message === chatData.message &&
-                Math.abs(new Date(m.timestamp).getTime() - new Date(chatData.timestamp).getTime()) < 1000
+                m.userId === normalizedChat.userId &&
+                m.message === normalizedChat.message &&
+                Math.abs(new Date(m.timestamp).getTime() - new Date(normalizedChat.timestamp).getTime()) < 1000
             );
             if (exists) {
-              console.log("Skipping duplicate chat message (already from Socket.IO)");
               return prev;
             }
-            return [...prev, chatData];
+            return [...prev, normalizedChat];
           });
         } else if (data.type === 'screen-share-started') {
           const screenShareData = data.payload as ScreenShareResponseDto;
+          if (!isMountedRef.current) return;
           setParticipants((prev) =>
             prev.map((p) =>
               p.userId === screenShareData.userId ? { ...p, isScreenSharing: true } : p
@@ -304,6 +516,7 @@ export function useMeeting(): UseMeetingReturn {
           );
         } else if (data.type === 'screen-share-stopped') {
           const screenShareData = data.payload as ScreenShareResponseDto;
+          if (!isMountedRef.current) return;
           setParticipants((prev) =>
             prev.map((p) =>
               p.userId === screenShareData.userId ? { ...p, isScreenSharing: false } : p
@@ -318,28 +531,33 @@ export function useMeeting(): UseMeetingReturn {
     // Handle room disconnect/reconnect
     room.on(RoomEvent.Disconnected, (reason?: DisconnectReason) => {
       console.log("LiveKit room disconnected:", reason);
+      
+      if (!isMountedRef.current) return;
       setIsConnected(false);
       
       // Don't reconnect if:
       // 1. Client initiated the disconnect (user left)
       // 2. Already reconnecting
       // 3. Room is already connected (might be a race condition)
-      // 4. No session ID or credentials available
+      // 4. No session ID available
       if (
         reason === DisconnectReason.CLIENT_INITIATED ||
         isReconnectingRef.current ||
         room.state === 'connected' ||
-        !currentSessionIdRef.current ||
-        !liveKitCredentialsRef.current
+        !currentSessionIdRef.current
       ) {
         console.log("Skipping reconnection:", {
           reason,
           isReconnecting: isReconnectingRef.current,
           roomState: room.state,
           hasSessionId: !!currentSessionIdRef.current,
-          hasCredentials: !!liveKitCredentialsRef.current,
         });
         return;
+      }
+      
+      // For connection errors, try to get fresh credentials immediately
+      if (reason === DisconnectReason.JOIN_FAILURE || !liveKitCredentialsRef.current) {
+        console.log("Connection error or no credentials, will request fresh token");
       }
       
       // LiveKit has built-in reconnection, but if it fails, we'll manually reconnect
@@ -360,10 +578,41 @@ export function useMeeting(): UseMeetingReturn {
 
     room.on(RoomEvent.Reconnected, () => {
       console.log("LiveKit room reconnected");
+      if (!isMountedRef.current) return;
       setIsConnected(true);
       setError(null);
       reconnectAttemptsRef.current = 0;
       isReconnectingRef.current = false; // Reset reconnection flag
+    });
+
+    // Handle connection quality changes
+    room.on(RoomEvent.ConnectionQualityChanged, (quality, participant) => {
+      try {
+        // Only track local participant's quality
+        if (participant === room.localParticipant) {
+          if (process.env.NODE_ENV === 'development') {
+            console.log("Local connection quality:", quality);
+          }
+          
+          if (!isMountedRef.current) return;
+          
+          // Map LiveKit ConnectionQuality enum to simplified state
+          // ConnectionQuality: Excellent = "excellent", Good = "good", Poor = "poor", Unknown = "unknown" (string values)
+          const qualityStr = String(quality).toLowerCase();
+          
+          if (qualityStr.includes('excellent') || qualityStr === 'excellent') {
+            setConnectionQuality('excellent');
+          } else if (qualityStr.includes('good') || qualityStr === 'good') {
+            setConnectionQuality('good');
+          } else if (qualityStr.includes('poor') || qualityStr === 'poor') {
+            setConnectionQuality('poor');
+          } else {
+            setConnectionQuality('unknown');
+          }
+        }
+      } catch (err) {
+        console.error("Error handling connection quality change:", err);
+      }
     });
   }, []);
 
@@ -428,16 +677,23 @@ export function useMeeting(): UseMeetingReturn {
         try {
           const response = await http.get(`/meet/${currentSessionIdRef.current}/livekit-token`);
           
+          // Handle both wrapped and unwrapped responses
+          const responseData = response.data || response;
+          
           // Check if response has the expected structure
-          if (response.data && response.data.livekit) {
-            const credentials = response.data.livekit;
+          if (responseData && responseData.livekit) {
+            const credentials = responseData.livekit;
             
-            // Validate livekit credentials
-            if (credentials.url && credentials.accessToken) {
+            // Validate livekit credentials structure
+            if (credentials.url && credentials.accessToken && credentials.roomName) {
               livekit = credentials;
               liveKitCredentialsRef.current = livekit;
               console.log("Got fresh LiveKit credentials from API");
+            } else {
+              console.warn("Invalid credentials structure from API:", credentials);
             }
+          } else {
+            console.warn("Unexpected response structure:", responseData);
           }
         } catch (apiErr) {
           console.warn("Failed to get fresh token from API, trying stored credentials:", apiErr);
@@ -445,8 +701,16 @@ export function useMeeting(): UseMeetingReturn {
 
         // Fall back to stored credentials if API call failed
         if (!livekit && liveKitCredentialsRef.current) {
-          livekit = liveKitCredentialsRef.current;
-          console.log("Using stored LiveKit credentials for reconnection");
+          const storedCreds = liveKitCredentialsRef.current;
+          
+          // Check if stored token is expired
+          if (!isTokenExpired(storedCreds.accessToken)) {
+            livekit = storedCreds;
+            console.log("Using stored LiveKit credentials for reconnection");
+          } else {
+            console.warn("Stored LiveKit token expired, cannot reconnect");
+            throw new Error("LiveKit token expired. Please rejoin the meeting.");
+          }
         }
 
         // Validate we have credentials
@@ -496,13 +760,21 @@ export function useMeeting(): UseMeetingReturn {
       
       // Join success - initialize LiveKit connection
       socket.on("join-room-success", async (data: JoinRoomSuccessResponse) => {
+        // Check if we're already connected (prevent duplicate joins from Fast Refresh)
+        if (liveKitRoomRef.current && liveKitRoomRef.current.state === 'connected') {
+          console.log("Already connected to LiveKit, ignoring duplicate join-room-success");
+          return;
+        }
+        
         currentUserIdRef.current = data.userId;
         liveKitCredentialsRef.current = data.livekit;
+        
+        let room: Room | null = null;
         
         try {
           // Connect to LiveKit room
           const { Room } = await import("livekit-client");
-          const room = new Room({
+          room = new Room({
             adaptiveStream: true,
             dynacast: true,
           });
@@ -511,75 +783,145 @@ export function useMeeting(): UseMeetingReturn {
           liveKitRoomRef.current = room;
           
           let tracksPublished = false;
+          let isPublishingTracks = false;
           
           // Set up a one-time listener for when room is fully connected
           const publishTracks = async () => {
             // Prevent double publishing
-            if (tracksPublished) {
-              console.log("Tracks already published, skipping");
+            if (tracksPublished || isPublishingTracks) {
+              console.log("Tracks already published or publishing in progress");
               return;
             }
             
-            // Publish local tracks
-            const localStream = localStreamRef.current;
-            if (localStream) {
-              try {
-                // Check and publish audio track
+            // Safety check for room
+            if (!room) {
+              console.error("Room is null, cannot publish tracks");
+              return;
+            }
+            
+            isPublishingTracks = true;
+            
+            try {
+              // Publish local tracks
+              const localStream = localStreamRef.current;
+              if (localStream && room) {
+                // Check and publish audio track with timeout
                 const audioTrack = localStream.getAudioTracks()[0];
                 if (audioTrack && audioTrack.readyState === 'live') {
                   // Check if track is already published
                   const existingAudioPub = room.localParticipant.getTrackPublication(Track.Source.Microphone);
                   if (!existingAudioPub) {
-                    await room.localParticipant.publishTrack(audioTrack, {
-                      source: Track.Source.Microphone,
-                    });
-                    console.log("Published audio track");
-                  } else {
-                    console.log("Audio track already published");
+                    try {
+                      await Promise.race([
+                        room.localParticipant.publishTrack(audioTrack, {
+                          source: Track.Source.Microphone,
+                        }),
+                        new Promise((_, reject) => 
+                          setTimeout(() => reject(new Error('Audio track publish timeout')), 10000)
+                        )
+                      ]);
+                      console.log("Published audio track");
+                    } catch (audioErr) {
+                      console.error("Failed to publish audio track:", audioErr);
+                      // Don't throw - continue with video
+                    }
                   }
                 }
                 
-                // Check and publish video track
+                // Check and publish video track with timeout
                 const videoTrack = localStream.getVideoTracks()[0];
                 if (videoTrack && videoTrack.readyState === 'live') {
                   // Check if track is already published
                   const existingVideoPub = room.localParticipant.getTrackPublication(Track.Source.Camera);
                   if (!existingVideoPub) {
-                    await room.localParticipant.publishTrack(videoTrack, {
-                      source: Track.Source.Camera,
-                    });
-                    console.log("Published video track");
-                  } else {
-                    console.log("Video track already published");
+                    try {
+                      await Promise.race([
+                        room.localParticipant.publishTrack(videoTrack, {
+                          source: Track.Source.Camera,
+                        }),
+                        new Promise((_, reject) => 
+                          setTimeout(() => reject(new Error('Video track publish timeout')), 10000)
+                        )
+                      ]);
+                      console.log("Published video track");
+                    } catch (videoErr) {
+                      console.error("Failed to publish video track:", videoErr);
+                      // Continue anyway
+                    }
                   }
                 }
-                
-                tracksPublished = true;
-              } catch (publishErr) {
-                console.error("Error publishing tracks:", publishErr);
-                // Don't fail the entire connection if track publishing fails
               }
+              
+              tracksPublished = true;
+            } catch (publishErr) {
+              console.error("Error publishing tracks:", publishErr);
+              // Don't fail the entire connection if track publishing fails
+            } finally {
+              isPublishingTracks = false;
             }
           };
           
-          // Listen for connected event before publishing (this ensures room is fully connected)
+          // Listen for connected event before setting state (ensures tracks are published first)
           room.once(RoomEvent.Connected, async () => {
+            if (!room) return;
             console.log("LiveKit room fully connected:", room.name);
-            await publishTracks();
+            
+            // Add delay to ensure room is fully ready before publishing
+            await new Promise(resolve => setTimeout(resolve, 500));
+            
+            try {
+              await publishTracks();
+            } catch (publishErr) {
+              console.error("Failed to publish tracks on connect:", publishErr);
+              // Continue anyway - user can manually enable later
+            }
+            
+            // NOW set connected state (after tracks published)
+            if (!isMountedRef.current) return;
+            setIsConnected(true);
+            setIsJoining(false);
+            joinRoomInProgressRef.current = false;
+
+            // Request participants from Socket.IO (for presence/roster)
+            socket.emit("get-session-participants", sessionId);
           });
           
-          // Connect to LiveKit
-          await room.connect(data.livekit.url, data.livekit.accessToken);
-          console.log("LiveKit connect() completed, state:", room.state);
+          // Connect to LiveKit with timeout
+          const connectTimeout = setTimeout(() => {
+            console.error("LiveKit connection timeout after 15 seconds");
+            throw new Error("LiveKit connection timeout");
+          }, 15000);
           
-        setIsConnected(true);
-        setIsJoining(false);
-        joinRoomInProgressRef.current = false;
-
-          // Request participants from Socket.IO (for presence/roster)
-        socket.emit("get-session-participants", sessionId);
+          try {
+            await room.connect(data.livekit.url, data.livekit.accessToken);
+            clearTimeout(connectTimeout);
+            console.log("LiveKit connect() completed, waiting for Connected event");
+          } catch (connectErr) {
+            clearTimeout(connectTimeout);
+            throw connectErr;
+          }
+          
         } catch (err) {
           console.error("Failed to connect to LiveKit:", err);
+          
+          // Cleanup LiveKit room if it exists
+          if (room) {
+            try {
+              await room.disconnect();
+            } catch (disconnectErr) {
+              console.warn("Error disconnecting orphaned room:", disconnectErr);
+            }
+            liveKitRoomRef.current = null;
+          }
+          
+          // Cleanup socket
+          if (socketRef.current) {
+            socketRef.current.removeAllListeners();
+            disconnectMeetSocket();
+            socketRef.current = null;
+          }
+          
+          if (!isMountedRef.current) return;
           setError(err instanceof Error ? err.message : "Failed to connect to meeting");
           setIsJoining(false);
           joinRoomInProgressRef.current = false;
@@ -662,17 +1004,45 @@ export function useMeeting(): UseMeetingReturn {
 
       // Chat message (Socket.IO - for deduplication and DB persistence echo)
       socket.on("chat-message", (data: ChatMessageResponse) => {
-        // Create unique ID for deduplication
-        const messageId = `${data.timestamp}-${data.userId}-${data.message.substring(0, 20)}`;
+        // Create dedupe key using improved hash
+        const messageId = createMessageDedupeKey(data);
         
-        // Skip if already processed from LiveKit
+        // Check if already processed from LiveKit
+        const now = Date.now();
         if (processedMessageIdsRef.current.has(messageId)) {
-          console.log("Skipping duplicate chat message from Socket.IO:", messageId);
+          if (process.env.NODE_ENV === 'development') {
+            console.log("Skipping duplicate chat message from Socket.IO");
+          }
           return;
         }
         
-        processedMessageIdsRef.current.add(messageId);
-        setMessages((prev) => [...prev, data]);
+        // Add to dedupe map with timestamp
+        processedMessageIdsRef.current.set(messageId, now);
+        
+        // Prune old entries (same logic as LiveKit handler)
+        if (processedMessageIdsRef.current.size > MAX_DEDUPE_ENTRIES) {
+          for (const [key, timestamp] of processedMessageIdsRef.current.entries()) {
+            if (now - timestamp > DEDUPE_EXPIRY_MS) {
+              processedMessageIdsRef.current.delete(key);
+            }
+          }
+          
+          if (processedMessageIdsRef.current.size > MAX_DEDUPE_ENTRIES) {
+            const entries = Array.from(processedMessageIdsRef.current.entries());
+            entries.sort((a, b) => a[1] - b[1]);
+            const toRemove = entries.slice(0, entries.length - MAX_DEDUPE_ENTRIES);
+            toRemove.forEach(([key]) => processedMessageIdsRef.current.delete(key));
+          }
+        }
+        
+        // Normalize timestamp and add message
+        const normalizedData = {
+          ...data,
+          timestamp: new Date(data.timestamp).toISOString(),
+        };
+        
+        if (!isMountedRef.current) return;
+        setMessages((prev) => [...prev, normalizedData]);
       });
 
       // Message history
@@ -757,7 +1127,35 @@ export function useMeeting(): UseMeetingReturn {
 
       socket.on("connect_error", (err) => {
         console.error("Socket connection error:", err);
+        if (!isMountedRef.current) return;
         setError(`Connection error: ${err.message}`);
+      });
+
+      // Handle socket reconnection
+      socket.on("reconnect", (attemptNumber) => {
+        console.log("Socket.IO reconnected after", attemptNumber, "attempts");
+        
+        // Re-join the room to restore presence
+        if (currentSessionIdRef.current && currentTokenRef.current) {
+          console.log("Re-joining room after Socket.IO reconnection");
+          socket.emit("join-room", { 
+            sessionId: currentSessionIdRef.current, 
+            token: currentTokenRef.current 
+          });
+        }
+        
+        if (!isMountedRef.current) return;
+        setError(null); // Clear any connection errors
+      });
+
+      socket.on("reconnect_failed", () => {
+        console.error("Socket.IO reconnection failed after all attempts");
+        if (!isMountedRef.current) return;
+        setError("Failed to reconnect to server. Please refresh the page.");
+      });
+
+      socket.on("reconnect_error", (err) => {
+        console.error("Socket.IO reconnection error:", err);
       });
     },
     [setupLiveKitRoomHandlers]
@@ -766,14 +1164,29 @@ export function useMeeting(): UseMeetingReturn {
   // Join room
   const joinRoom = useCallback(
     async (sessionId: string, token: string) => {
-      // Set flag immediately to prevent duplicate calls
-      if (joinRoomInProgressRef.current || isJoining || isConnected) {
-        console.log("Already joining or connected, skipping");
+      // Use ref as single source of truth BEFORE any checks
+      if (joinRoomInProgressRef.current) {
+        console.log("Join already in progress");
         return;
       }
       
-      // Set flag before any async operations
+      // Set flag immediately (synchronous)
       joinRoomInProgressRef.current = true;
+      
+      // Secondary validation
+      if (isConnected) {
+        console.warn("Already connected, aborting join");
+        joinRoomInProgressRef.current = false;
+        return;
+      }
+      
+      // Check for unmount
+      if (!isMountedRef.current) {
+        console.warn("Component unmounted, aborting join");
+        joinRoomInProgressRef.current = false;
+        return;
+      }
+      
       setIsJoining(true);
       setError(null);
       currentSessionIdRef.current = sessionId;
@@ -847,16 +1260,28 @@ export function useMeeting(): UseMeetingReturn {
       } catch (err) {
         console.error("Error joining room:", err);
         const errorMessage = err instanceof Error ? err.message : "Failed to join meeting";
+        
+        if (!isMountedRef.current) {
+          console.warn("Component unmounted during join error handling");
+          joinRoomInProgressRef.current = false;
+          if (socketRef.current) {
+            disconnectMeetSocket();
+            socketRef.current = null;
+          }
+          return;
+        }
+        
         setError(errorMessage);
         setIsJoining(false);
         joinRoomInProgressRef.current = false;
         
         if (socketRef.current) {
           disconnectMeetSocket();
+          socketRef.current = null;
         }
       }
     },
-    [isJoining, isConnected, initializeLocalStream, setupSocketListeners]
+    [isConnected, initializeLocalStream, setupSocketListeners]
   );
 
   // Leave room
@@ -921,88 +1346,116 @@ export function useMeeting(): UseMeetingReturn {
     }
   }, []);
 
-  // Toggle audio
-  const toggleAudio = useCallback(async () => {
+  // Toggle audio with debounce
+  const toggleAudio = useCallback(() => {
+    // Clear existing timeout
+    if (audioToggleTimeoutRef.current) {
+      clearTimeout(audioToggleTimeoutRef.current);
+    }
+
     const newState = !isAudioEnabled;
     setIsAudioEnabled(newState);
 
-    // Update LiveKit track - just mute/unmute, don't unpublish
-    const room = liveKitRoomRef.current;
-    if (room && room.state === 'connected') {
-      try {
-        const publication = room.localParticipant.getTrackPublication(Track.Source.Microphone);
-        if (publication) {
-          // Use LiveKit's built-in mute/unmute
-          if (newState) {
-            await publication.unmute();
-          } else {
-            await publication.mute();
+    // Debounce the actual toggle operation
+    audioToggleTimeoutRef.current = setTimeout(async () => {
+      // Update LiveKit track - just mute/unmute, don't unpublish
+      const room = liveKitRoomRef.current;
+      if (room && room.state === 'connected') {
+        try {
+          const publication = room.localParticipant.getTrackPublication(Track.Source.Microphone);
+          if (publication) {
+            // Use LiveKit's built-in mute/unmute
+            if (newState) {
+              await publication.unmute();
+            } else {
+              await publication.mute();
+            }
+            console.log(`Audio ${newState ? 'unmuted' : 'muted'}`);
           }
-          console.log(`Audio ${newState ? 'unmuted' : 'muted'}`);
+        } catch (err) {
+          console.error("Error toggling audio track in LiveKit:", err);
         }
-      } catch (err) {
-        console.error("Error toggling audio track in LiveKit:", err);
       }
-    }
 
-    // Also update the underlying MediaStreamTrack for local preview
-    const currentLocalStream = localStreamRef.current;
-    if (currentLocalStream) {
-      toggleAudioTrack(currentLocalStream, newState);
-    }
+      // Also update the underlying MediaStreamTrack for local preview
+      const currentLocalStream = localStreamRef.current;
+      if (currentLocalStream) {
+        toggleAudioTrack(currentLocalStream, newState);
+      }
 
-    // Emit socket event for presence
-    if (socketRef.current && currentSessionIdRef.current) {
-      socketRef.current.emit("toggle-media", {
-        sessionId: currentSessionIdRef.current,
-        type: "audio",
-        isEnabled: newState,
-      });
-    }
+      // Emit socket event for presence
+      if (socketRef.current && currentSessionIdRef.current) {
+        socketRef.current.emit("toggle-media", {
+          sessionId: currentSessionIdRef.current,
+          type: "audio",
+          isEnabled: newState,
+        });
+      }
+      
+      audioToggleTimeoutRef.current = null;
+    }, 300); // 300ms debounce
   }, [isAudioEnabled]);
 
-  // Toggle video
-  const toggleVideo = useCallback(async () => {
+  // Toggle video with debounce
+  const toggleVideo = useCallback(() => {
+    // Clear existing timeout
+    if (videoToggleTimeoutRef.current) {
+      clearTimeout(videoToggleTimeoutRef.current);
+    }
+
     const newState = !isVideoEnabled;
     setIsVideoEnabled(newState);
 
-    // Update LiveKit track - just mute/unmute, don't unpublish
-    const room = liveKitRoomRef.current;
-    if (room && room.state === 'connected') {
-      try {
-        const publication = room.localParticipant.getTrackPublication(Track.Source.Camera);
-        if (publication) {
-          // Use LiveKit's built-in mute/unmute
-          if (newState) {
-            await publication.unmute();
-          } else {
-            await publication.mute();
+    // Debounce the actual toggle operation
+    videoToggleTimeoutRef.current = setTimeout(async () => {
+      // Update LiveKit track - just mute/unmute, don't unpublish
+      const room = liveKitRoomRef.current;
+      if (room && room.state === 'connected') {
+        try {
+          const publication = room.localParticipant.getTrackPublication(Track.Source.Camera);
+          if (publication) {
+            // Use LiveKit's built-in mute/unmute
+            if (newState) {
+              await publication.unmute();
+            } else {
+              await publication.mute();
+            }
+            console.log(`Video ${newState ? 'unmuted' : 'muted'}`);
           }
-          console.log(`Video ${newState ? 'unmuted' : 'muted'}`);
+        } catch (err) {
+          console.error("Error toggling video track in LiveKit:", err);
         }
-      } catch (err) {
-        console.error("Error toggling video track in LiveKit:", err);
       }
-    }
 
-    // Also update the underlying MediaStreamTrack for local preview
-    const currentLocalStream = localStreamRef.current;
-    if (currentLocalStream) {
-      toggleVideoTrack(currentLocalStream, newState);
-    }
+      // Also update the underlying MediaStreamTrack for local preview
+      const currentLocalStream = localStreamRef.current;
+      if (currentLocalStream) {
+        toggleVideoTrack(currentLocalStream, newState);
+      }
 
-    // Emit socket event for presence
-    if (socketRef.current && currentSessionIdRef.current) {
-      socketRef.current.emit("toggle-media", {
-        sessionId: currentSessionIdRef.current,
-        type: "video",
-        isEnabled: newState,
-      });
-    }
+      // Emit socket event for presence
+      if (socketRef.current && currentSessionIdRef.current) {
+        socketRef.current.emit("toggle-media", {
+          sessionId: currentSessionIdRef.current,
+          type: "video",
+          isEnabled: newState,
+        });
+      }
+      
+      videoToggleTimeoutRef.current = null;
+    }, 300); // 300ms debounce
   }, [isVideoEnabled]);
 
   // Toggle screen share (using LiveKit APIs)
   const toggleScreenShare = useCallback(async () => {
+    // Prevent multiple simultaneous operations
+    if (isScreenShareLoading) {
+      console.log("Screen share operation in progress");
+      return;
+    }
+    
+    setIsScreenShareLoading(true);
+    
     try {
       const room = liveKitRoomRef.current;
       if (!room || room.state !== 'connected') {
@@ -1054,28 +1507,56 @@ export function useMeeting(): UseMeetingReturn {
 
           // Stop screen share when user stops sharing via browser button
           screenTrack.onended = async () => {
-            const publication = room.localParticipant.getTrackPublication(Track.Source.ScreenShare);
+            // Check if room is still valid
+            const currentRoom = liveKitRoomRef.current;
+            if (!currentRoom || currentRoom.state !== 'connected') {
+              console.warn("Room disconnected, skipping screen share cleanup");
+              screenShareTrackRef.current = null;
+              setLocalScreenShareStream(null);
+              setIsScreenSharing(false);
+              return;
+            }
+            
+            // Check if this is still the active screen share track
+            if (screenShareTrackRef.current !== screenTrack) {
+              console.log("Different screen share active, ignoring onended");
+              return;
+            }
+            
+            const publication = currentRoom.localParticipant.getTrackPublication(Track.Source.ScreenShare);
             if (publication && publication.track) {
-              await room.localParticipant.unpublishTrack(publication.track);
+              try {
+                await currentRoom.localParticipant.unpublishTrack(publication.track);
+              } catch (err) {
+                console.error("Error unpublishing screen share on track end:", err);
+              }
             }
             
             screenShareTrackRef.current = null;
-            setLocalScreenShareStream(null);
-          setIsScreenSharing(false);
+            if (isMountedRef.current) {
+              setLocalScreenShareStream(null);
+              setIsScreenSharing(false);
+            }
 
-          if (socketRef.current && currentSessionIdRef.current) {
-            socketRef.current.emit("stop-screen-share", {
-              sessionId: currentSessionIdRef.current,
-            });
-          }
-        };
+            if (socketRef.current?.connected && currentSessionIdRef.current) {
+              socketRef.current.emit("stop-screen-share", {
+                sessionId: currentSessionIdRef.current,
+              });
+            }
+          };
         }
       }
     } catch (err) {
       console.error("Error toggling screen share:", err);
-      setError(err instanceof Error ? err.message : "Failed to toggle screen share");
+      if (isMountedRef.current) {
+        setError(err instanceof Error ? err.message : "Failed to toggle screen share");
+      }
+    } finally {
+      if (isMountedRef.current) {
+        setIsScreenShareLoading(false);
+      }
     }
-  }, [isScreenSharing]);
+  }, [isScreenSharing, isScreenShareLoading]);
 
   // Load message history
   const loadMessageHistory = useCallback((sessionId: string, limit = 50, before?: string) => {
@@ -1086,6 +1567,14 @@ export function useMeeting(): UseMeetingReturn {
         before,
       });
     }
+  }, []);
+
+  // Track mounted state to prevent updates after unmount
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+    };
   }, []);
 
   // Cleanup on unmount
@@ -1106,6 +1595,8 @@ export function useMeeting(): UseMeetingReturn {
     isAudioEnabled,
     isVideoEnabled,
     isScreenSharing,
+    isScreenShareLoading,
+    connectionQuality,
     participants,
     localParticipant,
     messages,

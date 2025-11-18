@@ -70,7 +70,10 @@ export function getMeetSocket(): Socket {
       autoConnect: false,
       transports: ["websocket", "polling"], // Allow fallback to polling
       withCredentials: true,
-      reconnection: false, // Disable auto-reconnection, we'll handle it manually
+      reconnection: true, // Enable auto-reconnection
+      reconnectionAttempts: 5,
+      reconnectionDelay: 1000,
+      reconnectionDelayMax: 5000,
       timeout: 20000,
       forceNew: false,
     });
@@ -120,8 +123,10 @@ export function connectMeetSocket(token: string): Socket {
   // Set auth before connecting (Socket.IO v4+ uses auth for middleware)
   socket.auth = { token };
   
-  // Log token info for debugging (first 20 chars only for security)
-  console.log("Token being used:", token.substring(0, 20) + "...");
+  // Log token length only in development (no token content)
+  if (process.env.NODE_ENV === 'development') {
+    console.log("Token length:", token.length);
+  }
   
   // Clean up any existing once listeners before adding new ones
   socket.removeAllListeners("connect");

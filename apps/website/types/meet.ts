@@ -48,12 +48,13 @@ export interface JoinRoomSuccessResponse {
 }
 
 export interface ChatMessageResponse {
+  id?: string; // Message ID for reliable deduplication
   sessionId: string;
   message: string;
   userId: string;
   userFullName: string;
   userAvatar?: string | null;
-  timestamp: string;
+  timestamp: string | Date; // Backend sends Date, normalize to string on receive
 }
 
 export interface UserJoinedDto {

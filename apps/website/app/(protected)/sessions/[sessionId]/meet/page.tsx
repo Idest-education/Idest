@@ -17,6 +17,12 @@ export default function MeetingPage() {
 
   useEffect(() => {
     const validateAndGetToken = async () => {
+      // Add timeout for validation
+      const timeoutId = setTimeout(() => {
+        setError("Session validation is taking too long. Please try refreshing.");
+        setLoading(false);
+      }, 10000); // 10 second timeout
+      
       try {
         // First, get the authentication token
         const supabase = createClient();
@@ -71,8 +77,10 @@ export default function MeetingPage() {
           }
 
           // All validations passed
+          clearTimeout(timeoutId); // Clear timeout on success
           setToken(accessToken);
         } catch (validationError: any) {
+          clearTimeout(timeoutId); // Clear timeout on validation error
           console.error("Session validation error:", validationError);
           if (validationError.response?.status === 404) {
             setError("Session not found.");
@@ -84,6 +92,7 @@ export default function MeetingPage() {
           setTimeout(() => router.push("/sessions"), 2000);
         }
       } catch (err: any) {
+        clearTimeout(timeoutId); // Clear timeout on error
         console.error("Error in session validation:", err);
         setError(err.message || "Failed to authenticate");
       } finally {
