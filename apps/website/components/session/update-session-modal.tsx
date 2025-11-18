@@ -21,6 +21,9 @@ interface UpdateSessionModalProps {
   session: SessionData | null;
 }
 
+const getErrorMessage = (error: unknown) =>
+  error instanceof Error ? error.message : "An error occurred";
+
 export default function UpdateSessionModal({
   open,
   onClose,
@@ -88,8 +91,8 @@ export default function UpdateSessionModal({
       } else {
         setError(res.message || "Failed to update session");
       }
-    } catch (err: any) {
-      setError(err.message || "An error occurred");
+    } catch (err) {
+      setError(getErrorMessage(err));
     } finally {
       setLoading(false);
     }

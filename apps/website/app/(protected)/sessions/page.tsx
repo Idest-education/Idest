@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
 import {
   getUserSessions,
   endSession,
@@ -13,8 +12,49 @@ import UpdateSessionModal from "@/components/session/update-session-modal";
 import LoadingScreen from "@/components/loading-screen";
 import { Calendar } from "lucide-react";
 
+type SessionCollection = UserSessionsResponse["data"];
+
+const hasDataField = (value: unknown): value is { data?: unknown } =>
+  typeof value === "object" && value !== null && "data" in value;
+
+const isSessionCollection = (value: unknown): value is SessionCollection => {
+  if (!value || typeof value !== "object") return false;
+  const data = value as SessionCollection;
+  return (
+    Array.isArray(data.hosted) ||
+    Array.isArray(data.attended) ||
+    Array.isArray(data.upcoming)
+  );
+};
+
+const extractSessionsFromResponse = (response: unknown): SessionData[] => {
+  if (Array.isArray(response)) {
+    return response;
+  }
+
+  if (hasDataField(response)) {
+    const dataField = response.data;
+
+    if (Array.isArray(dataField)) {
+      return dataField;
+    }
+
+    if (isSessionCollection(dataField)) {
+      return [
+        ...(dataField.hosted ?? []),
+        ...(dataField.attended ?? []),
+        ...(dataField.upcoming ?? []),
+      ];
+    }
+  }
+
+  return [];
+};
+
+const getErrorMessage = (error: unknown) =>
+  error instanceof Error ? error.message : "An unexpected error occurred";
+
 export default function SessionsPage() {
-  const router = useRouter();
   const [sessions, setSessions] = useState<SessionData[]>([]);
   const [loading, setLoading] = useState(true);
   const [currentUserId, setCurrentUserId] = useState<string>("");
@@ -38,37 +78,16 @@ export default function SessionsPage() {
 
   const loadSessions = async () => {
     try {
-      const res: any = await getUserSessions();
+      const res: unknown = await getUserSessions();
       console.log("Sessions API response:", res);
-      
-      let allSessions: SessionData[] = [];
-      
-      // Handle different response structures
-      // API returns: { status, message, data, statusCode }
-      // Service returns res.data from axios, so we get the API response object
-      if (res?.data) {
-        // Check if data is structured as { hosted, attended, upcoming }
-        if (res.data.hosted || res.data.attended || res.data.upcoming) {
-          // UserSessionsResponse format
-          allSessions = [
-            ...(res.data.hosted || []),
-            ...(res.data.attended || []),
-            ...(res.data.upcoming || []),
-          ];
-        } else if (Array.isArray(res.data)) {
-          // Direct array format (API returned { data: [...] })
-          allSessions = res.data;
-        }
-      } else if (Array.isArray(res)) {
-        // Response is directly an array (fallback)
-        allSessions = res;
-      }
-      
+
+      const allSessions = extractSessionsFromResponse(res);
+
       // Remove duplicates by session ID
       const uniqueSessions = Array.from(
         new Map(allSessions.map((s) => [s.id, s])).values()
       );
-      
+
       console.log("Processed sessions:", uniqueSessions);
       setSessions(uniqueSessions);
     } catch (err) {
@@ -96,8 +115,8 @@ export default function SessionsPage() {
       } else {
         alert(res.message || "Failed to end session");
       }
-    } catch (err: any) {
-      alert(err.message || "An error occurred");
+    } catch (err) {
+      alert(getErrorMessage(err));
     }
   };
 
@@ -111,8 +130,8 @@ export default function SessionsPage() {
       } else {
         alert(res.message || "Failed to delete session");
       }
-    } catch (err: any) {
-      alert(err.message || "An error occurred");
+    } catch (err) {
+      alert(getErrorMessage(err));
     }
   };
 

@@ -12,14 +12,12 @@ interface MeetingChatProps {
   messages: ChatMessageResponse[];
   messageHistory: MessageHistoryResponse[];
   onSendMessage: (message: string) => void;
-  sessionId: string;
 }
 
 export default function MeetingChat({
   messages,
   messageHistory,
   onSendMessage,
-  sessionId,
 }: MeetingChatProps) {
   const [inputValue, setInputValue] = useState("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -52,8 +50,8 @@ export default function MeetingChat({
     }
   };
 
-  const formatTime = (timestamp: string) => {
-    const date = new Date(timestamp);
+  const formatTime = (timestamp: string | Date) => {
+    const date = typeof timestamp === "string" ? new Date(timestamp) : timestamp;
     return date.toLocaleTimeString("en-US", {
       hour: "2-digit",
       minute: "2-digit",

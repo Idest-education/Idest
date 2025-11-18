@@ -22,6 +22,9 @@ interface CreateSessionModalProps {
   className?: string;
 }
 
+const getErrorMessage = (error: unknown) =>
+  error instanceof Error ? error.message : "An error occurred";
+
 export default function CreateSessionModal({
   open,
   onClose,
@@ -69,8 +72,8 @@ export default function CreateSessionModal({
       } else {
         setError(res.message || "Failed to create session");
       }
-    } catch (err: any) {
-      setError(err.message || "An error occurred");
+    } catch (err) {
+      setError(getErrorMessage(err));
     } finally {
       setLoading(false);
     }

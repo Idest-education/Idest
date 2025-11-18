@@ -7,6 +7,31 @@ import MeetingRoom from "@/components/meeting/MeetingRoom";
 import LoadingScreen from "@/components/loading-screen";
 import { getSessionById } from "@/services/session.service";
 
+type ErrorWithStatus = {
+  response?: {
+    status?: number;
+  };
+};
+
+const getStatusCodeFromError = (error: unknown) => {
+  if (
+    typeof error === "object" &&
+    error !== null &&
+    "response" in error &&
+    typeof (error as ErrorWithStatus).response?.status === "number"
+  ) {
+    return (error as ErrorWithStatus).response?.status;
+  }
+  return undefined;
+};
+
+const getMessageFromError = (error: unknown, fallback: string) => {
+  if (error instanceof Error && error.message) {
+    return error.message;
+  }
+  return fallback;
+};
+
 export default function MeetingPage() {
   const params = useParams();
   const router = useRouter();
@@ -79,22 +104,23 @@ export default function MeetingPage() {
           // All validations passed
           clearTimeout(timeoutId); // Clear timeout on success
           setToken(accessToken);
-        } catch (validationError: any) {
+        } catch (validationError) {
           clearTimeout(timeoutId); // Clear timeout on validation error
           console.error("Session validation error:", validationError);
-          if (validationError.response?.status === 404) {
+          const statusCode = getStatusCodeFromError(validationError);
+          if (statusCode === 404) {
             setError("Session not found.");
-          } else if (validationError.response?.status === 403) {
+          } else if (statusCode === 403) {
             setError("You don't have permission to join this session.");
           } else {
             setError("Failed to validate session access.");
           }
           setTimeout(() => router.push("/sessions"), 2000);
         }
-      } catch (err: any) {
+      } catch (err) {
         clearTimeout(timeoutId); // Clear timeout on error
         console.error("Error in session validation:", err);
-        setError(err.message || "Failed to authenticate");
+        setError(getMessageFromError(err, "Failed to authenticate"));
       } finally {
         setLoading(false);
       }

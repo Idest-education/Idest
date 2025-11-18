@@ -288,7 +288,6 @@ export default function MeetingRoom({ sessionId, token }: MeetingRoomProps) {
                 messages={messages}
                 messageHistory={messageHistory}
                 onSendMessage={(message) => sendMessage(sessionId, message)}
-                sessionId={sessionId}
               />
             </div>
           )}
