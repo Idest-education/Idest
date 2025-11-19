@@ -5,6 +5,7 @@ export class UserJoinedDto {
   userAvatar?: string;
   role: string;
   socketId: string;
+  isOnline: boolean;
 }
 
 export class UserLeftDto {

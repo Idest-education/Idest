@@ -1,3 +1,5 @@
+@import "@livekit/components-styles/prefabs";
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -64,5 +66,225 @@
   }
   body {
     @apply bg-background text-foreground;
+  }
+}
+
+@layer components {
+  /* Hide video element when camera is muted to show placeholder avatar */
+  .lk-participant-tile[data-lk-video-muted="true"] .lk-participant-media-video {
+    display: none;
+  }
+
+  /* Ensure custom initial avatar is perfectly centered */
+  .lk-participant-placeholder {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+  }
+
+  .lk-participant-placeholder svg {
+    display: none;
+  }
+
+  /* Google Meet-like video styling */
+  .lk-participant-tile {
+    position: relative !important;
+    width: 100% !important;
+    height: 100% !important;
+    overflow: hidden !important;
+    background: transparent;
+    transition: opacity 0.2s ease-in-out;
+    display: flex !important;
+    flex-direction: column;
+  }
+
+  /* Ensure all LiveKit wrapper divs fill space */
+  .lk-participant-tile > div,
+  .lk-participant-tile > *,
+  .lk-participant-tile > * > * {
+    width: 100% !important;
+    height: 100% !important;
+    flex: 1 1 auto !important;
+    min-width: 0 !important;
+    min-height: 0 !important;
+  }
+
+  /* Video elements should cover the container - always fill tile */
+  .lk-participant-tile video,
+  .lk-participant-media-video video,
+  .lk-participant-media-video {
+    width: 100% !important;
+    height: 100% !important;
+    object-fit: cover !important;
+    object-position: center !important;
+    background: #000 !important;
+    display: block !important;
+    min-width: 100% !important;
+    min-height: 100% !important;
+  }
+
+  /* Video container positioning */
+  .lk-participant-media-video {
+    position: absolute !important;
+    inset: 0 !important;
+    min-width: 100% !important;
+    min-height: 100% !important;
+  }
+
+  /* GridLayout should fill container */
+  [class*="lk-grid"],
+  [class*="GridLayout"],
+  div[class*="grid"] {
+    width: 100% !important;
+    height: 100% !important;
+  }
+
+  /* Ensure GridLayout children fill */
+  [class*="GridLayout"] > * {
+    width: 100% !important;
+    height: 100% !important;
+  }
+
+  /* Remove any max-width constraints */
+  .lk-participant-tile,
+  .lk-participant-tile *,
+  .lk-participant-tile * * {
+    max-width: none !important;
+    max-height: none !important;
+  }
+
+  /* Special handling for single participant - must fill width */
+  .single-participant-video {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 100% !important;
+  }
+
+  .single-participant-video .lk-participant-tile,
+  .single-participant-video .lk-participant-tile *,
+  .single-participant-video video {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 100% !important;
+    aspect-ratio: unset !important;
+    height: 100% !important;
+  }
+
+  /* For grid layouts (multiple participants), maintain aspect ratios and ensure visibility */
+  .multi-participant-grid {
+    display: grid !important;
+    visibility: visible !important;
+  }
+
+  .multi-participant-grid > div {
+    width: 100% !important;
+    height: 100% !important;
+    min-width: 0 !important;
+    min-height: 0 !important;
+    visibility: visible !important;
+    position: relative !important;
+  }
+
+  .multi-participant-grid .lk-participant-tile {
+    aspect-ratio: 16/9 !important;
+    width: 100% !important;
+    height: 100% !important;
+    visibility: visible !important;
+  }
+
+  /* Two participants layout - fill width, maintain aspect ratio, don't fill height */
+  .two-participants-grid {
+    width: 100% !important;
+    max-width: 100% !important;
+    height: fit-content !important;
+    align-items: center !important;
+  }
+
+  .two-participants-grid > div {
+    width: 100% !important;
+    height: auto !important;
+    aspect-ratio: 16/9 !important;
+  }
+
+  .two-participants-grid .lk-participant-tile {
+    aspect-ratio: 16/9 !important;
+    width: 100% !important;
+    height: 100% !important;
+  }
+
+  /* Force all LiveKit internal containers to fill - but be more specific */
+  .lk-participant-tile {
+    width: 100% !important;
+    height: 100% !important;
+    min-width: 0 !important;
+    min-height: 0 !important;
+    box-sizing: border-box !important;
+    display: flex !important;
+    flex-direction: column !important;
+  }
+
+  .lk-participant-tile > * {
+    width: 100% !important;
+    height: 100% !important;
+    min-width: 0 !important;
+    min-height: 0 !important;
+    box-sizing: border-box !important;
+    flex: 1 1 auto !important;
+  }
+
+  /* Smooth transitions for video tiles */
+  .lk-participant-tile,
+  .lk-participant-media-video {
+    will-change: auto;
+    backface-visibility: hidden;
+    transform: translateZ(0);
+  }
+
+  /* Participant metadata styling */
+  .lk-participant-metadata {
+    background: linear-gradient(to top, rgba(0, 0, 0, 0.7) 0%, transparent 100%);
+    padding: 0.5rem 0.75rem;
+    color: white;
+    font-size: 0.75rem;
+    line-height: 1.2;
+  }
+
+  .lk-participant-metadata-item {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+  }
+
+  /* Prevent layout shifts */
+  .lk-participant-tile[data-lk-video-muted="false"] .lk-participant-placeholder {
+    display: none !important;
+  }
+
+  /* Grid layout stability */
+  [class*="grid"] {
+    contain: layout style;
+  }
+
+  /* Smooth scrolling for horizontal camera strip */
+  .overflow-x-auto {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
+  }
+
+  .overflow-x-auto::-webkit-scrollbar {
+    height: 6px;
+  }
+
+  .overflow-x-auto::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .overflow-x-auto::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 3px;
+  }
+
+  .overflow-x-auto::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.3);
   }
 }

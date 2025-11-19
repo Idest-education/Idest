@@ -11,10 +11,13 @@ export class ChatMessageDto {
 }
 
 export class ChatMessageResponseDto {
+  id: string;
   sessionId: string;
-  message: string;
-  userId: string;
-  userFullName: string;
-  userAvatar?: string;
-  timestamp: Date;
+  content: string;
+  sentAt: Date;
+  sender: {
+    id: string;
+    full_name: string;
+    avatar_url?: string;
+  };
 }

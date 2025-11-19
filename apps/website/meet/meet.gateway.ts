@@ -1,3 +1,4 @@
+import { randomUUID } from 'crypto';
 import {
   MessageBody,
   OnGatewayConnection,
@@ -136,6 +137,7 @@ export class MeetGateway
         userAvatar: userDetails.avatar_url,
         role: userDetails.role,
         socketId: client.id,
+        isOnline: true,
       };
 
       client.to(data.sessionId).emit('user-joined', userJoinedData);
@@ -288,12 +290,15 @@ export class MeetGateway
       );
 
       const chatResponse: ChatMessageResponseDto = {
+        id: savedMessage?.id || randomUUID(),
         sessionId: data.sessionId,
-        message: data.message,
-        userId: user.userId,
-        userFullName: user.userFullName,
-        userAvatar: user.userAvatar,
-        timestamp: savedMessage?.sentAt || new Date(),
+        content: data.message,
+        sentAt: savedMessage?.sentAt || new Date(),
+        sender: {
+          id: user.userId,
+          full_name: user.userFullName,
+          avatar_url: user.userAvatar,
+        },
       };
 
       // Broadcast to all users in the session (including sender)

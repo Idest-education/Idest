@@ -94,6 +94,16 @@ If you wish to just develop locally and not deploy to Vercel, [follow the steps 
 
 > Check out [the docs for Local Development](https://supabase.com/docs/guides/getting-started/local-development) to also run Supabase locally.
 
+## Meet Feature Configuration
+
+The meeting experience uses your API origin for REST requests plus a Socket.IO namespace for `/meet`. Set the following client-side environment variables in `.env.local`:
+
+- `NEXT_PUBLIC_API_URL` – Base HTTPS origin for REST calls such as `/meet/:sessionId/livekit-token`.
+- `NEXT_PUBLIC_API_WS_URL` – (Optional) WebSocket origin; defaults to `http://localhost:8001` in development.
+- `NEXT_PUBLIC_MEET_WS_URL` – (Optional) Override specifically for the meet namespace. If omitted, the client derives the value from `NEXT_PUBLIC_API_WS_URL`.
+
+All values should include protocol (`https://`/`wss://`). When deploying, ensure the meet backend is reachable from the browser on both HTTP(S) and WS(S).
+
 ## Feedback and issues
 
 Please file feedback and issues over on the [Supabase GitHub org](https://github.com/supabase/supabase/issues/new/choose).

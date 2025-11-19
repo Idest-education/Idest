@@ -1,0 +1,436 @@
+"use client";
+
+import { useCallback, useEffect, useMemo, useRef } from "react";
+import type { Socket } from "socket.io-client";
+import { toast } from "sonner";
+import { createClient as createSupabaseClient } from "@/lib/supabase/client";
+import { createMeetSocket } from "@/lib/meet-socket";
+import { useMeetStore } from "./useMeetStore";
+import {
+  ChatMessagePayload,
+  LiveKitCredentials,
+  MessageHistoryRequest,
+  MeetChatMessage,
+  MeetParticipant,
+  ScreenSharePayload,
+  ToggleMediaPayload,
+} from "@/types/meet";
+import { getLivekitToken } from "@/services/meet.service";
+
+// Notification sound utility
+let notificationAudio: HTMLAudioElement | null = null;
+const playNotificationSound = () => {
+  try {
+    if (!notificationAudio) {
+      // Try different possible paths for the notification sound
+      const audioPath = "/assets/notification.mp3";
+      notificationAudio = new Audio(audioPath);
+      notificationAudio.volume = 0.7;
+      notificationAudio.preload = "auto";
+    }
+    // Reset to start and play
+    notificationAudio.currentTime = 0;
+    notificationAudio.play().catch((error) => {
+      // Silently fail if autoplay is blocked
+      console.warn("Failed to play notification sound:", error);
+    });
+  } catch (error) {
+    console.warn("Failed to initialize notification sound:", error);
+  }
+};
+
+interface UseMeetClientOptions {
+  sessionId: string | null;
+  autoJoin?: boolean;
+}
+
+export function useMeetClient({ sessionId, autoJoin = true }: UseMeetClientOptions) {
+  const supabase = useMemo(() => createSupabaseClient(), []);
+  const socketRef = useRef<Socket | null>(null);
+  const setSessionId = useMeetStore((state) => state.setSessionId);
+  const setJoining = useMeetStore((state) => state.setJoining);
+  const setSocketConnected = useMeetStore((state) => state.setSocketConnected);
+  const setLiveKitConnected = useMeetStore((state) => state.setLiveKitConnected);
+  const setLivekitCredentials = useMeetStore((state) => state.setLivekitCredentials);
+  const setLocalUserId = useMeetStore((state) => state.setLocalUserId);
+  const setParticipants = useMeetStore((state) => state.setParticipants);
+  const upsertParticipant = useMeetStore((state) => state.upsertParticipant);
+  const removeParticipant = useMeetStore((state) => state.removeParticipant);
+  const addChatMessage = useMeetStore((state) => state.addChatMessage);
+  const prependChatMessages = useMeetStore((state) => state.prependChatMessages);
+  const setMessagesLoading = useMeetStore((state) => state.setMessagesLoading);
+  const setParticipantMediaState = useMeetStore((state) => state.setParticipantMediaState);
+  const setAudioEnabled = useMeetStore((state) => state.setAudioEnabled);
+  const setVideoEnabled = useMeetStore((state) => state.setVideoEnabled);
+  const setScreenSharing = useMeetStore((state) => state.setScreenSharing);
+  const setActiveScreenSharer = useMeetStore((state) => state.setActiveScreenSharer);
+  const setError = useMeetStore((state) => state.setError);
+  const reset = useMeetStore((state) => state.reset);
+  const getStoreState = useMeetStore.getState;
+
+  const cleanupSocket = useCallback(() => {
+    const socket = socketRef.current;
+    if (socket) {
+      socket.removeAllListeners();
+      if (socket.connected) {
+        socket.disconnect();
+      }
+    }
+    socketRef.current = null;
+    setSocketConnected(false);
+  }, [setSocketConnected]);
+
+  const leaveSession = useCallback(
+    (emitLeave = true) => {
+      const socket = socketRef.current;
+      if (emitLeave && socket?.connected && sessionId) {
+        socket.emit("leave-room", sessionId);
+      }
+      cleanupSocket();
+      reset();
+    },
+    [cleanupSocket, reset, sessionId],
+  );
+
+  const handleJoinSuccess = useCallback(
+    async (payload: {
+      sessionId: string;
+      userId: string;
+      livekit: LiveKitCredentials;
+    }) => {
+      setSessionId(payload.sessionId);
+      setLocalUserId(payload.userId);
+      setLivekitCredentials(payload.livekit);
+      setJoining(false);
+      setError(null);
+    },
+    [setError, setJoining, setLivekitCredentials, setLocalUserId, setSessionId],
+  );
+
+  const bindSocketEvents = useCallback(
+    (socket: Socket, sessionIdValue: string, token: string) => {
+      socket.on("connect", () => {
+        setSocketConnected(true);
+        socket.emit("join-room", { sessionId: sessionIdValue, token });
+      });
+
+      socket.on("disconnect", () => {
+        setSocketConnected(false);
+        setLiveKitConnected(false);
+      });
+
+      socket.on("join-room-success", (payload) => {
+        handleJoinSuccess(payload);
+        setMessagesLoading(true);
+        socket.emit("get-session-participants", sessionIdValue);
+        socket.emit("get-message-history", { sessionId: sessionIdValue });
+      });
+
+      socket.on("join-room-error", (payload: { message: string }) => {
+        setError(payload.message);
+        setJoining(false);
+      });
+
+      socket.on("session-participants", (payload: { participants: MeetParticipant[] }) => {
+        setParticipants(
+          payload.participants.map((participant) => ({
+            ...participant,
+            isAudioEnabled: participant.isAudioEnabled ?? true,
+            isVideoEnabled: participant.isVideoEnabled ?? true,
+          })),
+        );
+      });
+
+      socket.on("session-participants-error", (payload: { message: string }) => {
+        setError(payload.message);
+      });
+
+      socket.on("user-joined", (payload: MeetParticipant) => {
+        upsertParticipant({
+          ...payload,
+          isAudioEnabled: payload.isAudioEnabled ?? true,
+          isVideoEnabled: payload.isVideoEnabled ?? true,
+          isOnline: payload.isOnline ?? true,
+        });
+      });
+
+      socket.on("user-left", (payload: { userId: string }) => {
+        removeParticipant(payload.userId);
+      });
+
+      socket.on("chat-message", (payload: {
+        sessionId: string;
+        message: string;
+        userId: string;
+        userFullName: string;
+        userAvatar?: string;
+        timestamp: Date | string;
+      }) => {
+        // Validate payload structure (ChatMessageResponseDto format)
+        if (!payload || !payload.sessionId || !payload.message || !payload.userId || !payload.userFullName || !payload.timestamp) {
+          return;
+        }
+
+        // Generate a unique ID for this message (backend doesn't provide one)
+        const timestampStr = typeof payload.timestamp === "string" 
+          ? payload.timestamp 
+          : new Date(payload.timestamp).toISOString();
+        const messageId = `msg-${payload.userId}-${timestampStr}-${Math.random().toString(36).substring(2, 9)}`;
+
+        // Normalize to MeetChatMessage format
+        const normalizedPayload: MeetChatMessage = {
+          id: messageId,
+          sessionId: payload.sessionId,
+          content: payload.message,
+          sentAt: timestampStr,
+          sender: {
+            id: payload.userId,
+            full_name: payload.userFullName,
+            avatar_url: payload.userAvatar || undefined,
+          },
+        };
+
+        const state = getStoreState();
+        const localUserId = state.localUserId;
+        const isOwnMessage = normalizedPayload.sender.id === localUserId;
+        
+        // Check if message already exists (prevent duplicates based on content + sender + timestamp)
+        const messageExists = state.messages.some(
+          (msg) =>
+            msg.content === normalizedPayload.content &&
+            msg.sender?.id === normalizedPayload.sender?.id &&
+            Math.abs(
+              new Date(msg.sentAt).getTime() - 
+              new Date(normalizedPayload.sentAt).getTime()
+            ) < 1000 // Within 1 second = same message
+        );
+        if (messageExists) {
+          return;
+        }
+        
+        // Remove any temporary messages with the same content from the same sender
+        const filteredMessages = state.messages.filter(
+          (msg) =>
+            !(
+              msg.id.startsWith("temp-") &&
+              msg.content === normalizedPayload.content &&
+              msg.sender?.id === normalizedPayload.sender?.id &&
+              Math.abs(
+                new Date(msg.sentAt).getTime() - 
+                new Date(normalizedPayload.sentAt).getTime()
+              ) < 5000
+            ),
+        );
+        
+        // Add the real message
+        useMeetStore.setState({
+          messages: [...filteredMessages, normalizedPayload],
+          lastUpdatedAt: Date.now(),
+        });
+
+        // Show notification and play sound for messages from other users
+        if (!isOwnMessage) {
+          const state = getStoreState();
+          const isChatOpen = state.showChat;
+          
+          // Play notification sound
+          playNotificationSound();
+          
+          // Only show toast if chat panel is not open
+          if (!isChatOpen) {
+            // Show toast notification with message preview
+            const messagePreview = normalizedPayload.content.length > 50 
+              ? normalizedPayload.content.substring(0, 50) + "..."
+              : normalizedPayload.content;
+            
+            toast.info(messagePreview, {
+              description: `From ${normalizedPayload.sender.full_name}`,
+              duration: 5000,
+              position: "top-right",
+            });
+          }
+        }
+      });
+
+      socket.on("message-history", (payload: { messages: MeetChatMessage[]; hasMore: boolean }) => {
+        prependChatMessages(payload.messages, payload.hasMore);
+        setMessagesLoading(false);
+      });
+
+      socket.on("message-history-error", (payload: { message: string }) => {
+        setError(payload.message);
+        setMessagesLoading(false);
+      });
+
+      socket.on("media-toggled", (payload: ToggleMediaPayload & { userId: string }) => {
+        setParticipantMediaState(payload.userId, {
+          isAudioEnabled: payload.type === "audio" ? payload.isEnabled : undefined,
+          isVideoEnabled: payload.type === "video" ? payload.isEnabled : undefined,
+        });
+        if (payload.userId === getStoreState().localUserId) {
+          if (payload.type === "audio") setAudioEnabled(payload.isEnabled);
+          if (payload.type === "video") setVideoEnabled(payload.isEnabled);
+        }
+      });
+
+      socket.on("screen-share-started", (payload: { userId: string }) => {
+        setActiveScreenSharer(payload.userId);
+        setParticipantMediaState(payload.userId, { isScreenSharing: true });
+      });
+
+      socket.on("screen-share-stopped", (payload: { userId: string }) => {
+        setParticipantMediaState(payload.userId, { isScreenSharing: false });
+        setActiveScreenSharer(null);
+      });
+
+      socket.on("screen-share-error", (payload: { message: string }) => {
+        setError(payload.message);
+      });
+    },
+    [
+      addChatMessage,
+      handleJoinSuccess,
+      prependChatMessages,
+      removeParticipant,
+      setActiveScreenSharer,
+      setAudioEnabled,
+      setError,
+      setLiveKitConnected,
+      setMessagesLoading,
+      setParticipantMediaState,
+      setParticipants,
+      setSocketConnected,
+      setVideoEnabled,
+      upsertParticipant,
+    ],
+  );
+
+  const joinSession = useCallback(
+    async (sessionIdValue: string, tokenOverride?: string) => {
+      if (!sessionIdValue) return;
+      setJoining(true);
+      setSessionId(sessionIdValue);
+
+      try {
+        const supabaseToken =
+          tokenOverride ||
+          (await supabase.auth.getSession()).data.session?.access_token ||
+          null;
+        if (!supabaseToken) {
+          throw new Error("Unable to identify user session.");
+        }
+
+        cleanupSocket();
+        const socket = createMeetSocket(supabaseToken);
+        socketRef.current = socket;
+        bindSocketEvents(socket, sessionIdValue, supabaseToken);
+        socket.connect();
+
+        // Pre-fetch LiveKit credentials via REST in case socket handshake delays
+        const livekitResponse = await getLivekitToken(sessionIdValue);
+        if (livekitResponse?.livekit) {
+          setLivekitCredentials(livekitResponse.livekit);
+        }
+      } catch (error: unknown) {
+        const message = error instanceof Error ? error.message : "Failed to join session.";
+        setJoining(false);
+        setError(message);
+        cleanupSocket();
+      }
+    },
+    [bindSocketEvents, cleanupSocket, setError, setJoining, setLivekitCredentials, setSessionId, supabase],
+  );
+
+  const sendChatMessage = useCallback(
+    (message: string) => {
+      const socket = socketRef.current;
+      if (!sessionId || !socket?.connected) return;
+      
+      // Optimistic update: add message immediately to store
+      const state = getStoreState();
+      const localUserId = state.localUserId;
+      const localParticipant = localUserId ? state.participants[localUserId] : null;
+      
+      if (localUserId && localParticipant) {
+        const optimisticMessage: MeetChatMessage = {
+          id: `temp-${Date.now()}-${Math.random()}`,
+          sessionId,
+          content: message,
+          sentAt: new Date().toISOString(),
+          sender: {
+            id: localUserId,
+            full_name: localParticipant.userFullName,
+            avatar_url: localParticipant.userAvatar || undefined,
+          },
+        };
+        addChatMessage(optimisticMessage);
+      }
+      
+      const payload: ChatMessagePayload = { sessionId, message };
+      socket.emit("chat-message", payload);
+    },
+    [sessionId, addChatMessage, getStoreState],
+  );
+
+  const loadMessageHistory = useCallback(
+    (options?: { before?: string; limit?: number }) => {
+      const socket = socketRef.current;
+      if (!sessionId || !socket?.connected) return;
+      setMessagesLoading(true);
+      const payload: MessageHistoryRequest = {
+        sessionId,
+        limit: options?.limit,
+        before: options?.before,
+      };
+      socket.emit("get-message-history", payload);
+    },
+    [sessionId, setMessagesLoading],
+  );
+
+  const requestParticipantsSnapshot = useCallback(() => {
+    const socket = socketRef.current;
+    if (!sessionId || !socket?.connected) return;
+    socket.emit("get-session-participants", sessionId);
+  }, [sessionId]);
+
+  const emitToggleMedia = useCallback(
+    (payload: ToggleMediaPayload) => {
+      const socket = socketRef.current;
+      if (!socket?.connected) return;
+      socket.emit("toggle-media", payload);
+      if (payload.type === "audio") setAudioEnabled(payload.isEnabled);
+      if (payload.type === "video") setVideoEnabled(payload.isEnabled);
+    },
+    [setAudioEnabled, setVideoEnabled],
+  );
+
+  const emitScreenShareEvent = useCallback(
+    (type: "start" | "stop", payload: ScreenSharePayload) => {
+      const socket = socketRef.current;
+      if (!socket?.connected) return;
+      socket.emit(type === "start" ? "start-screen-share" : "stop-screen-share", payload);
+      if (payload.sessionId === sessionId) {
+        setScreenSharing(type === "start");
+      }
+    },
+    [sessionId, setScreenSharing],
+  );
+
+  useEffect(() => {
+    if (!autoJoin || !sessionId) return;
+    joinSession(sessionId);
+    return () => leaveSession(true);
+  }, [autoJoin, joinSession, leaveSession, sessionId]);
+
+  return {
+    socket: socketRef.current,
+    joinSession,
+    leaveSession,
+    sendChatMessage,
+    loadMessageHistory,
+    requestParticipantsSnapshot,
+    emitToggleMedia,
+    emitScreenShareEvent,
+  };
+}
+
