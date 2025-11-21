@@ -23,7 +23,6 @@ export default function ListeningQuestionsPanel({
     flatSubquestions,
     answers,
     updateAnswer,
-    currentSubIndex,
     questionRefs,
 }: Props) {
 
@@ -32,7 +31,7 @@ export default function ListeningQuestionsPanel({
     return (
         <div className="space-y-8">
             {section.questions.map((q) =>
-                q.subquestions.map((sub, idx) => {
+                q.subquestions.map((sub) => {
                     const global = flatSubquestions.find((x) => x.subId === sub.id);
 
                     if (!global) return null;

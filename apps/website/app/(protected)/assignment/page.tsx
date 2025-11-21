@@ -19,11 +19,10 @@ export default function AssignmentsPage() {
     load();
   }, []);
 
-  if (loading)
-    return <LoadingScreen />;
+  if (loading) return <LoadingScreen />;
   if (!assignments) return <p className="p-6">No assignments</p>;
 
-  const groups = [
+  const groups: { key: keyof AssignmentResponse; title: string }[] = [
     { key: "reading", title: "Reading Assignments" },
     { key: "listening", title: "Listening Assignments" },
     { key: "writing", title: "Writing Assignments" },
@@ -35,7 +34,7 @@ export default function AssignmentsPage() {
       <h1 className="text-3xl font-semibold mb-6">Assignments</h1>
 
       {groups.map((g) => {
-        const list = (assignments as any)[g.key] as any[];
+        const list = assignments[g.key];
 
         if (!list || list.length === 0) return null;
 
@@ -54,4 +53,3 @@ export default function AssignmentsPage() {
     </div>
   );
 }
-

@@ -7,7 +7,7 @@ import PassageTabs from "@/components/assignment/passagetabs";
 import PassageContent from "@/components/assignment/passage-content";
 import QuestionsPanel from "@/components/assignment/questions-panel";
 import SidebarNavigation from "@/components/assignment/SidebarNavigation";
-import { ReadingAssignmentDetail, ReadingSubmissionResult, } from "@/types/assignment";
+import { ReadingAssignmentDetail } from "@/types/assignment";
 import { use } from "react";
 import { useRouter } from "next/navigation";
 import LoadingScreen from "@/components/loading-screen";
@@ -23,8 +23,6 @@ export default function ReadingAssignmentPage(props: ReadingAssignmentPageProps)
     const [assignment, setAssignment] = useState<ReadingAssignmentDetail | null>(null);
     const [activePassage, setActivePassage] = useState<number>(0);
     const [answers, setAnswers] = useState<Record<string, string | number>>({});
-    const [submitting, setSubmitting] = useState<boolean>(false);
-    const [result, setResult] = useState<ReadingSubmissionResult | null>(null);
     const [currentQuestionIndex, setCurrentQuestionIndex] = useState<number>(0);
 
     useEffect(() => {
@@ -65,7 +63,6 @@ export default function ReadingAssignmentPage(props: ReadingAssignmentPageProps)
 
     async function handleSubmit(): Promise<void> {
         if (!assignment) return;
-        setSubmitting(true);
 
         try {
             const userId = localStorage.getItem("user_id");
@@ -86,12 +83,10 @@ export default function ReadingAssignmentPage(props: ReadingAssignmentPageProps)
             };
 
             const res = await submitReading(payload);
-            setResult(res.data);
             router.push(`/assignment/reading/${assignment.id}/result/${res.data.id}`);
         } catch (err) {
             console.error("Submit failed:", err);
         } finally {
-            setSubmitting(false);
         }
     }
 

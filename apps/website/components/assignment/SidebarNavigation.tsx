@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Clock, CheckCircle2, Circle } from "lucide-react";
+import { Clock, CheckCircle2 } from "lucide-react";
 
 // Mock types for preview
 interface SubQuestion {

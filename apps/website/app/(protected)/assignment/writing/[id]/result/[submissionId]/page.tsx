@@ -3,15 +3,15 @@
 import { use, useEffect, useState } from "react";
 import { getWritingSubmissionResult } from "@/services/assignment.service";
 import LoadingScreen from "@/components/loading-screen";
+import type { WritingSubmissionResult } from "@/types/assignment";
 
 interface Props {
     params: Promise<{ id: string; submissionId: string }>;
 }
 
 export default function WritingResultPage(props: Props) {
-    const { id, submissionId } = use(props.params);
-
-    const [result, setResult] = useState<any>(null);
+    const { submissionId } = use(props.params);
+    const [result, setResult] = useState<WritingSubmissionResult | null>(null);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
@@ -38,7 +38,7 @@ export default function WritingResultPage(props: Props) {
         return { text: "text-orange-700", bg: "bg-orange-50", border: "border-orange-300", bar: "bg-orange-500" };
     };
 
-    const colors = getBandColor(result.score);
+    const colors = getBandColor(result!.score);
 
     return (
         <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 py-6 px-4">
@@ -59,7 +59,7 @@ export default function WritingResultPage(props: Props) {
                             <p className="text-gray-600 font-medium text-sm uppercase tracking-wider">Overall Band Score</p>
                             <div className="flex items-baseline justify-center gap-2">
                                 <span className={`text-8xl font-bold ${colors.text}`}>
-                                    {result.score}
+                                    {result!.score}
                                 </span>
                                 <span className="text-5xl font-semibold text-gray-400">/9.0</span>
                             </div>
@@ -70,7 +70,7 @@ export default function WritingResultPage(props: Props) {
                             <div className="w-full bg-gray-200 rounded-full h-4 overflow-hidden shadow-inner">
                                 <div
                                     className={`h-full ${colors.bar} transition-all duration-1000 rounded-full`}
-                                    style={{ width: `${(result.score / 9) * 100}%` }}
+                                    style={{ width: `${(result!.score / 9) * 100}%` }}
                                 ></div>
                             </div>
                             <div className="flex justify-between text-xs text-gray-500 mt-2 px-1">
@@ -100,7 +100,7 @@ export default function WritingResultPage(props: Props) {
                             <div className="flex items-start gap-3">
                                 <div className="w-1 h-full bg-indigo-500 rounded-full flex-shrink-0 mt-1"></div>
                                 <p className="whitespace-pre-line text-gray-700 leading-relaxed text-base">
-                                    {result.feedback}
+                                    {result!.feedback}
                                 </p>
                             </div>
                         </div>

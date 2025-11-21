@@ -38,7 +38,7 @@ export default function ListeningAssignmentPage(props: Props) {
 
     useEffect(() => {
         load();
-    }, []);
+    }, [load]);
 
     function updateAnswer(subId: string, value: string) {
         setAnswers((prev) => ({ ...prev, [subId]: value }));
