@@ -42,7 +42,7 @@ export default function ListeningQuestionsPanel({
                             ref={(el) => {
                                 questionRefs.current[global.globalIndex - 1] = el;
                             }}
-                            className="p-4 rounded bg-white grid grid-cols-12 gap-4"
+                            className="rounded bg-white grid grid-cols-12 gap-4"
                         >
                             {/* LEFT: QUESTION TEXT */}
                             <div className="col-span-7">

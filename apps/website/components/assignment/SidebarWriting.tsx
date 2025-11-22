@@ -85,11 +85,10 @@ export default function SidebarWriting({ onSubmit, activeTask, setActiveTask }: 
                 {/* SUBMIT BUTTON */}
                 <button
                     onClick={onSubmit}
-                    className="w-full mt-5 bg-gradient-to-r from-green-600 to-green-700 text-white py-3 rounded-lg font-semibold 
-                           hover:from-green-700 hover:to-green-800 active:scale-95 transition-all duration-200 
+                    className="w-full mt-5 bg-gradient-to-r from-blue-600 to-blue-700 text-white py-3 rounded-lg font-semibold 
+                           hover:from-blue-700 hover:to-indigo-800 active:scale-95 transition-all duration-200 
                            shadow-md hover:shadow-lg flex items-center justify-center gap-2"
                 >
-                    <CheckCircle2 className="w-5 h-5" />
                     NỘP BÀI
                 </button>
             </div>
