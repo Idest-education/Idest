@@ -123,6 +123,52 @@
     min-height: 100% !important;
   }
 
+  /* Screen share videos must preserve aspect ratio - use contain instead of cover */
+  .screen-share-container .lk-participant-tile video,
+  .screen-share-container .lk-participant-media-video video {
+    object-fit: contain !important;
+    object-position: center !important;
+  }
+
+  /* Screen share container should center content */
+  .screen-share-container {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+  }
+
+  /* Override GridLayout rules for screen share to center content */
+  .screen-share-container [class*="GridLayout"] {
+    width: 100% !important;
+    height: 100% !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+  }
+
+  /* Screen share tile should fill container but allow video to maintain aspect ratio */
+  .screen-share-container .lk-participant-tile {
+    width: 100% !important;
+    height: 100% !important;
+    max-width: 100% !important;
+    max-height: 100% !important;
+    aspect-ratio: unset !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+  }
+
+  /* Screen share video container should center the video */
+  .screen-share-container .lk-participant-media-video {
+    position: relative !important;
+    width: 100% !important;
+    height: 100% !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    inset: auto !important;
+  }
+
   /* Video container positioning */
   .lk-participant-media-video {
     position: absolute !important;

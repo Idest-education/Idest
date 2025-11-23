@@ -90,7 +90,7 @@ export function MeetVideoGrid() {
       {screenShareTrack ? (
         <>
           {/* Screen share takes main area */}
-          <div className="relative flex min-h-0 flex-1 overflow-hidden bg-black">
+          <div className="screen-share-container relative flex min-h-0 flex-1 overflow-hidden bg-transparent">
             <GridLayout tracks={[screenShareTrack]} className="h-full w-full">
               <MeetParticipantTile />
             </GridLayout>
