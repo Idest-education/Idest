@@ -23,6 +23,7 @@ model User {
   ConversationParticipants ConversationParticipant[]
   Messages                 Message[]
   SessionHosted            Session[]
+  SessionAttendances       SessionAttendance[]
   StudentProfile           StudentProfile?
   TeacherProfile           TeacherProfile?
   ConversationsCreated     Conversation[]            @relation("ConversationCreatedBy")
@@ -88,7 +89,7 @@ model ClassTeacher {
 }
 
 model Session {
-  id              String    @id @default(uuid())
+  id              String            @id @default(uuid())
   class_id        String
   host_id         String
   start_time      DateTime
@@ -97,10 +98,14 @@ model Session {
   recording_url   String?
   whiteboard_data Json?
   metadata        Json?
-  created_at      DateTime  @default(now())
+  created_at      DateTime          @default(now())
   messages        Message[]
-  class           Class     @relation(fields: [class_id], references: [id])
-  host            User      @relation(fields: [host_id], references: [id])
+  attendances     SessionAttendance[]
+  class           Class             @relation(fields: [class_id], references: [id])
+  host            User              @relation(fields: [host_id], references: [id])
+
+  @@index([class_id, start_time])
+  @@index([host_id, start_time])
 }
 
 model Assignment {
@@ -173,4 +178,19 @@ enum MessageType {
   DIRECT
   CLASSROOM
   MEETING
+}
+
+model SessionAttendance {
+  id           String   @id @default(uuid())
+  session_id   String
+  user_id      String
+  joined_at    DateTime @default(now())
+  left_at      DateTime?
+  duration_seconds Int?
+  session      Session  @relation(fields: [session_id], references: [id], onDelete: Cascade)
+  user         User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@unique([session_id, user_id])
+  @@index([session_id])
+  @@index([user_id])
 }
