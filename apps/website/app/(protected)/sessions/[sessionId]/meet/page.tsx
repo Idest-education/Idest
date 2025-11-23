@@ -29,8 +29,17 @@ export default function SessionMeetPage() {
   const toggleParticipants = useMeetStore((state) => state.toggleParticipants);
   const setLiveKitConnected = useMeetStore((state) => state.setLiveKitConnected);
 
-  const { sendChatMessage, loadMessageHistory, emitToggleMedia, emitScreenShareEvent, leaveSession } =
-    useMeetClient({
+  const { 
+    sendChatMessage, 
+    loadMessageHistory, 
+    emitToggleMedia, 
+    emitScreenShareEvent, 
+    leaveSession,
+    startRecording,
+    stopRecording,
+    kickParticipant,
+    stopParticipantMedia
+  } = useMeetClient({
       sessionId,
       autoJoin: Boolean(sessionId),
     });
@@ -125,6 +134,8 @@ export default function SessionMeetPage() {
                   onLeave={leaveAndNavigate}
                   emitToggleMedia={emitToggleMedia}
                   emitScreenShareEvent={emitScreenShareEvent}
+                  startRecording={startRecording}
+                  stopRecording={stopRecording}
                   toggleChat={toggleChat}
                   toggleParticipants={toggleParticipants}
                 />
@@ -139,7 +150,10 @@ export default function SessionMeetPage() {
 
         {showParticipants && (
           <div className="flex-shrink-0">
-            <MeetParticipantsPanel />
+            <MeetParticipantsPanel 
+              kickParticipant={kickParticipant}
+              stopParticipantMedia={stopParticipantMedia}
+            />
           </div>
         )}
 
@@ -155,4 +169,3 @@ export default function SessionMeetPage() {
     </div>
   );
 }
-

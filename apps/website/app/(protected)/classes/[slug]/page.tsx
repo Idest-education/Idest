@@ -11,7 +11,7 @@ import {
   deleteSession,
 } from "@/services/session.service";
 import { ClassDetail } from "@/types/class";
-import { SessionData } from "@/types/session";
+import { SessionData, PaginatedResponse } from "@/types/session";
 import DefaultAvatar from "@/assets/default-avatar.png";
 import { BookOpen, Users, Clock, Award, Copy, CheckCircle2, PlusCircle } from "lucide-react";
 import LoadingScreen from "@/components/loading-screen";
@@ -19,7 +19,6 @@ import MemberCard from "@/components/class/member-card";
 import ConversationPopup from "@/components/conversation/ConversationPopup";
 import SessionCard from "@/components/session/session-card";
 import CreateSessionModal from "@/components/session/create-session-modal";
-import UpdateSessionModal from "@/components/session/update-session-modal";
 import { Button } from "@/components/ui/button";
 
 export default function ClassDetailPage() {
@@ -34,8 +33,6 @@ export default function ClassDetailPage() {
   const [classSessions, setClassSessions] = useState<SessionData[]>([]);
   const [sessionFilter, setSessionFilter] = useState<"upcoming" | "past">("upcoming");
   const [showCreateModal, setShowCreateModal] = useState(false);
-  const [showUpdateModal, setShowUpdateModal] = useState(false);
-  const [selectedSession, setSelectedSession] = useState<SessionData | null>(null);
   const [currentUserId, setCurrentUserId] = useState<string>("");
   const [userRole, setUserRole] = useState<string | null>(null);
   const [receiverName, setReceiverName] = useState<string>("");
@@ -71,13 +68,17 @@ export default function ClassDetailPage() {
         // For teachers and admins, use getAllSessions() and filter by class
         // For students, use getClassSessions() to get class-specific sessions
         if (userRole === "TEACHER" || userRole === "ADMIN") {
-          const res = await getAllSessions();
-          const allSessions = Array.isArray(res.data) ? res.data : [];
+          const res = await getAllSessions({ limit: 100 }); // Get more sessions since we're filtering locally
+          const allSessions = Array.isArray(res.data) 
+            ? res.data 
+            : (res.data as PaginatedResponse<SessionData>).data || [];
           // Filter sessions for this class
           sessions = allSessions.filter((s: SessionData) => s.class_id === classData.id);
         } else {
-          const res = await getClassSessions(classData.id);
-          sessions = Array.isArray(res.data) ? res.data : [];
+          const res = await getClassSessions(classData.id, { limit: 50 });
+          sessions = Array.isArray(res.data) 
+            ? res.data 
+            : (res.data as PaginatedResponse<SessionData>).data || [];
         }
 
         setClassSessions(sessions);
@@ -98,15 +99,19 @@ export default function ClassDetailPage() {
 
       // For teachers and admins, use getAllSessions() and filter by class
       // For students, use getClassSessions() to get class-specific sessions
-      if (userRole === "TEACHER" || userRole === "ADMIN") {
-        const res = await getAllSessions();
-        const allSessions = Array.isArray(res.data) ? res.data : [];
-        // Filter sessions for this class
-        sessions = allSessions.filter((s: SessionData) => s.class_id === classData.id);
-      } else {
-        const res = await getClassSessions(classData.id);
-        sessions = Array.isArray(res.data) ? res.data : [];
-      }
+        if (userRole === "TEACHER" || userRole === "ADMIN") {
+          const res = await getAllSessions({ limit: 100 });
+          const allSessions = Array.isArray(res.data) 
+            ? res.data 
+            : (res.data as PaginatedResponse<SessionData>).data || [];
+          // Filter sessions for this class
+          sessions = allSessions.filter((s: SessionData) => s.class_id === classData.id);
+        } else {
+          const res = await getClassSessions(classData.id, { limit: 50 });
+          sessions = Array.isArray(res.data) 
+            ? res.data 
+            : (res.data as PaginatedResponse<SessionData>).data || [];
+        }
 
       setClassSessions(sessions);
     } catch (err) {
@@ -125,11 +130,6 @@ export default function ClassDetailPage() {
     setActiveConversationId(conversationId);
     setShowChatPopup(true);
     setReceiverName(fullName);
-  };
-
-  const handleEditSession = (session: SessionData) => {
-    setSelectedSession(session);
-    setShowUpdateModal(true);
   };
 
   const handleEndSession = async (sessionId: string) => {
@@ -358,7 +358,6 @@ export default function ClassDetailPage() {
                   <SessionCard
                     key={s.id}
                     session={s}
-                    onEdit={handleEditSession}
                     onEnd={handleEndSession}
                     onDelete={handleDeleteSession}
                     currentUserId={currentUserId}
@@ -378,12 +377,6 @@ export default function ClassDetailPage() {
             onCreated={refreshSessions}
             classId={classData.id}
             className={classData.name}
-          />
-          <UpdateSessionModal
-            open={showUpdateModal}
-            onClose={() => setShowUpdateModal(false)}
-            onUpdated={refreshSessions}
-            session={selectedSession}
           />
         </>
       )}

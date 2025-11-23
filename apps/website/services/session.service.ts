@@ -1,12 +1,16 @@
 import { http } from "./http";
-import { CreateSessionPayload, UpdateSessionPayload } from "@/types/session";
+import { 
+  CreateSessionPayload, 
+  UpdateSessionPayload, 
+  PaginationDto 
+} from "@/types/session";
 
 /**
  * Get all sessions (for teachers and admins)
  */
-export async function getAllSessions() {
+export async function getAllSessions(pagination?: PaginationDto) {
   try {
-    const res = await http.get("/session");
+    const res = await http.get("/session", { params: pagination });
     return res.data;
   } catch (error: any) {
     if (error.response?.data) return error.response.data;
@@ -17,9 +21,9 @@ export async function getAllSessions() {
 /**
  * Get user's sessions (hosted, attended, and upcoming)
  */
-export async function getUserSessions() {
+export async function getUserSessions(pagination?: PaginationDto) {
   try {
-    const res = await http.get("/session/user");
+    const res = await http.get("/session/user", { params: pagination });
     return res.data;
   } catch (error: any) {
     if (error.response?.data) return error.response.data;
@@ -37,8 +41,8 @@ export async function getSessionById(id: string) {
   return res.data;
 }
 
-export async function getClassSessions(classId: string) {
-  const res = await http.get(`/session/class/${classId}`);
+export async function getClassSessions(classId: string, pagination?: PaginationDto) {
+  const res = await http.get(`/session/class/${classId}`, { params: pagination });
   return res.data;
 }
 
@@ -75,6 +79,28 @@ export async function endSession(id: string) {
 export async function deleteSession(id: string) {
   try {
     const res = await http.delete(`/session/${id}`);
+    return res.data;
+  } catch (error: any) {
+    if (error.response?.data) return error.response.data;
+    throw error;
+  }
+}
+
+// Attendance Methods
+
+export async function getSessionAttendance(sessionId: string) {
+  try {
+    const res = await http.get(`/session/${sessionId}/attendance`);
+    return res.data;
+  } catch (error: any) {
+    if (error.response?.data) return error.response.data;
+    throw error;
+  }
+}
+
+export async function getUserAttendance(pagination?: PaginationDto) {
+  try {
+    const res = await http.get("/session/user/attendance", { params: pagination });
     return res.data;
   } catch (error: any) {
     if (error.response?.data) return error.response.data;

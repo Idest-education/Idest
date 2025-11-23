@@ -11,6 +11,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
 import { createSession } from "@/services/session.service";
 import { CreateSessionPayload } from "@/types/session";
 
@@ -39,6 +40,7 @@ export default function CreateSessionModal({
     topic: "",
     start_time: "",
     end_time: "",
+    is_recorded: false,
   });
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -56,8 +58,10 @@ export default function CreateSessionModal({
       const payload: CreateSessionPayload = {
         class_id: classId,
         start_time: startTime,
-        end_time: endTime,
-        is_recorded: false,
+        // Only include end_time if provided (matches new backend logic)
+        ...(endTime && { end_time: endTime }),
+        // Explicitly set is_recorded (matches new backend logic)
+        is_recorded: formData.is_recorded,
         metadata: {
           topic: formData.topic || "Untitled session",
         },
@@ -65,10 +69,14 @@ export default function CreateSessionModal({
 
       const res = await createSession(payload);
 
-      if (res.statusCode === 200) {
-        setFormData({ topic: "", start_time: "", end_time: "" });
+      if (res.statusCode === 201) { // Assuming 201 Created
+        setFormData({ topic: "", start_time: "", end_time: "", is_recorded: false });
         onCreated();
         onClose();
+      } else if (res.statusCode === 200) { // Fallback for 200 OK
+         setFormData({ topic: "", start_time: "", end_time: "", is_recorded: false });
+         onCreated();
+         onClose();
       } else {
         setError(res.message || "Failed to create session");
       }
@@ -80,7 +88,7 @@ export default function CreateSessionModal({
   };
 
   const handleClose = () => {
-    setFormData({ topic: "", start_time: "", end_time: "" });
+    setFormData({ topic: "", start_time: "", end_time: "", is_recorded: false });
     setError("");
     onClose();
   };
@@ -159,6 +167,19 @@ export default function CreateSessionModal({
               </p>
             </div>
 
+            <div className="flex items-center space-x-2">
+              <Checkbox 
+                id="is_recorded" 
+                checked={formData.is_recorded}
+                onCheckedChange={(checked) => 
+                  setFormData({ ...formData, is_recorded: checked as boolean })
+                }
+              />
+              <Label htmlFor="is_recorded" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                Record this session automatically
+              </Label>
+            </div>
+
             {error && (
               <div className="text-sm text-red-600 bg-red-50 p-3 rounded-md">
                 {error}
@@ -184,4 +205,3 @@ export default function CreateSessionModal({
     </Dialog>
   );
 }
-

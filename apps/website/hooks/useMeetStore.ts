@@ -30,11 +30,12 @@ export interface MeetStore extends MeetState {
   prependChatMessages: (messages: MeetChatMessage[], hasMore: boolean) => void;
   setMessagesLoading: (loading: boolean) => void;
 
-  // Media + screen share
+  // Media + screen share + recording
   setAudioEnabled: (enabled: boolean) => void;
   setVideoEnabled: (enabled: boolean) => void;
   setScreenSharing: (isSharing: boolean) => void;
   setActiveScreenSharer: (userId: string | null) => void;
+  setRecording: (isRecording: boolean) => void; // NEW
 
   // UI
   toggleChat: (value?: boolean) => void;
@@ -57,6 +58,7 @@ const initialState: MeetState = {
   isVideoEnabled: true,
   isScreenSharing: false,
   activeScreenSharer: null,
+  isRecording: false, // NEW
   participants: {},
   messages: [],
   hasMoreMessages: true,
@@ -152,6 +154,7 @@ export const useMeetStore = create<MeetStore>((set, _get) => ({
   setVideoEnabled: (isVideoEnabled) => set({ isVideoEnabled }),
   setScreenSharing: (isScreenSharing) => set({ isScreenSharing }),
   setActiveScreenSharer: (activeScreenSharer) => set({ activeScreenSharer }),
+  setRecording: (isRecording) => set({ isRecording }), // NEW
 
   toggleChat: (value) =>
     set((state) => {
@@ -182,4 +185,3 @@ export const meetSelectors = {
   participantsArray: (state: MeetStore) => Object.values(state.participants),
   chatMessages: (state: MeetStore) => state.messages,
 };
-

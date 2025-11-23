@@ -92,12 +92,12 @@ export default function SessionCard({
                 {session.host.full_name}
               </span>
             </p>
-            {session.metadata?.attendees_count !== undefined && (
+            {(session.attendance_summary?.total_attendees !== undefined || session.metadata?.attendees_count !== undefined) && (
               <p className="flex items-center gap-2">
                 <Users className="w-4 h-4" />
                 Attendees:{" "}
                 <span className="font-medium text-gray-900">
-                  {session.metadata.attendees_count}
+                  {session.attendance_summary?.total_attendees ?? session.metadata?.attendees_count}
                 </span>
               </p>
             )}

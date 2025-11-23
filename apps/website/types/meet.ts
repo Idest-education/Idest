@@ -57,6 +57,59 @@ export interface ScreenSharePayload {
   streamId?: string;
 }
 
+// New Control Payloads
+export interface KickParticipantPayload {
+  sessionId: string;
+  targetUserId: string;
+}
+
+export interface StopParticipantMediaPayload {
+  sessionId: string;
+  targetUserId: string;
+  mediaType: 'audio' | 'video' | 'both';
+}
+
+export interface StartRecordingPayload {
+  sessionId: string;
+}
+
+export interface StopRecordingPayload {
+  sessionId: string;
+}
+
+// New Events
+export interface ParticipantKickedEvent {
+  sessionId: string;
+  kickedUserId: string;
+  kickedUserName: string;
+  kickedByUserId: string;
+  kickedByUserName: string;
+  reason?: string;
+}
+
+export interface ParticipantMediaStoppedEvent {
+  sessionId: string;
+  targetUserId: string;
+  targetUserName: string;
+  stoppedByUserId: string;
+  stoppedByUserName: string;
+  mediaType: 'audio' | 'video' | 'both';
+}
+
+export interface RecordingStartedEvent {
+  sessionId: string;
+  startedByUserId: string;
+  startedByUserName: string;
+  timestamp: string;
+}
+
+export interface RecordingStoppedEvent {
+  sessionId: string;
+  stoppedByUserId: string;
+  stoppedByUserName: string;
+  timestamp: string;
+}
+
 export interface MeetState {
   // Connection state
   sessionId: string | null;
@@ -71,6 +124,7 @@ export interface MeetState {
   isVideoEnabled: boolean;
   isScreenSharing: boolean;
   activeScreenSharer: string | null;
+  isRecording: boolean; // NEW
 
   // Participants
   participants: Record<string, MeetParticipant>;
@@ -88,7 +142,3 @@ export interface MeetState {
   error: string | null;
   lastUpdatedAt: number;
 }
-
-
-
-

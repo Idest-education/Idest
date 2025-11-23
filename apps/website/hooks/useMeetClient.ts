@@ -14,8 +14,17 @@ import {
   MeetParticipant,
   ScreenSharePayload,
   ToggleMediaPayload,
+  KickParticipantPayload,
+  StopParticipantMediaPayload,
+  StartRecordingPayload,
+  StopRecordingPayload,
+  ParticipantKickedEvent,
+  ParticipantMediaStoppedEvent,
+  RecordingStartedEvent,
+  RecordingStoppedEvent,
 } from "@/types/meet";
 import { getLivekitToken } from "@/services/meet.service";
+import { useRouter } from "next/navigation";
 
 // Notification sound utility
 let notificationAudio: HTMLAudioElement | null = null;
@@ -47,6 +56,8 @@ interface UseMeetClientOptions {
 export function useMeetClient({ sessionId, autoJoin = true }: UseMeetClientOptions) {
   const supabase = useMemo(() => createSupabaseClient(), []);
   const socketRef = useRef<Socket | null>(null);
+  const router = useRouter();
+
   const setSessionId = useMeetStore((state) => state.setSessionId);
   const setJoining = useMeetStore((state) => state.setJoining);
   const setSocketConnected = useMeetStore((state) => state.setSocketConnected);
@@ -64,6 +75,7 @@ export function useMeetClient({ sessionId, autoJoin = true }: UseMeetClientOptio
   const setVideoEnabled = useMeetStore((state) => state.setVideoEnabled);
   const setScreenSharing = useMeetStore((state) => state.setScreenSharing);
   const setActiveScreenSharer = useMeetStore((state) => state.setActiveScreenSharer);
+  const setRecording = useMeetStore((state) => state.setRecording); // NEW
   const setError = useMeetStore((state) => state.setError);
   const reset = useMeetStore((state) => state.reset);
   const getStoreState = useMeetStore.getState;
@@ -285,10 +297,74 @@ export function useMeetClient({ sessionId, autoJoin = true }: UseMeetClientOptio
 
       socket.on("screen-share-error", (payload: { message: string }) => {
         setError(payload.message);
+        // Revert local state if we tried to share but failed
+        const state = getStoreState();
+        if (state.isScreenSharing) {
+          setScreenSharing(false);
+        }
+      });
+
+      // --- NEW EVENTS ---
+
+      socket.on("participant-kicked", (payload: ParticipantKickedEvent) => {
+        toast.info(`${payload.kickedUserName} was kicked by ${payload.kickedByUserName}`);
+        removeParticipant(payload.kickedUserId);
+      });
+
+      socket.on("kicked-from-session", () => {
+        toast.error("You have been kicked from the session.");
+        leaveSession(false); // Don't emit leave event since we're already kicked
+        router.push("/");
+      });
+
+      socket.on("participant-media-stopped", (payload: ParticipantMediaStoppedEvent) => {
+        setParticipantMediaState(payload.targetUserId, {
+          isAudioEnabled: payload.mediaType === 'audio' || payload.mediaType === 'both' ? false : undefined,
+          isVideoEnabled: payload.mediaType === 'video' || payload.mediaType === 'both' ? false : undefined,
+        });
+        
+        const state = getStoreState();
+        if (payload.targetUserId === state.localUserId) {
+          if (payload.mediaType === 'audio' || payload.mediaType === 'both') {
+            setAudioEnabled(false);
+            toast.warning(`Your audio was muted by ${payload.stoppedByUserName}`);
+          }
+          if (payload.mediaType === 'video' || payload.mediaType === 'both') {
+            setVideoEnabled(false);
+            toast.warning(`Your video was stopped by ${payload.stoppedByUserName}`);
+          }
+        }
+      });
+
+      socket.on("recording-started", (payload: RecordingStartedEvent) => {
+        setRecording(true);
+        toast.info(`Recording started by ${payload.startedByUserName}`);
+      });
+
+      socket.on("recording-stopped", (payload: RecordingStoppedEvent) => {
+        setRecording(false);
+        toast.info(`Recording stopped by ${payload.stoppedByUserName}`);
+      });
+
+      // Error handlers for new actions
+      socket.on("kick-participant-error", (payload: { message: string }) => {
+        toast.error(payload.message);
+      });
+      
+      socket.on("stop-participant-media-error", (payload: { message: string }) => {
+        toast.error(payload.message);
+      });
+      
+      socket.on("start-recording-error", (payload: { message: string }) => {
+        toast.error(payload.message);
+        setRecording(false);
+      });
+
+      socket.on("stop-recording-error", (payload: { message: string }) => {
+        toast.error(payload.message);
       });
     },
     [
-      addChatMessage,
       handleJoinSuccess,
       prependChatMessages,
       removeParticipant,
@@ -299,9 +375,15 @@ export function useMeetClient({ sessionId, autoJoin = true }: UseMeetClientOptio
       setMessagesLoading,
       setParticipantMediaState,
       setParticipants,
+      setRecording,
+      setScreenSharing,
       setSocketConnected,
       setVideoEnabled,
       upsertParticipant,
+      getStoreState,
+      leaveSession,
+      router,
+      setJoining
     ],
   );
 
@@ -416,6 +498,36 @@ export function useMeetClient({ sessionId, autoJoin = true }: UseMeetClientOptio
     [sessionId, setScreenSharing],
   );
 
+  // --- NEW ACTIONS ---
+
+  const kickParticipant = useCallback((userId: string) => {
+    const socket = socketRef.current;
+    if (!sessionId || !socket?.connected) return;
+    const payload: KickParticipantPayload = { sessionId, targetUserId: userId };
+    socket.emit("kick-participant", payload);
+  }, [sessionId]);
+
+  const stopParticipantMedia = useCallback((userId: string, mediaType: 'audio' | 'video' | 'both') => {
+    const socket = socketRef.current;
+    if (!sessionId || !socket?.connected) return;
+    const payload: StopParticipantMediaPayload = { sessionId, targetUserId: userId, mediaType };
+    socket.emit("stop-participant-media", payload);
+  }, [sessionId]);
+
+  const startRecording = useCallback(() => {
+    const socket = socketRef.current;
+    if (!sessionId || !socket?.connected) return;
+    const payload: StartRecordingPayload = { sessionId };
+    socket.emit("start-recording", payload);
+  }, [sessionId]);
+
+  const stopRecording = useCallback(() => {
+    const socket = socketRef.current;
+    if (!sessionId || !socket?.connected) return;
+    const payload: StopRecordingPayload = { sessionId };
+    socket.emit("stop-recording", payload);
+  }, [sessionId]);
+
   useEffect(() => {
     if (!autoJoin || !sessionId) return;
     joinSession(sessionId);
@@ -431,6 +543,9 @@ export function useMeetClient({ sessionId, autoJoin = true }: UseMeetClientOptio
     requestParticipantsSnapshot,
     emitToggleMedia,
     emitScreenShareEvent,
+    kickParticipant, // NEW
+    stopParticipantMedia, // NEW
+    startRecording, // NEW
+    stopRecording, // NEW
   };
 }
-
