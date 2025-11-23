@@ -38,11 +38,10 @@ export class CreateSessionDto {
   @ApiPropertyOptional({
     description: 'Whether this session should be recorded',
     example: false,
-    default: false,
   })
   @IsBoolean()
   @IsOptional()
-  is_recorded?: boolean = false;
+  is_recorded?: boolean;
 
   @ApiPropertyOptional({
     description: 'Additional metadata for the session',

@@ -35,32 +35,61 @@ export class SessionService {
         );
       }
 
-      const session: SessionResponseDto =
-        await this.prisma.session.create({
-          data: {
-            class_id: dto.class_id,
-            host_id: user.id,
-            start_time: new Date(dto.start_time),
-            end_time: dto.end_time ? new Date(dto.end_time) : null,
-            is_recorded: dto.is_recorded || false,
-            metadata: dto.metadata || {},
-          },
-          include: {
-            class: {
-              select: {
-                id: true,
-                name: true,
-              },
+      // Validate start_time
+      const startTime = new Date(dto.start_time);
+      if (isNaN(startTime.getTime())) {
+        throw new UnprocessableEntityException('Invalid start_time format');
+      }
+
+      // Validate end_time if provided
+      let endTime: Date | null = null;
+      if (dto.end_time !== undefined) {
+        endTime = new Date(dto.end_time);
+        if (isNaN(endTime.getTime())) {
+          throw new UnprocessableEntityException('Invalid end_time format');
+        }
+        if (endTime <= startTime) {
+          throw new UnprocessableEntityException(
+            'end_time must be after start_time',
+          );
+        }
+      }
+
+      const sessionData: any = {
+        class_id: dto.class_id,
+        host_id: user.id,
+        start_time: startTime,
+      };
+
+      // Only set optional fields if explicitly provided
+      if (dto.end_time !== undefined) {
+        sessionData.end_time = endTime;
+      }
+      if (dto.is_recorded !== undefined) {
+        sessionData.is_recorded = dto.is_recorded;
+      }
+      if (dto.metadata !== undefined) {
+        sessionData.metadata = dto.metadata;
+      }
+
+      const session: SessionResponseDto = await this.prisma.session.create({
+        data: sessionData,
+        include: {
+          class: {
+            select: {
+              id: true,
+              name: true,
             },
-            host: {
-              select: {
-                id: true,
-                full_name: true,
-                email: true,
-              },
+          },
+          host: {
+            select: {
+              id: true,
+              full_name: true,
+              email: true,
             },
           },
-        });
+        },
+      });
 
       return session;
     } catch (error) {
@@ -85,25 +114,27 @@ export class SessionService {
         throw new ForbiddenException('Access denied to this class');
       }
 
-      const sessions: SessionResponseDto[] = await this.prisma.session.findMany({
-        where: { class_id: classId },
-        include: {
-          host: {
-            select: {
-              id: true,
-              full_name: true,
-              email: true,
+      const sessions: SessionResponseDto[] = await this.prisma.session.findMany(
+        {
+          where: { class_id: classId },
+          include: {
+            host: {
+              select: {
+                id: true,
+                full_name: true,
+                email: true,
+              },
+            },
+            class: {
+              select: {
+                id: true,
+                name: true,
+              },
             },
           },
-          class: {
-            select: {
-              id: true,
-              name: true,
-            },
-          },
+          orderBy: { start_time: 'desc' },
         },
-        orderBy: { start_time: 'desc' },
-      });
+      );
 
       return sessions;
     } catch (error) {
@@ -221,13 +252,37 @@ export class SessionService {
 
       const updateData: any = {};
 
-      if (dto.start_time) updateData.start_time = new Date(dto.start_time);
-      if (dto.end_time) updateData.end_time = new Date(dto.end_time);
+      // Validate and update start_time if provided
+      if (dto.start_time) {
+        const newStartTime = new Date(dto.start_time);
+        if (isNaN(newStartTime.getTime())) {
+          throw new UnprocessableEntityException('Invalid start_time format');
+        }
+        updateData.start_time = newStartTime;
+      }
+
+      // Validate and update end_time if provided
+      if (dto.end_time !== undefined) {
+        const newEndTime = dto.end_time ? new Date(dto.end_time) : null;
+        if (dto.end_time && isNaN(newEndTime!.getTime())) {
+          throw new UnprocessableEntityException('Invalid end_time format');
+        }
+        const effectiveStartTime = updateData.start_time || session.start_time;
+        if (newEndTime && newEndTime <= effectiveStartTime) {
+          throw new UnprocessableEntityException(
+            'end_time must be after start_time',
+          );
+        }
+        updateData.end_time = newEndTime;
+      }
+
       if (dto.is_recorded !== undefined)
         updateData.is_recorded = dto.is_recorded;
-      if (dto.recording_url) updateData.recording_url = dto.recording_url;
-      if (dto.whiteboard_data) updateData.whiteboard_data = dto.whiteboard_data;
-      if (dto.metadata) updateData.metadata = dto.metadata;
+      if (dto.recording_url !== undefined)
+        updateData.recording_url = dto.recording_url;
+      if (dto.whiteboard_data !== undefined)
+        updateData.whiteboard_data = dto.whiteboard_data;
+      if (dto.metadata !== undefined) updateData.metadata = dto.metadata;
 
       const updatedSession = await this.prisma.session.update({
         where: { id: sessionId },
@@ -308,43 +363,45 @@ export class SessionService {
     try {
       const now = new Date();
 
-      const hostedSessions: SessionResponseDto[] = await this.prisma.session.findMany({
-        where: {
-          host_id: userId,
-          start_time: { gte: now },
-        },
-        include: {
-          class: {
-            select: { id: true, name: true },
+      const hostedSessions: SessionResponseDto[] =
+        await this.prisma.session.findMany({
+          where: {
+            host_id: userId,
+            start_time: { gte: now },
           },
-          host: {
-            select: { id: true, full_name: true, email: true },
+          include: {
+            class: {
+              select: { id: true, name: true },
+            },
+            host: {
+              select: { id: true, full_name: true, email: true },
+            },
           },
-        },
-        orderBy: { start_time: 'asc' },
-      });
+          orderBy: { start_time: 'asc' },
+        });
 
-      const memberSessions: SessionResponseDto[] = await this.prisma.session.findMany({
-        where: {
-          start_time: { gte: now },
-          class: {
-            OR: [
-              { created_by: userId },
-              { teachers: { some: { teacher_id: userId } } },
-              { members: { some: { student_id: userId, status: 'active' } } },
-            ],
+      const memberSessions: SessionResponseDto[] =
+        await this.prisma.session.findMany({
+          where: {
+            start_time: { gte: now },
+            class: {
+              OR: [
+                { created_by: userId },
+                { teachers: { some: { teacher_id: userId } } },
+                { members: { some: { student_id: userId, status: 'active' } } },
+              ],
+            },
           },
-        },
-        include: {
-          class: {
-            select: { id: true, name: true },
+          include: {
+            class: {
+              select: { id: true, name: true },
+            },
+            host: {
+              select: { id: true, full_name: true, email: true },
+            },
           },
-          host: {
-            select: { id: true, full_name: true, email: true },
-          },
-        },
-        orderBy: { start_time: 'asc' },
-      });
+          orderBy: { start_time: 'asc' },
+        });
 
       // Combine and deduplicate
       const allSessions = [...hostedSessions, ...memberSessions];
@@ -356,14 +413,19 @@ export class SessionService {
       return uniqueSessions;
     } catch (error) {
       console.error('Error getting upcoming sessions:', error);
-      throw new UnprocessableEntityException('Failed to retrieve upcoming sessions');
+      throw new UnprocessableEntityException(
+        'Failed to retrieve upcoming sessions',
+      );
     }
   }
 
   /**
    * End a session (set end time to now)
    */
-  async endSession(sessionId: string, userId: string): Promise<SessionResponseDto> {
+  async endSession(
+    sessionId: string,
+    userId: string,
+  ): Promise<SessionResponseDto> {
     try {
       const session = await this.prisma.session.findUnique({
         where: { id: sessionId },
@@ -384,7 +446,8 @@ export class SessionService {
         );
       }
 
-      if (session.end_time && session.end_time < new Date()) {
+      // Check if session is already ended
+      if (session.end_time && session.end_time <= new Date()) {
         throw new ForbiddenException('Session has already ended');
       }
 
@@ -532,24 +595,26 @@ export class SessionService {
         );
       }
 
-      const sessions: SessionResponseDto[] = await this.prisma.session.findMany({
-        include: {
-          host: {
-            select: {
-              id: true,
-              full_name: true,
-              email: true,
+      const sessions: SessionResponseDto[] = await this.prisma.session.findMany(
+        {
+          include: {
+            host: {
+              select: {
+                id: true,
+                full_name: true,
+                email: true,
+              },
+            },
+            class: {
+              select: {
+                id: true,
+                name: true,
+              },
             },
           },
-          class: {
-            select: {
-              id: true,
-              name: true,
-            },
-          },
+          orderBy: { start_time: 'desc' },
         },
-        orderBy: { start_time: 'desc' },
-      });
+      );
 
       return sessions;
     } catch (error) {
@@ -567,43 +632,51 @@ export class SessionService {
   async getAllUserSessions(userId: string): Promise<SessionResponseDto[]> {
     try {
       // Get all sessions where user is involved (hosted or member/teacher)
-      const sessions: SessionResponseDto[] = await this.prisma.session.findMany({
-        where: {
-          OR: [
-            { host_id: userId },
-            {
-              class: {
-                OR: [
-                  { created_by: userId },
-                  { teachers: { some: { teacher_id: userId } } },
-                  { members: { some: { student_id: userId, status: 'active' } } },
-                ],
+      const sessions: SessionResponseDto[] = await this.prisma.session.findMany(
+        {
+          where: {
+            OR: [
+              { host_id: userId },
+              {
+                class: {
+                  OR: [
+                    { created_by: userId },
+                    { teachers: { some: { teacher_id: userId } } },
+                    {
+                      members: {
+                        some: { student_id: userId, status: 'active' },
+                      },
+                    },
+                  ],
+                },
+              },
+            ],
+          },
+          include: {
+            host: {
+              select: {
+                id: true,
+                full_name: true,
+                email: true,
               },
             },
-          ],
-        },
-        include: {
-          host: {
-            select: {
-              id: true,
-              full_name: true,
-              email: true,
+            class: {
+              select: {
+                id: true,
+                name: true,
+              },
             },
           },
-          class: {
-            select: {
-              id: true,
-              name: true,
-            },
-          },
+          orderBy: { start_time: 'desc' },
         },
-        orderBy: { start_time: 'desc' },
-      });
+      );
 
       return sessions;
     } catch (error) {
       console.error('Error getting all user sessions:', error);
-      throw new InternalServerErrorException('Failed to retrieve user sessions');
+      throw new InternalServerErrorException(
+        'Failed to retrieve user sessions',
+      );
     }
   }
 }
