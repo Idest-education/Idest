@@ -85,6 +85,11 @@ export class MeetGateway
       client.id,
     );
     if (disconnectedUser) {
+      // Clear screen share if user was sharing
+      this.meetService.clearScreenShareOnUserLeave(
+        disconnectedUser.userId,
+        disconnectedUser.sessionId,
+      );
       this.handleUserLeft(disconnectedUser);
     }
   }
@@ -166,6 +171,28 @@ export class MeetGateway
       };
 
       client.emit('session-participants', participantsData);
+
+      // Send current screen share status if someone is sharing
+      const activeScreenSharer = this.meetService.getActiveScreenSharer(
+        data.sessionId,
+      );
+      if (activeScreenSharer) {
+        const sharerUser = this.meetService.getUserBySocket(
+          this.meetService.getUserSocketId(
+            activeScreenSharer,
+            data.sessionId,
+          ) || '',
+        );
+        if (sharerUser) {
+          client.emit('screen-share-started', {
+            sessionId: data.sessionId,
+            userId: sharerUser.userId,
+            userFullName: sharerUser.userFullName,
+            userAvatar: sharerUser.userAvatar,
+            isSharing: true,
+          });
+        }
+      }
 
       // Prepare LiveKit credentials for this participant
       let liveKitCredentials: LiveKitCredentials | null = null;
@@ -261,6 +288,9 @@ export class MeetGateway
 
       // Leave the socket room
       await client.leave(sessionId);
+
+      // Clear screen share if user was sharing
+      this.meetService.clearScreenShareOnUserLeave(user.userId, sessionId);
 
       // Remove from tracking
       this.meetService.removeConnectedUserBySocket(client.id);
@@ -443,6 +473,23 @@ export class MeetGateway
         return;
       }
 
+      // Check if someone is already sharing screen
+      const activeSharer = this.meetService.getActiveScreenSharer(
+        data.sessionId,
+      );
+      if (activeSharer && activeSharer !== user.userId) {
+        const activeSharerUser = this.meetService.getUserBySocket(
+          this.meetService.getUserSocketId(activeSharer, data.sessionId) || '',
+        );
+        client.emit('screen-share-error', {
+          message: `Screen sharing is already active by ${activeSharerUser?.userFullName || 'another participant'}. Please wait for them to stop sharing.`,
+        });
+        return;
+      }
+
+      // Set this user as active screen sharer
+      this.meetService.setActiveScreenSharer(data.sessionId, user.userId);
+
       const screenShareResponse: ScreenShareResponseDto = {
         sessionId: data.sessionId,
         userId: user.userId,
@@ -494,6 +541,20 @@ export class MeetGateway
         client.emit('screen-share-error', { message: 'Not in this session' });
         return;
       }
+
+      // Check if this user is the active screen sharer
+      const activeSharer = this.meetService.getActiveScreenSharer(
+        data.sessionId,
+      );
+      if (activeSharer !== user.userId) {
+        client.emit('screen-share-error', {
+          message: 'You are not currently sharing screen',
+        });
+        return;
+      }
+
+      // Clear active screen sharer
+      this.meetService.clearActiveScreenSharer(data.sessionId);
 
       const screenShareResponse: ScreenShareResponseDto = {
         sessionId: data.sessionId,
@@ -622,6 +683,22 @@ export class MeetGateway
         data.targetUserId,
         data.sessionId,
       );
+
+      // Clear screen share if target user is sharing
+      const wasSharingScreen =
+        this.meetService.getActiveScreenSharer(data.sessionId) ===
+        data.targetUserId;
+      if (wasSharingScreen) {
+        this.meetService.clearActiveScreenSharer(data.sessionId);
+        // Notify all participants that screen share stopped
+        this.server.to(data.sessionId).emit('screen-share-stopped', {
+          sessionId: data.sessionId,
+          userId: data.targetUserId,
+          userFullName: targetUserDetails.full_name,
+          userAvatar: targetUserDetails.avatar_url,
+          isSharing: false,
+        });
+      }
 
       // Kick the participant (includes authorization check)
       await this.meetService.kickParticipant(

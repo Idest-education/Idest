@@ -25,6 +25,9 @@ export interface LiveKitCredentials {
 
 @Injectable()
 export class MeetService {
+  // Track active screen sharer per session: sessionId -> userId
+  private activeScreenSharers = new Map<string, string>();
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly userService: UserService,
@@ -376,6 +379,44 @@ export class MeetService {
   }
 
   /**
+   * Check if someone is currently sharing screen in a session
+   */
+  isScreenSharingActive(sessionId: string): boolean {
+    return this.activeScreenSharers.has(sessionId);
+  }
+
+  /**
+   * Get the user ID of the active screen sharer in a session
+   */
+  getActiveScreenSharer(sessionId: string): string | null {
+    return this.activeScreenSharers.get(sessionId) || null;
+  }
+
+  /**
+   * Set active screen sharer for a session
+   */
+  setActiveScreenSharer(sessionId: string, userId: string): void {
+    this.activeScreenSharers.set(sessionId, userId);
+  }
+
+  /**
+   * Clear active screen sharer for a session
+   */
+  clearActiveScreenSharer(sessionId: string): void {
+    this.activeScreenSharers.delete(sessionId);
+  }
+
+  /**
+   * Clear screen share state when user disconnects or leaves
+   */
+  clearScreenShareOnUserLeave(userId: string, sessionId: string): void {
+    const activeSharer = this.activeScreenSharers.get(sessionId);
+    if (activeSharer === userId) {
+      this.activeScreenSharers.delete(sessionId);
+    }
+  }
+
+  /**
    * Save a meeting chat message to the database
    */
   async saveMeetingMessage(
@@ -671,7 +712,7 @@ export class MeetService {
     );
     if (!canControl) {
       throw new ForbiddenException(
-        'You do not have permission to control this participant\'s media',
+        "You do not have permission to control this participant's media",
       );
     }
 
@@ -771,8 +812,7 @@ export class MeetService {
       throw new NotFoundException(`Session ${sessionId} not found`);
     }
 
-    const metadata =
-      (session.metadata as Record<string, unknown>) || {};
+    const metadata = (session.metadata as Record<string, unknown>) || {};
     const egressId = metadata.recordingEgressId as string | undefined;
 
     if (!egressId) {
