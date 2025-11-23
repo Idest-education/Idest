@@ -21,6 +21,17 @@ export class AttendanceRecordDto {
   })
   duration_seconds?: number;
 
+  @ApiProperty({
+    description: 'Whether the user has been marked as attended (after 5 minutes)',
+    example: false,
+  })
+  is_attended: boolean;
+
+  @ApiPropertyOptional({
+    description: 'Time when user was marked as attended',
+  })
+  attended_at?: Date;
+
   @ApiPropertyOptional({ description: 'User details' })
   user?: {
     id: string;
@@ -39,6 +50,11 @@ export class SessionAttendanceSummaryDto {
 
   @ApiProperty({ description: 'Number of currently active attendees' })
   active_attendees: number;
+
+  @ApiProperty({
+    description: 'Number of attendees who stayed for 5+ minutes (marked as attended)',
+  })
+  attended_count: number;
 
   @ApiProperty({ description: 'Average attendance duration in seconds' })
   average_duration_seconds: number;

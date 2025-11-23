@@ -187,6 +187,8 @@ model SessionAttendance {
   joined_at        DateTime  @default(now())
   left_at          DateTime?
   duration_seconds Int?
+  is_attended      Boolean   @default(false)
+  attended_at      DateTime?
   session          Session   @relation(fields: [session_id], references: [id], onDelete: Cascade)
   user             User      @relation(fields: [user_id], references: [id], onDelete: Cascade)
 

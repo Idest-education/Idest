@@ -896,6 +896,8 @@ export class SessionService {
           joined_at: updated.joined_at,
           left_at: updated.left_at || undefined,
           duration_seconds: updated.duration_seconds || undefined,
+          is_attended: updated.is_attended || false,
+          attended_at: updated.attended_at || undefined,
           user: updated.user,
         };
       }
@@ -925,6 +927,8 @@ export class SessionService {
         joined_at: attendance.joined_at,
         left_at: attendance.left_at || undefined,
         duration_seconds: attendance.duration_seconds || undefined,
+        is_attended: attendance.is_attended || false,
+        attended_at: attendance.attended_at || undefined,
         user: attendance.user,
       };
     } catch (error) {
@@ -935,6 +939,42 @@ export class SessionService {
         throw error;
       }
       throw new InternalServerErrorException('Failed to record attendance');
+    }
+  }
+
+  /**
+   * Mark user as attended (after 5 minutes of joining)
+   */
+  async markAsAttended(sessionId: string, userId: string): Promise<void> {
+    try {
+      const attendance = await (
+        this.prisma as any
+      ).sessionAttendance.findUnique({
+        where: {
+          session_id_user_id: {
+            session_id: sessionId,
+            user_id: userId,
+          },
+        },
+      });
+
+      if (!attendance) {
+        return; // No attendance record found, nothing to update
+      }
+
+      // Only mark if not already marked and user hasn't left
+      if (!attendance.is_attended && !attendance.left_at) {
+        await (this.prisma as any).sessionAttendance.update({
+          where: { id: attendance.id },
+          data: {
+            is_attended: true,
+            attended_at: new Date(),
+          },
+        });
+      }
+    } catch (error) {
+      console.error('Error marking user as attended:', error);
+      // Don't throw - this is best effort
     }
   }
 
@@ -1023,6 +1063,7 @@ export class SessionService {
 
       const activeAttendees = attendances.filter((a) => !a.left_at).length;
       const totalAttendees = attendances.length;
+      const attendedCount = attendances.filter((a) => a.is_attended).length;
 
       const durations = attendances
         .filter((a) => a.duration_seconds !== null)
@@ -1041,6 +1082,8 @@ export class SessionService {
         joined_at: a.joined_at,
         left_at: a.left_at || undefined,
         duration_seconds: a.duration_seconds || undefined,
+        is_attended: a.is_attended || false,
+        attended_at: a.attended_at || undefined,
         user: a.user,
       }));
 
@@ -1048,6 +1091,7 @@ export class SessionService {
         session_id: sessionId,
         total_attendees: totalAttendees,
         active_attendees: activeAttendees,
+        attended_count: attendedCount,
         average_duration_seconds: averageDuration,
         attendees: attendeeRecords,
       };
@@ -1114,6 +1158,8 @@ export class SessionService {
           joined_at: a.joined_at,
           left_at: a.left_at || undefined,
           duration_seconds: a.duration_seconds || undefined,
+          is_attended: a.is_attended || false,
+          attended_at: a.attended_at || undefined,
           user: a.user,
         })),
         pagination: {

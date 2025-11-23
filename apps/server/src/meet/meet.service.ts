@@ -379,6 +379,13 @@ export class MeetService {
   }
 
   /**
+   * Get connected user by user ID and session ID
+   */
+  getUser(userId: string, sessionId: string): ConnectedUser | null {
+    return this.connectedUsersManager.getUser(userId, sessionId);
+  }
+
+  /**
    * Check if someone is currently sharing screen in a session
    */
   isScreenSharingActive(sessionId: string): boolean {

@@ -49,6 +49,7 @@ import {
 } from './dto/room-events.dto';
 import { ConnectedUser } from './utils/connected-users-manager';
 import { LiveKitCredentials } from './meet.service';
+import { SessionService } from 'src/session/session.service';
 
 @WebSocketGateway({
   cors: {
@@ -66,8 +67,13 @@ export class MeetGateway
   server: Server;
 
   private readonly logger = new Logger(MeetGateway.name);
+  // Track scheduled attendance marking timers: sessionId_userId -> NodeJS.Timeout
+  private attendanceTimers = new Map<string, NodeJS.Timeout>();
 
-  constructor(private readonly meetService: MeetService) {}
+  constructor(
+    private readonly meetService: MeetService,
+    private readonly sessionService: SessionService,
+  ) {}
 
   afterInit() {
     this.logger.log('WebSocket Meet Gateway initialized on shared HTTP port');
@@ -90,6 +96,15 @@ export class MeetGateway
         disconnectedUser.userId,
         disconnectedUser.sessionId,
       );
+
+      // Clear attendance timer if user disconnects before 5 minutes
+      const timerKey = `${disconnectedUser.sessionId}_${disconnectedUser.userId}`;
+      const timer = this.attendanceTimers.get(timerKey);
+      if (timer) {
+        clearTimeout(timer);
+        this.attendanceTimers.delete(timerKey);
+      }
+
       this.handleUserLeft(disconnectedUser);
     }
   }
@@ -238,6 +253,61 @@ export class MeetGateway
         this.logger.warn(
           `Failed to load message history for session ${data.sessionId}: ${error.message}`,
         );
+      }
+
+      // Record attendance automatically when user joins
+      try {
+        await this.sessionService.recordAttendance(data.sessionId, userId);
+        this.logger.log(
+          `Recorded attendance for user ${userId} in session ${data.sessionId}`,
+        );
+
+        // Schedule automatic attendance marking after 5 minutes (300,000 ms)
+        const timerKey = `${data.sessionId}_${userId}`;
+
+        // Clear any existing timer for this user in this session
+        const existingTimer = this.attendanceTimers.get(timerKey);
+        if (existingTimer) {
+          clearTimeout(existingTimer);
+        }
+
+        // Schedule attendance marking after 5 minutes
+        const timer = setTimeout(
+          async () => {
+            try {
+              // Check if user is still connected (via connectedUsersManager)
+              const connectedUser = this.meetService.getUser(
+                userId,
+                data.sessionId,
+              );
+
+              if (connectedUser) {
+                await this.sessionService.markAsAttended(
+                  data.sessionId,
+                  userId,
+                );
+                this.logger.log(
+                  `Automatically marked user ${userId} as attended in session ${data.sessionId} after 5 minutes`,
+                );
+              }
+            } catch (error) {
+              this.logger.error(
+                `Failed to mark user ${userId} as attended: ${error.message}`,
+              );
+            } finally {
+              // Clean up timer reference
+              this.attendanceTimers.delete(timerKey);
+            }
+          },
+          5 * 60 * 1000,
+        ); // 5 minutes in milliseconds
+
+        this.attendanceTimers.set(timerKey, timer);
+      } catch (error) {
+        this.logger.warn(
+          `Failed to record attendance for user ${userId} in session ${data.sessionId}: ${error.message}`,
+        );
+        // Don't fail the join if attendance recording fails
       }
 
       // Confirm successful join
