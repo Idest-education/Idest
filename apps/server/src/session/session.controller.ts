@@ -6,6 +6,7 @@ import {
   Delete,
   Body,
   Param,
+  Query,
   UseGuards,
 } from '@nestjs/common';
 import { SessionService } from './session.service';
@@ -15,6 +16,11 @@ import { userPayload } from 'src/common/types/userPayload.interface';
 import { CreateSessionDto } from './dto/create-session.dto';
 import { UpdateSessionDto } from './dto/update-session.dto';
 import { SessionResponseDto } from './dto/session-response.dto';
+import { PaginationDto, PaginatedResponse } from './dto/pagination.dto';
+import {
+  AttendanceRecordDto,
+  SessionAttendanceSummaryDto,
+} from './dto/attendance.dto';
 import {
   ApiBearerAuth,
   ApiTags,
@@ -67,11 +73,30 @@ export class SessionController {
   @ApiOperation({
     summary: 'Get all sessions',
     description:
-      'Retrieves all sessions across all classes. Only teachers/admins can access this endpoint.',
+      'Retrieves all sessions across all classes with pagination. Only teachers/admins can access this endpoint.',
   })
   @ApiOkResponse({
-    description: 'Successfully retrieved all sessions',
-    type: [SessionResponseDto],
+    description: 'Successfully retrieved all sessions (paginated)',
+    schema: {
+      type: 'object',
+      properties: {
+        data: {
+          type: 'array',
+          items: { $ref: '#/components/schemas/SessionResponseDto' },
+        },
+        pagination: {
+          type: 'object',
+          properties: {
+            page: { type: 'number' },
+            limit: { type: 'number' },
+            total: { type: 'number' },
+            totalPages: { type: 'number' },
+            hasNext: { type: 'boolean' },
+            hasPrev: { type: 'boolean' },
+          },
+        },
+      },
+    },
   })
   @ApiForbiddenResponse({
     description: 'Access denied - only teachers/admins can access all sessions',
@@ -80,26 +105,47 @@ export class SessionController {
   @ApiInternalServerErrorResponse({ description: 'Internal server error' })
   async getAllSessions(
     @CurrentUser() user: userPayload,
-  ): Promise<SessionResponseDto[]> {
-    return this.sessionService.getAllSessions(user.id);
+    @Query() pagination: PaginationDto,
+  ): Promise<PaginatedResponse<SessionResponseDto>> {
+    return this.sessionService.getAllSessions(user.id, pagination);
   }
 
   @Get('user')
   @ApiOperation({
     summary: 'Get all user sessions',
     description:
-      'Retrieves all sessions for the authenticated user including hosted, attended, and upcoming sessions.',
+      'Retrieves all sessions for the authenticated user including hosted, attended, and upcoming sessions with pagination.',
   })
   @ApiOkResponse({
-    description: 'Successfully retrieved all user sessions',
-    type: [SessionResponseDto],
+    description: 'Successfully retrieved all user sessions (paginated)',
+    schema: {
+      type: 'object',
+      properties: {
+        data: {
+          type: 'array',
+          items: { $ref: '#/components/schemas/SessionResponseDto' },
+        },
+        pagination: {
+          type: 'object',
+          properties: {
+            page: { type: 'number' },
+            limit: { type: 'number' },
+            total: { type: 'number' },
+            totalPages: { type: 'number' },
+            hasNext: { type: 'boolean' },
+            hasPrev: { type: 'boolean' },
+          },
+        },
+      },
+    },
   })
   @ApiUnauthorizedResponse({ description: 'Authentication required' })
   @ApiInternalServerErrorResponse({ description: 'Internal server error' })
   async getAllUserSessions(
     @CurrentUser() user: userPayload,
-  ): Promise<SessionResponseDto[]> {
-    return this.sessionService.getAllUserSessions(user.id);
+    @Query() pagination: PaginationDto,
+  ): Promise<PaginatedResponse<SessionResponseDto>> {
+    return this.sessionService.getAllUserSessions(user.id, pagination);
   }
 
   @Get('upcoming')
@@ -145,11 +191,15 @@ export class SessionController {
     return this.sessionService.getSessionById(sessionId, user.id);
   }
 
+  /**
+   * @deprecated This endpoint is deprecated and will be removed in a future version.
+   */
   @Put(':id')
   @ApiOperation({
-    summary: 'Update session',
+    summary: 'Update session (DEPRECATED)',
     description:
-      'Updates session details such as time, recording settings, whiteboard data, and metadata. Only session hosts can update sessions.',
+      'Updates session details such as time, recording settings, whiteboard data, and metadata. Only session hosts can update sessions.\n\n** DEPRECATED**: This endpoint is deprecated and will be removed in a future version. Please use alternative endpoints instead.',
+    deprecated: true,
   })
   @ApiParam({
     name: 'id',
@@ -174,8 +224,9 @@ export class SessionController {
     @Param('id') sessionId: string,
     @CurrentUser() user: userPayload,
     @Body() dto: UpdateSessionDto,
-  ): Promise<SessionResponseDto> {
-    return this.sessionService.updateSession(sessionId, user.id, dto);
+  ): Promise<void> {
+    // return this.sessionService.updateSession(sessionId, user.id, dto);
+    return;
   }
 
   @Put(':id/end')
@@ -244,7 +295,7 @@ export class SessionController {
   @ApiOperation({
     summary: 'Get class sessions',
     description:
-      'Retrieves all sessions for a specific class. Users must be enrolled in or teaching the class to access this endpoint.',
+      'Retrieves all sessions for a specific class with pagination. Users must be enrolled in or teaching the class to access this endpoint.',
   })
   @ApiParam({
     name: 'classId',
@@ -252,8 +303,27 @@ export class SessionController {
     example: 'class-uuid-here',
   })
   @ApiOkResponse({
-    description: 'Successfully retrieved class sessions',
-    type: [SessionResponseDto],
+    description: 'Successfully retrieved class sessions (paginated)',
+    schema: {
+      type: 'object',
+      properties: {
+        data: {
+          type: 'array',
+          items: { $ref: '#/components/schemas/SessionResponseDto' },
+        },
+        pagination: {
+          type: 'object',
+          properties: {
+            page: { type: 'number' },
+            limit: { type: 'number' },
+            total: { type: 'number' },
+            totalPages: { type: 'number' },
+            hasNext: { type: 'boolean' },
+            hasPrev: { type: 'boolean' },
+          },
+        },
+      },
+    },
   })
   @ApiNotFoundResponse({ description: 'Class not found or access denied' })
   @ApiForbiddenResponse({
@@ -264,8 +334,116 @@ export class SessionController {
   async getClassSessions(
     @Param('classId') classId: string,
     @CurrentUser() user: userPayload,
-  ): Promise<SessionResponseDto[]> {
-    return this.sessionService.getClassSessions(classId, user.id);
+    @Query() pagination: PaginationDto,
+  ): Promise<PaginatedResponse<SessionResponseDto>> {
+    return this.sessionService.getClassSessions(classId, user.id, pagination);
   }
 
+  @Post(':id/attendance')
+  @ApiOperation({
+    summary: 'Record attendance',
+    description:
+      'Records user attendance when joining a session. Automatically called when user joins via meet module.',
+  })
+  @ApiParam({
+    name: 'id',
+    description: 'Session ID',
+    example: 'session-uuid-here',
+  })
+  @ApiOkResponse({
+    description: 'Attendance successfully recorded',
+    type: AttendanceRecordDto,
+  })
+  @ApiNotFoundResponse({ description: 'Session not found' })
+  @ApiForbiddenResponse({ description: 'Access denied to this session' })
+  @ApiUnauthorizedResponse({ description: 'Authentication required' })
+  async recordAttendance(
+    @Param('id') sessionId: string,
+    @CurrentUser() user: userPayload,
+  ): Promise<AttendanceRecordDto> {
+    return this.sessionService.recordAttendance(sessionId, user.id);
+  }
+
+  @Put(':id/attendance/leave')
+  @ApiOperation({
+    summary: 'Record leave',
+    description:
+      'Records when a user leaves a session. Automatically called when user leaves via meet module.',
+  })
+  @ApiParam({
+    name: 'id',
+    description: 'Session ID',
+    example: 'session-uuid-here',
+  })
+  @ApiOkResponse({ description: 'Leave successfully recorded' })
+  @ApiUnauthorizedResponse({ description: 'Authentication required' })
+  async recordLeave(
+    @Param('id') sessionId: string,
+    @CurrentUser() user: userPayload,
+  ): Promise<{ success: boolean }> {
+    await this.sessionService.recordLeave(sessionId, user.id);
+    return { success: true };
+  }
+
+  @Get(':id/attendance')
+  @ApiOperation({
+    summary: 'Get session attendance',
+    description:
+      'Retrieves attendance summary for a session including all attendees and statistics.',
+  })
+  @ApiParam({
+    name: 'id',
+    description: 'Session ID',
+    example: 'session-uuid-here',
+  })
+  @ApiOkResponse({
+    description: 'Successfully retrieved attendance summary',
+    type: SessionAttendanceSummaryDto,
+  })
+  @ApiNotFoundResponse({ description: 'Session not found' })
+  @ApiForbiddenResponse({ description: 'Access denied to this session' })
+  @ApiUnauthorizedResponse({ description: 'Authentication required' })
+  async getSessionAttendance(
+    @Param('id') sessionId: string,
+    @CurrentUser() user: userPayload,
+  ): Promise<SessionAttendanceSummaryDto> {
+    return this.sessionService.getSessionAttendance(sessionId, user.id);
+  }
+
+  @Get('user/attendance')
+  @ApiOperation({
+    summary: 'Get user attendance history',
+    description:
+      'Retrieves attendance history for the authenticated user across all sessions with pagination.',
+  })
+  @ApiOkResponse({
+    description: 'Successfully retrieved user attendance history (paginated)',
+    schema: {
+      type: 'object',
+      properties: {
+        data: {
+          type: 'array',
+          items: { $ref: '#/components/schemas/AttendanceRecordDto' },
+        },
+        pagination: {
+          type: 'object',
+          properties: {
+            page: { type: 'number' },
+            limit: { type: 'number' },
+            total: { type: 'number' },
+            totalPages: { type: 'number' },
+            hasNext: { type: 'boolean' },
+            hasPrev: { type: 'boolean' },
+          },
+        },
+      },
+    },
+  })
+  @ApiUnauthorizedResponse({ description: 'Authentication required' })
+  async getUserAttendance(
+    @CurrentUser() user: userPayload,
+    @Query() pagination: PaginationDto,
+  ): Promise<PaginatedResponse<AttendanceRecordDto>> {
+    return this.sessionService.getUserAttendance(user.id, pagination);
+  }
 }
