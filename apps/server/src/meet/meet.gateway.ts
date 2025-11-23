@@ -35,6 +35,18 @@ import {
   StopScreenShareDto,
   ToggleMediaDto,
 } from './dto/media-controls.dto';
+import {
+  KickParticipantDto,
+  StopParticipantMediaDto,
+  StartRecordingDto,
+  StopRecordingDto,
+} from './dto/participant-control.dto';
+import {
+  ParticipantKickedDto,
+  ParticipantMediaStoppedDto,
+  RecordingStartedDto,
+  RecordingStoppedDto,
+} from './dto/room-events.dto';
 import { ConnectedUser } from './utils/connected-users-manager';
 import { LiveKitCredentials } from './meet.service';
 
@@ -321,7 +333,6 @@ export class MeetGateway
     }
   }
 
-
   /**
    * Get Session Participants - Get list of all participants in session
    */
@@ -571,6 +582,329 @@ export class MeetGateway
     this.server.to(user.sessionId).emit('user-left', userLeftData);
 
     this.logger.log(`User ${user.userId} left session ${user.sessionId}`);
+  }
+
+  /**
+   * Kick Participant - Remove a participant from the session
+   */
+  @SubscribeMessage('kick-participant')
+  async handleKickParticipant(
+    @ConnectedSocket() client: Socket,
+    @MessageBody() data: KickParticipantDto,
+  ) {
+    try {
+      // Validate requester is in this session
+      const requester = this.meetService.getUserBySocket(client.id);
+      if (!requester || requester.sessionId !== data.sessionId) {
+        client.emit('kick-participant-error', {
+          message: 'Not in this session',
+        });
+        return;
+      }
+
+      // Get requester and target user details
+      const requesterDetails = await this.meetService.getUserDetails(
+        requester.userId,
+      );
+      const targetUserDetails = await this.meetService.getUserDetails(
+        data.targetUserId,
+      );
+
+      if (!requesterDetails || !targetUserDetails) {
+        client.emit('kick-participant-error', {
+          message: 'User not found',
+        });
+        return;
+      }
+
+      // Get target user's socket ID before kicking
+      const targetSocketId = this.meetService.getUserSocketId(
+        data.targetUserId,
+        data.sessionId,
+      );
+
+      // Kick the participant (includes authorization check)
+      await this.meetService.kickParticipant(
+        requester.userId,
+        data.targetUserId,
+        data.sessionId,
+      );
+
+      // Notify the kicked user if they have a socket connection
+      if (targetSocketId) {
+        this.server.to(targetSocketId).emit('kicked-from-session', {
+          sessionId: data.sessionId,
+          message: 'You have been removed from this session',
+        });
+      }
+
+      // Broadcast to all participants
+      const kickedData: ParticipantKickedDto = {
+        sessionId: data.sessionId,
+        targetUserId: data.targetUserId,
+        kickedBy: requester.userId,
+        kickedByFullName: requesterDetails.full_name,
+      };
+
+      this.server.to(data.sessionId).emit('participant-kicked', kickedData);
+
+      // Relay via LiveKit data channel
+      try {
+        await this.meetService.broadcastLiveKitEvent(
+          data.sessionId,
+          'participant-kicked',
+          kickedData,
+        );
+      } catch (error) {
+        this.logger.error(
+          `Failed to relay participant-kicked via LiveKit: ${error instanceof Error ? error.message : error}`,
+        );
+      }
+
+      this.logger.log(
+        `User ${requester.userId} kicked ${data.targetUserId} from session ${data.sessionId}`,
+      );
+    } catch (error) {
+      this.logger.error(`Failed to kick participant: ${error.message}`);
+      let errorMessage = 'Failed to kick participant';
+      if (error instanceof ForbiddenException) {
+        errorMessage = 'Permission denied';
+      } else if (error instanceof NotFoundException) {
+        errorMessage = 'Participant not found';
+      }
+      client.emit('kick-participant-error', { message: errorMessage });
+    }
+  }
+
+  /**
+   * Stop Participant Media - Mute audio/video of a participant
+   */
+  @SubscribeMessage('stop-participant-media')
+  async handleStopParticipantMedia(
+    @ConnectedSocket() client: Socket,
+    @MessageBody() data: StopParticipantMediaDto,
+  ) {
+    try {
+      // Validate requester is in this session
+      const requester = this.meetService.getUserBySocket(client.id);
+      if (!requester || requester.sessionId !== data.sessionId) {
+        client.emit('stop-participant-media-error', {
+          message: 'Not in this session',
+        });
+        return;
+      }
+
+      // Get requester and target user details
+      const requesterDetails = await this.meetService.getUserDetails(
+        requester.userId,
+      );
+      const targetUserDetails = await this.meetService.getUserDetails(
+        data.targetUserId,
+      );
+
+      if (!requesterDetails || !targetUserDetails) {
+        client.emit('stop-participant-media-error', {
+          message: 'User not found',
+        });
+        return;
+      }
+
+      // Stop the participant's media (includes authorization check)
+      await this.meetService.stopParticipantMedia(
+        requester.userId,
+        data.targetUserId,
+        data.sessionId,
+        data.mediaType,
+      );
+
+      // Broadcast to all participants
+      const mediaStoppedData: ParticipantMediaStoppedDto = {
+        sessionId: data.sessionId,
+        targetUserId: data.targetUserId,
+        mediaType: data.mediaType,
+        stoppedBy: requester.userId,
+        stoppedByFullName: requesterDetails.full_name,
+      };
+
+      this.server
+        .to(data.sessionId)
+        .emit('participant-media-stopped', mediaStoppedData);
+
+      // Relay via LiveKit data channel
+      try {
+        await this.meetService.broadcastLiveKitEvent(
+          data.sessionId,
+          'participant-media-stopped',
+          mediaStoppedData,
+        );
+      } catch (error) {
+        this.logger.error(
+          `Failed to relay participant-media-stopped via LiveKit: ${error instanceof Error ? error.message : error}`,
+        );
+      }
+
+      this.logger.log(
+        `User ${requester.userId} stopped ${data.mediaType} for ${data.targetUserId} in session ${data.sessionId}`,
+      );
+    } catch (error) {
+      this.logger.error(`Failed to stop participant media: ${error.message}`);
+      let errorMessage = 'Failed to stop participant media';
+      if (error instanceof ForbiddenException) {
+        errorMessage = 'Permission denied';
+      } else if (error instanceof NotFoundException) {
+        errorMessage = 'Participant not found';
+      }
+      client.emit('stop-participant-media-error', { message: errorMessage });
+    }
+  }
+
+  /**
+   * Start Recording - Start recording the session
+   */
+  @SubscribeMessage('start-recording')
+  async handleStartRecording(
+    @ConnectedSocket() client: Socket,
+    @MessageBody() data: StartRecordingDto,
+  ) {
+    try {
+      // Validate requester is in this session
+      const requester = this.meetService.getUserBySocket(client.id);
+      if (!requester || requester.sessionId !== data.sessionId) {
+        client.emit('start-recording-error', {
+          message: 'Not in this session',
+        });
+        return;
+      }
+
+      // Get requester details
+      const requesterDetails = await this.meetService.getUserDetails(
+        requester.userId,
+      );
+
+      if (!requesterDetails) {
+        client.emit('start-recording-error', {
+          message: 'User not found',
+        });
+        return;
+      }
+
+      // Start recording (includes authorization check)
+      const egressId = await this.meetService.startRecording(
+        requester.userId,
+        data.sessionId,
+      );
+
+      // Broadcast to all participants
+      const recordingStartedData: RecordingStartedDto = {
+        sessionId: data.sessionId,
+        startedBy: requester.userId,
+        startedByFullName: requesterDetails.full_name,
+        timestamp: new Date(),
+      };
+
+      this.server
+        .to(data.sessionId)
+        .emit('recording-started', recordingStartedData);
+
+      // Relay via LiveKit data channel
+      try {
+        await this.meetService.broadcastLiveKitEvent(
+          data.sessionId,
+          'recording-started',
+          recordingStartedData,
+        );
+      } catch (error) {
+        this.logger.error(
+          `Failed to relay recording-started via LiveKit: ${error instanceof Error ? error.message : error}`,
+        );
+      }
+
+      this.logger.log(
+        `User ${requester.userId} started recording for session ${data.sessionId}`,
+      );
+    } catch (error) {
+      this.logger.error(`Failed to start recording: ${error.message}`);
+      let errorMessage = 'Failed to start recording';
+      if (error instanceof ForbiddenException) {
+        errorMessage = 'Permission denied';
+      } else if (error instanceof NotFoundException) {
+        errorMessage = 'Session not found';
+      }
+      client.emit('start-recording-error', { message: errorMessage });
+    }
+  }
+
+  /**
+   * Stop Recording - Stop recording the session
+   */
+  @SubscribeMessage('stop-recording')
+  async handleStopRecording(
+    @ConnectedSocket() client: Socket,
+    @MessageBody() data: StopRecordingDto,
+  ) {
+    try {
+      // Validate requester is in this session
+      const requester = this.meetService.getUserBySocket(client.id);
+      if (!requester || requester.sessionId !== data.sessionId) {
+        client.emit('stop-recording-error', {
+          message: 'Not in this session',
+        });
+        return;
+      }
+
+      // Get requester details
+      const requesterDetails = await this.meetService.getUserDetails(
+        requester.userId,
+      );
+
+      if (!requesterDetails) {
+        client.emit('stop-recording-error', {
+          message: 'User not found',
+        });
+        return;
+      }
+
+      // Stop recording (includes authorization check)
+      await this.meetService.stopRecording(requester.userId, data.sessionId);
+
+      // Broadcast to all participants
+      const recordingStoppedData: RecordingStoppedDto = {
+        sessionId: data.sessionId,
+        stoppedBy: requester.userId,
+        stoppedByFullName: requesterDetails.full_name,
+        timestamp: new Date(),
+      };
+
+      this.server
+        .to(data.sessionId)
+        .emit('recording-stopped', recordingStoppedData);
+
+      // Relay via LiveKit data channel
+      try {
+        await this.meetService.broadcastLiveKitEvent(
+          data.sessionId,
+          'recording-stopped',
+          recordingStoppedData,
+        );
+      } catch (error) {
+        this.logger.error(
+          `Failed to relay recording-stopped via LiveKit: ${error instanceof Error ? error.message : error}`,
+        );
+      }
+
+      this.logger.log(
+        `User ${requester.userId} stopped recording for session ${data.sessionId}`,
+      );
+    } catch (error) {
+      this.logger.error(`Failed to stop recording: ${error.message}`);
+      let errorMessage = 'Failed to stop recording';
+      if (error instanceof ForbiddenException) {
+        errorMessage = 'Permission denied';
+      } else if (error instanceof NotFoundException) {
+        errorMessage = 'No active recording found';
+      }
+      client.emit('stop-recording-error', { message: errorMessage });
+    }
   }
 
   // ============================== DEPRECATED ==============================

@@ -528,4 +528,268 @@ export class MeetService {
       return [];
     }
   }
+
+  /**
+   * Check if user is admin
+   */
+  async isAdmin(userId: string): Promise<boolean> {
+    const user = await this.userService.getUserDetails(userId);
+    return user?.role === 'ADMIN';
+  }
+
+  /**
+   * Check if user is teacher in a session's class
+   */
+  async isTeacherInSession(
+    userId: string,
+    sessionId: string,
+  ): Promise<boolean> {
+    try {
+      const session = await this.prisma.session.findUnique({
+        where: { id: sessionId },
+        include: {
+          class: {
+            include: {
+              teachers: true,
+            },
+          },
+        },
+      });
+
+      if (!session) return false;
+
+      const user = await this.userService.getUserDetails(userId);
+      if (user?.role === 'ADMIN') return true;
+
+      return (
+        session.host_id === userId ||
+        session.class.created_by === userId ||
+        session.class.teachers.some((t) => t.teacher_id === userId)
+      );
+    } catch (error) {
+      return false;
+    }
+  }
+
+  /**
+   * Check if target user is a student
+   */
+  async isStudent(userId: string): Promise<boolean> {
+    const user = await this.userService.getUserDetails(userId);
+    return user?.role === 'STUDENT';
+  }
+
+  /**
+   * Check if user can kick another user from session
+   * Admin can kick all, teacher can kick students
+   */
+  async canKickParticipant(
+    requesterId: string,
+    targetUserId: string,
+    sessionId: string,
+  ): Promise<boolean> {
+    const isRequesterAdmin = await this.isAdmin(requesterId);
+    if (isRequesterAdmin) return true;
+
+    const isRequesterTeacher = await this.isTeacherInSession(
+      requesterId,
+      sessionId,
+    );
+    if (!isRequesterTeacher) return false;
+
+    const isTargetStudent = await this.isStudent(targetUserId);
+    return isTargetStudent;
+  }
+
+  /**
+   * Check if user can control media of another user
+   * Admin and teacher can control student media
+   */
+  async canControlParticipantMedia(
+    requesterId: string,
+    targetUserId: string,
+    sessionId: string,
+  ): Promise<boolean> {
+    const isRequesterAdmin = await this.isAdmin(requesterId);
+    if (isRequesterAdmin) return true;
+
+    const isRequesterTeacher = await this.isTeacherInSession(
+      requesterId,
+      sessionId,
+    );
+    if (!isRequesterTeacher) return false;
+
+    const isTargetStudent = await this.isStudent(targetUserId);
+    return isTargetStudent;
+  }
+
+  /**
+   * Kick a participant from the session
+   */
+  async kickParticipant(
+    requesterId: string,
+    targetUserId: string,
+    sessionId: string,
+  ): Promise<void> {
+    const canKick = await this.canKickParticipant(
+      requesterId,
+      targetUserId,
+      sessionId,
+    );
+    if (!canKick) {
+      throw new ForbiddenException(
+        'You do not have permission to kick this participant',
+      );
+    }
+
+    const roomName = this.liveKitService.buildRoomName(sessionId);
+    await this.liveKitService.removeParticipant(roomName, targetUserId);
+
+    // Remove from connected users if present
+    const targetUser = this.connectedUsersManager.getUser(
+      targetUserId,
+      sessionId,
+    );
+    if (targetUser) {
+      this.connectedUsersManager.removeUserBySocket(targetUser.socketId);
+    }
+  }
+
+  /**
+   * Stop a participant's media (audio/video)
+   */
+  async stopParticipantMedia(
+    requesterId: string,
+    targetUserId: string,
+    sessionId: string,
+    mediaType: 'audio' | 'video' | 'both',
+  ): Promise<void> {
+    const canControl = await this.canControlParticipantMedia(
+      requesterId,
+      targetUserId,
+      sessionId,
+    );
+    if (!canControl) {
+      throw new ForbiddenException(
+        'You do not have permission to control this participant\'s media',
+      );
+    }
+
+    const roomName = this.liveKitService.buildRoomName(sessionId);
+    const tracks = await this.liveKitService.getParticipantTracks(
+      roomName,
+      targetUserId,
+    );
+
+    if (tracks.length === 0) {
+      return; // Participant has no tracks to mute
+    }
+
+    for (const track of tracks) {
+      if (
+        mediaType === 'both' ||
+        (mediaType === 'audio' && track.type === 'audio') ||
+        (mediaType === 'video' && track.type === 'video')
+      ) {
+        await this.liveKitService.mutePublishedTrack(
+          roomName,
+          targetUserId,
+          track.sid,
+          true,
+        );
+      }
+    }
+  }
+
+  /**
+   * Start recording a session
+   */
+  async startRecording(
+    requesterId: string,
+    sessionId: string,
+  ): Promise<string> {
+    const isRequesterAdmin = await this.isAdmin(requesterId);
+    const isRequesterTeacher = await this.isTeacherInSession(
+      requesterId,
+      sessionId,
+    );
+
+    if (!isRequesterAdmin && !isRequesterTeacher) {
+      throw new ForbiddenException(
+        'Only admins and teachers can start recording',
+      );
+    }
+
+    const session = await this.prisma.session.findUnique({
+      where: { id: sessionId },
+    });
+
+    if (!session) {
+      throw new NotFoundException(`Session ${sessionId} not found`);
+    }
+
+    const roomName = this.liveKitService.buildRoomName(sessionId);
+    const egressId = await this.liveKitService.startRoomRecording(roomName);
+
+    // Update session to mark as recorded
+    await this.prisma.session.update({
+      where: { id: sessionId },
+      data: {
+        is_recorded: true,
+        metadata: {
+          ...((session.metadata as Record<string, unknown>) || {}),
+          recordingEgressId: egressId,
+          recordingStartedAt: new Date().toISOString(),
+        },
+      },
+    });
+
+    return egressId;
+  }
+
+  /**
+   * Stop recording a session
+   */
+  async stopRecording(requesterId: string, sessionId: string): Promise<void> {
+    const isRequesterAdmin = await this.isAdmin(requesterId);
+    const isRequesterTeacher = await this.isTeacherInSession(
+      requesterId,
+      sessionId,
+    );
+
+    if (!isRequesterAdmin && !isRequesterTeacher) {
+      throw new ForbiddenException(
+        'Only admins and teachers can stop recording',
+      );
+    }
+
+    const session = await this.prisma.session.findUnique({
+      where: { id: sessionId },
+    });
+
+    if (!session) {
+      throw new NotFoundException(`Session ${sessionId} not found`);
+    }
+
+    const metadata =
+      (session.metadata as Record<string, unknown>) || {};
+    const egressId = metadata.recordingEgressId as string | undefined;
+
+    if (!egressId) {
+      throw new NotFoundException('No active recording found for this session');
+    }
+
+    await this.liveKitService.stopRecording(egressId);
+
+    // Update session metadata
+    await this.prisma.session.update({
+      where: { id: sessionId },
+      data: {
+        metadata: {
+          ...metadata,
+          recordingStoppedAt: new Date().toISOString(),
+        },
+      },
+    });
+  }
 }

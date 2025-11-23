@@ -41,3 +41,33 @@ export class MediaToggleResponseDto {
   type: 'audio' | 'video';
   isEnabled: boolean;
 }
+
+export class ParticipantKickedDto {
+  sessionId: string;
+  targetUserId: string;
+  kickedBy: string;
+  kickedByFullName: string;
+}
+
+export class ParticipantMediaStoppedDto {
+  sessionId: string;
+  targetUserId: string;
+  mediaType: 'audio' | 'video' | 'both';
+  stoppedBy: string;
+  stoppedByFullName: string;
+}
+
+export class RecordingStartedDto {
+  sessionId: string;
+  startedBy: string;
+  startedByFullName: string;
+  timestamp: Date;
+}
+
+export class RecordingStoppedDto {
+  sessionId: string;
+  stoppedBy: string;
+  stoppedByFullName: string;
+  recordingUrl?: string;
+  timestamp: Date;
+}

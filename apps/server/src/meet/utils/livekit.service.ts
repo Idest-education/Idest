@@ -8,6 +8,10 @@ import {
   type Room,
   type ParticipantInfo,
   DataPacket_Kind,
+  EgressClient,
+  TrackType,
+  type EncodedFileOutput,
+  type RoomCompositeOptions,
 } from 'livekit-server-sdk';
 import type { VideoGrant } from 'livekit-server-sdk';
 
@@ -47,6 +51,7 @@ export class LiveKitService {
   private readonly serverUrl: string;
   private readonly roomServiceHost: string;
   private readonly roomServiceClient: RoomServiceClient;
+  private readonly egressServiceClient: EgressClient;
 
   constructor(private readonly configService: ConfigService) {
     this.apiKey = this.requireEnv('LIVEKIT_API_KEY');
@@ -54,6 +59,11 @@ export class LiveKitService {
     this.serverUrl = this.requireEnv('LIVEKIT_URL');
     this.roomServiceHost = this.normalizeServiceHost(this.serverUrl);
     this.roomServiceClient = new RoomServiceClient(
+      this.roomServiceHost,
+      this.apiKey,
+      this.apiSecret,
+    );
+    this.egressServiceClient = new EgressClient(
       this.roomServiceHost,
       this.apiKey,
       this.apiSecret,
@@ -113,6 +123,130 @@ export class LiveKitService {
 
   async removeParticipant(roomName: string, identity: string): Promise<void> {
     await this.roomServiceClient.removeParticipant(roomName, identity);
+  }
+
+  async getParticipant(
+    roomName: string,
+    identity: string,
+  ): Promise<ParticipantInfo | null> {
+    try {
+      const participants = await this.listParticipants(roomName);
+      return participants.find((p) => p.identity === identity) || null;
+    } catch (error) {
+      this.logger.error(
+        `Failed to get participant ${identity} from room ${roomName}: ${error instanceof Error ? error.message : error}`,
+      );
+      return null;
+    }
+  }
+
+  async mutePublishedTrack(
+    roomName: string,
+    identity: string,
+    trackSid: string,
+    muted: boolean,
+  ): Promise<void> {
+    await this.roomServiceClient.mutePublishedTrack(
+      roomName,
+      identity,
+      trackSid,
+      muted,
+    );
+  }
+
+  async getParticipantTracks(
+    roomName: string,
+    identity: string,
+  ): Promise<Array<{ sid: string; type: 'audio' | 'video' }>> {
+    const participant = await this.getParticipant(roomName, identity);
+    if (!participant) {
+      return [];
+    }
+
+    const tracks: Array<{ sid: string; type: 'audio' | 'video' }> = [];
+
+    participant.tracks?.forEach((trackInfo) => {
+      if (trackInfo.sid && trackInfo.type !== undefined) {
+        // TrackType: AUDIO = 1, VIDEO = 2
+        const isAudio =
+          trackInfo.type === TrackType.AUDIO || trackInfo.type === 1;
+        tracks.push({
+          sid: trackInfo.sid,
+          type: isAudio ? 'audio' : 'video',
+        });
+      }
+    });
+
+    return tracks;
+  }
+
+  async startRoomRecording(
+    sessionId: string,
+    options?: {
+      layout?: string;
+      audioOnly?: boolean;
+      videoOnly?: boolean;
+      filepath?: string;
+    },
+  ): Promise<string> {
+    try {
+      const roomName = this.buildRoomName(sessionId);
+
+      // Create output configuration - using file output by default
+      // EncodedFileOutput is a protocol type, we create a compatible object
+      const output = {
+        fileType: 1, // MP4 (EncodedFileType.MP4)
+        filepath:
+          options?.filepath || `recordings/${sessionId}-${Date.now()}.mp4`,
+      } as EncodedFileOutput;
+
+      // Create options
+      const opts: RoomCompositeOptions = {
+        layout: options?.layout || 'speaker',
+        audioOnly: options?.audioOnly || false,
+        videoOnly: options?.videoOnly || false,
+      };
+
+      const info = await this.egressServiceClient.startRoomCompositeEgress(
+        roomName,
+        output,
+        opts,
+      );
+
+      return info.egressId;
+    } catch (error) {
+      this.logger.error(
+        `Failed to start recording for session ${sessionId}: ${error instanceof Error ? error.message : error}`,
+      );
+      throw error;
+    }
+  }
+
+  async stopRecording(egressId: string): Promise<void> {
+    try {
+      await this.egressServiceClient.stopEgress(egressId);
+    } catch (error) {
+      this.logger.error(
+        `Failed to stop recording ${egressId}: ${error instanceof Error ? error.message : error}`,
+      );
+      throw error;
+    }
+  }
+
+  async listActiveRecordings(roomName: string): Promise<string[]> {
+    try {
+      const egressList = await this.egressServiceClient.listEgress({
+        roomName,
+      });
+      return egressList
+        .filter((egress) => egress.status === 1) // STATUS_ACTIVE
+        .map((egress) => egress.egressId);
+    } catch (error) {
+      this.logger.error(
+        `Failed to list active recordings for room ${roomName}: ${error instanceof Error ? error.message : error}`,
+      );
+      return [];
+    }
   }
 
   async generateToken(options: LiveKitTokenOptions): Promise<string> {
