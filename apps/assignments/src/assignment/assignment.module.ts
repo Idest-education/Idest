@@ -2,6 +2,9 @@ import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
 import { JwtModule } from '@nestjs/jwt';
 import { Assignment, AssignmentSchema } from './schemas/assignment.schema';
+import { Submission, SubmissionSchema } from './schemas/submission.schema';
+import { WritingSubmission, WritingSubmissionSchema } from './writing/schemas/writing-submission.schema';
+import { SpeakingResponse, SpeakingResponseSchema } from './speaking/schemas/speaking-response.schema';
 import { JwtAuthGuard } from '../guards/jwt-auth.guard';
 import { AssignmentController } from './assignment.controller';
 import { AssignmentService } from './assignment.service';
@@ -13,7 +16,10 @@ import { SpeakingModule } from './speaking/speaking.module';
 @Module({
   imports: [
     MongooseModule.forFeature([
-      { name: Assignment.name, schema: AssignmentSchema }
+      { name: Assignment.name, schema: AssignmentSchema },
+      { name: Submission.name, schema: SubmissionSchema },
+      { name: WritingSubmission.name, schema: WritingSubmissionSchema },
+      { name: SpeakingResponse.name, schema: SpeakingResponseSchema },
     ]),
     JwtModule.register({
       secret: process.env.JWT_SECRET || 'default-secret-key',
