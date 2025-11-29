@@ -3,7 +3,10 @@ import {
   UnauthorizedException,
   NotFoundException,
   ForbiddenException,
+  BadRequestException,
+  Logger,
 } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { UserService } from 'src/user/user.service';
 import {
@@ -25,8 +28,11 @@ export interface LiveKitCredentials {
 
 @Injectable()
 export class MeetService {
+  private readonly logger = new Logger(MeetService.name);
   // Track active screen sharer per session: sessionId -> userId
   private activeScreenSharers = new Map<string, string>();
+  // Track active canvas per session: sessionId -> userId
+  private activeCanvasSessions = new Map<string, string>();
 
   constructor(
     private readonly prisma: PrismaService,
@@ -421,6 +427,269 @@ export class MeetService {
     if (activeSharer === userId) {
       this.activeScreenSharers.delete(sessionId);
     }
+  }
+
+  /**
+   * Canvas State Management Methods
+   */
+
+  /**
+   * Check if canvas is currently active in a session
+   */
+  isCanvasActive(sessionId: string): boolean {
+    return this.activeCanvasSessions.has(sessionId);
+  }
+
+  /**
+   * Get the user ID of the active canvas user in a session
+   */
+  getActiveCanvasUser(sessionId: string): string | null {
+    return this.activeCanvasSessions.get(sessionId) || null;
+  }
+
+  /**
+   * Set active canvas user for a session
+   */
+  setActiveCanvasUser(sessionId: string, userId: string): void {
+    this.activeCanvasSessions.set(sessionId, userId);
+  }
+
+  /**
+   * Clear active canvas for a session
+   */
+  clearActiveCanvas(sessionId: string): void {
+    this.activeCanvasSessions.delete(sessionId);
+  }
+
+  /**
+   * Clear canvas state when user disconnects or leaves
+   */
+  clearCanvasOnUserLeave(userId: string, sessionId: string): void {
+    const activeCanvasUser = this.activeCanvasSessions.get(sessionId);
+    if (activeCanvasUser === userId) {
+      this.activeCanvasSessions.delete(sessionId);
+    }
+  }
+
+  /**
+   * Close canvas when screen share starts (conflict resolution)
+   */
+  closeCanvasForScreenShare(sessionId: string): boolean {
+    if (this.isCanvasActive(sessionId)) {
+      this.activeCanvasSessions.delete(sessionId);
+      return true;
+    }
+    return false;
+  }
+
+  /**
+   * Get canvas state from database
+   */
+  async getCanvasState(sessionId: string): Promise<{
+    operations: Array<{
+      type: string;
+      data: Record<string, unknown>;
+      timestamp: string;
+    }>;
+    metadata: {
+      width: number;
+      height: number;
+      backgroundColor: string;
+    };
+  } | null> {
+    const session = await this.prisma.session.findUnique({
+      where: { id: sessionId },
+      select: { whiteboard_data: true },
+    });
+
+    if (!session || !session.whiteboard_data) {
+      return null;
+    }
+
+    const whiteboardData = session.whiteboard_data as {
+      operations?: Array<{
+        type: string;
+        data: Record<string, unknown>;
+        timestamp: string;
+      }>;
+      metadata?: {
+        width: number;
+        height: number;
+        backgroundColor: string;
+      };
+    };
+
+    return {
+      operations: whiteboardData.operations || [],
+      metadata: whiteboardData.metadata || {
+        width: 800,
+        height: 600,
+        backgroundColor: '#ffffff',
+      },
+    };
+  }
+
+  /**
+   * Save canvas state to database
+   * Enforces max operations limit and trims old operations if needed
+   */
+  async saveCanvasState(
+    sessionId: string,
+    canvasData: {
+      operations: Array<{
+        type: string;
+        data: Record<string, unknown>;
+        timestamp: string;
+      }>;
+      metadata: {
+        width: number;
+        height: number;
+        backgroundColor: string;
+      };
+    },
+  ): Promise<void> {
+    const MAX_OPERATIONS = 1000;
+
+    // Enforce operations limit - keep most recent operations
+    let operations = canvasData.operations;
+    if (operations.length > MAX_OPERATIONS) {
+      operations = operations.slice(-MAX_OPERATIONS);
+    }
+
+    const trimmedCanvasData = {
+      ...canvasData,
+      operations,
+    };
+
+    try {
+      await this.prisma.session.update({
+        where: { id: sessionId },
+        data: {
+          whiteboard_data: trimmedCanvasData as Prisma.InputJsonValue,
+        },
+      });
+    } catch (error) {
+      if (error instanceof NotFoundException) {
+        throw new NotFoundException(
+          `Session ${sessionId} not found when saving canvas state`,
+        );
+      }
+      throw new BadRequestException(
+        `Failed to save canvas state: ${error.message}`,
+      );
+    }
+  }
+
+  /**
+   * Open canvas for a session
+   * Returns the canvas state if it exists, or null if new canvas
+   * Throws ForbiddenException if canvas is already active
+   */
+  async openCanvas(
+    sessionId: string,
+    userId: string,
+  ): Promise<{
+    operations: Array<{
+      type: string;
+      data: Record<string, unknown>;
+      timestamp: string;
+    }>;
+    metadata: {
+      width: number;
+      height: number;
+      backgroundColor: string;
+    };
+  } | null> {
+    // Check if canvas is already active (race condition protection)
+    if (this.isCanvasActive(sessionId)) {
+      const activeCanvasUser = this.getActiveCanvasUser(sessionId);
+      if (activeCanvasUser !== userId) {
+        throw new ForbiddenException(
+          'Canvas is already active in this session',
+        );
+      }
+      // If same user, just return current state
+      return await this.getCanvasState(sessionId);
+    }
+
+    // Set this user as active canvas user
+    this.setActiveCanvasUser(sessionId, userId);
+
+    // Load existing canvas state from database
+    const canvasState = await this.getCanvasState(sessionId);
+    return canvasState;
+  }
+
+  /**
+   * Close canvas for a session
+   * Optionally saves the current canvas state
+   */
+  async closeCanvas(
+    sessionId: string,
+    userId: string,
+    canvasState?: {
+      operations: Array<{
+        type: string;
+        data: Record<string, unknown>;
+        timestamp: string;
+      }>;
+      metadata: {
+        width: number;
+        height: number;
+        backgroundColor: string;
+      };
+    },
+  ): Promise<void> {
+    // Check if canvas is actually active
+    if (!this.isCanvasActive(sessionId)) {
+      throw new NotFoundException('Canvas is not active for this session');
+    }
+
+    // Check if this user is the active canvas user
+    const activeCanvasUser = this.getActiveCanvasUser(sessionId);
+    if (activeCanvasUser !== userId) {
+      throw new ForbiddenException(
+        'You are not the active canvas user for this session',
+      );
+    }
+
+    // Save canvas state if provided
+    if (canvasState) {
+      await this.saveCanvasState(sessionId, canvasState);
+    }
+
+    // Clear active canvas
+    this.clearActiveCanvas(sessionId);
+  }
+
+  /**
+   * Clear canvas (remove all drawings)
+   */
+  async clearCanvas(sessionId: string, userId: string): Promise<void> {
+    // Check if canvas is active
+    if (!this.isCanvasActive(sessionId)) {
+      throw new NotFoundException('Canvas is not active for this session');
+    }
+
+    // Check if this user is the active canvas user
+    const activeCanvasUser = this.getActiveCanvasUser(sessionId);
+    if (activeCanvasUser !== userId) {
+      throw new ForbiddenException(
+        'You are not the active canvas user for this session',
+      );
+    }
+
+    // Clear canvas state in database
+    const emptyCanvasState = {
+      operations: [],
+      metadata: {
+        width: 800,
+        height: 600,
+        backgroundColor: '#ffffff',
+      },
+    };
+
+    await this.saveCanvasState(sessionId, emptyCanvasState);
   }
 
   /**

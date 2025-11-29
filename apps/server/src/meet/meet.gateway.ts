@@ -42,6 +42,20 @@ import {
   StopRecordingDto,
 } from './dto/participant-control.dto';
 import {
+  OpenCanvasDto,
+  CloseCanvasDto,
+  DrawEventDto,
+  ClearCanvasDto,
+  GetCanvasStateDto,
+} from './dto/canvas-controls.dto';
+import {
+  CanvasOpenedDto,
+  CanvasClosedDto,
+  CanvasDrawEventDto,
+  CanvasClearedDto,
+  CanvasStateResponseDto,
+} from './dto/canvas-events.dto';
+import {
   ParticipantKickedDto,
   ParticipantMediaStoppedDto,
   RecordingStartedDto,
@@ -93,6 +107,12 @@ export class MeetGateway
     if (disconnectedUser) {
       // Clear screen share if user was sharing
       this.meetService.clearScreenShareOnUserLeave(
+        disconnectedUser.userId,
+        disconnectedUser.sessionId,
+      );
+
+      // Clear canvas if user had canvas open
+      this.meetService.clearCanvasOnUserLeave(
         disconnectedUser.userId,
         disconnectedUser.sessionId,
       );
@@ -206,6 +226,37 @@ export class MeetGateway
             userAvatar: sharerUser.userAvatar,
             isSharing: true,
           });
+        }
+      }
+
+      // Send current canvas state if canvas is active
+      if (this.meetService.isCanvasActive(data.sessionId)) {
+        const activeCanvasUser = this.meetService.getActiveCanvasUser(
+          data.sessionId,
+        );
+        if (activeCanvasUser) {
+          const canvasUserSocketId = this.meetService.getUserSocketId(
+            activeCanvasUser,
+            data.sessionId,
+          );
+          if (canvasUserSocketId) {
+            const canvasUser =
+              this.meetService.getUserBySocket(canvasUserSocketId);
+            if (canvasUser) {
+              const canvasState = await this.meetService.getCanvasState(
+                data.sessionId,
+              );
+              if (canvasState) {
+                client.emit('canvas-opened', {
+                  sessionId: data.sessionId,
+                  userId: canvasUser.userId,
+                  userFullName: canvasUser.userFullName,
+                  userAvatar: canvasUser.userAvatar,
+                  canvasState,
+                });
+              }
+            }
+          }
         }
       }
 
@@ -555,6 +606,48 @@ export class MeetGateway
           message: `Screen sharing is already active by ${activeSharerUser?.userFullName || 'another participant'}. Please wait for them to stop sharing.`,
         });
         return;
+      }
+
+      // Check if canvas is active, if so close it (conflict resolution)
+      if (this.meetService.isCanvasActive(data.sessionId)) {
+        const activeCanvasUser = this.meetService.getActiveCanvasUser(
+          data.sessionId,
+        );
+        if (activeCanvasUser) {
+          const canvasUserSocketId = this.meetService.getUserSocketId(
+            activeCanvasUser,
+            data.sessionId,
+          );
+          if (canvasUserSocketId) {
+            const canvasUser =
+              this.meetService.getUserBySocket(canvasUserSocketId);
+            if (canvasUser) {
+              // Close canvas
+              this.meetService.closeCanvasForScreenShare(data.sessionId);
+              // Notify all participants that canvas was closed
+              const canvasClosedData: CanvasClosedDto = {
+                sessionId: data.sessionId,
+                userId: canvasUser.userId,
+                userFullName: canvasUser.userFullName,
+                userAvatar: canvasUser.userAvatar,
+              };
+              this.server
+                .to(data.sessionId)
+                .emit('canvas-closed', canvasClosedData);
+              try {
+                await this.meetService.broadcastLiveKitEvent(
+                  data.sessionId,
+                  'canvas-closed',
+                  canvasClosedData,
+                );
+              } catch (error) {
+                this.logger.error(
+                  `Failed to relay canvas-closed via LiveKit: ${error instanceof Error ? error.message : error}`,
+                );
+              }
+            }
+          }
+        }
       }
 
       // Set this user as active screen sharer
@@ -1051,6 +1144,385 @@ export class MeetGateway
         errorMessage = 'No active recording found';
       }
       client.emit('stop-recording-error', { message: errorMessage });
+    }
+  }
+
+  /**
+   * Open Canvas - Teacher opens canvas for drawing
+   */
+  @SubscribeMessage('open-canvas')
+  async handleOpenCanvas(
+    @ConnectedSocket() client: Socket,
+    @MessageBody() data: OpenCanvasDto,
+  ) {
+    try {
+      // Validate user is in this session
+      const user = this.meetService.getUserBySocket(client.id);
+      if (!user || user.sessionId !== data.sessionId) {
+        client.emit('canvas-error', { message: 'Not in this session' });
+        return;
+      }
+
+      // Check if user is teacher (authorization)
+      const isTeacher = await this.meetService.isTeacherInSession(
+        user.userId,
+        data.sessionId,
+      );
+      if (!isTeacher) {
+        client.emit('canvas-error', {
+          message: 'Only teachers can open canvas',
+        });
+        return;
+      }
+
+      // Check if screen sharing is active, if so close it (conflict resolution)
+      if (this.meetService.isScreenSharingActive(data.sessionId)) {
+        const activeSharer = this.meetService.getActiveScreenSharer(
+          data.sessionId,
+        );
+        if (activeSharer) {
+          const sharerSocketId = this.meetService.getUserSocketId(
+            activeSharer,
+            data.sessionId,
+          );
+          if (sharerSocketId) {
+            const sharerUser = this.meetService.getUserBySocket(sharerSocketId);
+            if (sharerUser) {
+              // Clear screen share
+              this.meetService.clearActiveScreenSharer(data.sessionId);
+              // Notify all participants that screen share stopped
+              const screenShareResponse: ScreenShareResponseDto = {
+                sessionId: data.sessionId,
+                userId: sharerUser.userId,
+                userFullName: sharerUser.userFullName,
+                userAvatar: sharerUser.userAvatar,
+                isSharing: false,
+              };
+              this.server
+                .to(data.sessionId)
+                .emit('screen-share-stopped', screenShareResponse);
+              try {
+                await this.meetService.broadcastLiveKitEvent(
+                  data.sessionId,
+                  'screen-share-stopped',
+                  screenShareResponse,
+                );
+              } catch (error) {
+                this.logger.error(
+                  `Failed to relay screen-share-stopped via LiveKit: ${error instanceof Error ? error.message : error}`,
+                );
+              }
+            }
+          }
+        }
+      }
+
+      // Open canvas and get state
+      let canvasState;
+      try {
+        canvasState = await this.meetService.openCanvas(
+          data.sessionId,
+          user.userId,
+        );
+      } catch (error) {
+        if (error instanceof ForbiddenException) {
+          client.emit('canvas-error', {
+            message: error.message || 'Canvas is already active',
+          });
+          return;
+        }
+        throw error;
+      }
+
+      const canvasOpenedData: CanvasOpenedDto = {
+        sessionId: data.sessionId,
+        userId: user.userId,
+        userFullName: user.userFullName,
+        userAvatar: user.userAvatar,
+        canvasState: canvasState || undefined,
+      };
+
+      // Broadcast to all users in the session (including sender)
+      this.server.to(data.sessionId).emit('canvas-opened', canvasOpenedData);
+
+      // Relay via LiveKit data channel
+      try {
+        await this.meetService.broadcastLiveKitEvent(
+          data.sessionId,
+          'canvas-opened',
+          canvasOpenedData,
+        );
+      } catch (error) {
+        this.logger.error(
+          `Failed to relay canvas-opened via LiveKit for session ${data.sessionId}: ${error instanceof Error ? error.message : error}`,
+        );
+      }
+
+      this.logger.log(
+        `User ${user.userId} opened canvas in session ${data.sessionId}`,
+      );
+    } catch (error) {
+      this.logger.error(`Failed to open canvas: ${error.message}`);
+      let errorMessage = 'Failed to open canvas';
+      if (error instanceof ForbiddenException) {
+        errorMessage = error.message || 'Canvas is already active';
+      } else if (error instanceof NotFoundException) {
+        errorMessage = 'Session not found';
+      }
+      client.emit('canvas-error', { message: errorMessage });
+    }
+  }
+
+  /**
+   * Close Canvas - Teacher closes canvas
+   */
+  @SubscribeMessage('close-canvas')
+  async handleCloseCanvas(
+    @ConnectedSocket() client: Socket,
+    @MessageBody() data: CloseCanvasDto,
+  ) {
+    try {
+      // Validate user is in this session
+      const user = this.meetService.getUserBySocket(client.id);
+      if (!user || user.sessionId !== data.sessionId) {
+        client.emit('canvas-error', { message: 'Not in this session' });
+        return;
+      }
+
+      // Check if canvas is active
+      if (!this.meetService.isCanvasActive(data.sessionId)) {
+        client.emit('canvas-error', {
+          message: 'Canvas is not active for this session',
+        });
+        return;
+      }
+
+      // Close canvas (will check if user is the active canvas user)
+      // Save canvas state if provided
+      await this.meetService.closeCanvas(
+        data.sessionId,
+        user.userId,
+        data.canvasState,
+      );
+
+      const canvasClosedData: CanvasClosedDto = {
+        sessionId: data.sessionId,
+        userId: user.userId,
+        userFullName: user.userFullName,
+        userAvatar: user.userAvatar,
+      };
+
+      // Broadcast to all users in the session (including sender)
+      this.server.to(data.sessionId).emit('canvas-closed', canvasClosedData);
+
+      // Relay via LiveKit data channel
+      try {
+        await this.meetService.broadcastLiveKitEvent(
+          data.sessionId,
+          'canvas-closed',
+          canvasClosedData,
+        );
+      } catch (error) {
+        this.logger.error(
+          `Failed to relay canvas-closed via LiveKit for session ${data.sessionId}: ${error instanceof Error ? error.message : error}`,
+        );
+      }
+
+      this.logger.log(
+        `User ${user.userId} closed canvas in session ${data.sessionId}`,
+      );
+    } catch (error) {
+      this.logger.error(`Failed to close canvas: ${error.message}`);
+      let errorMessage = 'Failed to close canvas';
+      if (error instanceof ForbiddenException) {
+        errorMessage = 'You are not the active canvas user';
+      } else if (error instanceof NotFoundException) {
+        errorMessage = 'Canvas is not active';
+      }
+      client.emit('canvas-error', { message: errorMessage });
+    }
+  }
+
+  /**
+   * Canvas Draw - Teacher draws on canvas
+   */
+  @SubscribeMessage('canvas-draw')
+  async handleCanvasDraw(
+    @ConnectedSocket() client: Socket,
+    @MessageBody() data: DrawEventDto,
+  ) {
+    try {
+      // Validate user is in this session
+      const user = this.meetService.getUserBySocket(client.id);
+      if (!user || user.sessionId !== data.sessionId) {
+        client.emit('canvas-error', { message: 'Not in this session' });
+        return;
+      }
+
+      // Check if canvas is active
+      if (!this.meetService.isCanvasActive(data.sessionId)) {
+        client.emit('canvas-error', {
+          message: 'Canvas is not active for this session',
+        });
+        return;
+      }
+
+      // Check if user is the active canvas user
+      // Note: Only teachers can open canvas, so no need to check teacher status again
+      const activeCanvasUser = this.meetService.getActiveCanvasUser(
+        data.sessionId,
+      );
+      if (activeCanvasUser !== user.userId) {
+        client.emit('canvas-error', {
+          message: 'You are not the active canvas user',
+        });
+        return;
+      }
+
+      // Validate draw data size (max 100KB)
+      const dataSize = JSON.stringify(data.data).length;
+      const MAX_DATA_SIZE = 100 * 1024; // 100KB
+      if (dataSize > MAX_DATA_SIZE) {
+        client.emit('canvas-error', {
+          message: 'Draw data exceeds maximum size limit (100KB)',
+        });
+        return;
+      }
+
+      const canvasDrawData: CanvasDrawEventDto = {
+        sessionId: data.sessionId,
+        userId: user.userId,
+        userFullName: user.userFullName,
+        type: data.type,
+        data: data.data,
+        timestamp: data.timestamp || new Date().toISOString(),
+      };
+
+      // Broadcast to all users in the session (including sender)
+      this.server.to(data.sessionId).emit('canvas-draw', canvasDrawData);
+
+      // Relay via LiveKit data channel
+      try {
+        await this.meetService.broadcastLiveKitEvent(
+          data.sessionId,
+          'canvas-draw',
+          canvasDrawData,
+        );
+      } catch (error) {
+        this.logger.error(
+          `Failed to relay canvas-draw via LiveKit for session ${data.sessionId}: ${error instanceof Error ? error.message : error}`,
+        );
+      }
+
+      this.logger.log(
+        `User ${user.userId} drew on canvas in session ${data.sessionId}`,
+      );
+    } catch (error) {
+      this.logger.error(`Failed to handle canvas draw: ${error.message}`);
+      let errorMessage = 'Failed to process draw event';
+      if (error instanceof ForbiddenException) {
+        errorMessage = error.message || 'Permission denied';
+      } else if (error instanceof NotFoundException) {
+        errorMessage = error.message || 'Canvas not found';
+      }
+      client.emit('canvas-error', { message: errorMessage });
+    }
+  }
+
+  /**
+   * Clear Canvas - Teacher clears the canvas
+   */
+  @SubscribeMessage('clear-canvas')
+  async handleClearCanvas(
+    @ConnectedSocket() client: Socket,
+    @MessageBody() data: ClearCanvasDto,
+  ) {
+    try {
+      // Validate user is in this session
+      const user = this.meetService.getUserBySocket(client.id);
+      if (!user || user.sessionId !== data.sessionId) {
+        client.emit('canvas-error', { message: 'Not in this session' });
+        return;
+      }
+
+      // Clear canvas (includes authorization check)
+      await this.meetService.clearCanvas(data.sessionId, user.userId);
+
+      const canvasClearedData: CanvasClearedDto = {
+        sessionId: data.sessionId,
+        userId: user.userId,
+        userFullName: user.userFullName,
+        userAvatar: user.userAvatar,
+      };
+
+      // Broadcast to all users in the session (including sender)
+      this.server.to(data.sessionId).emit('canvas-cleared', canvasClearedData);
+
+      // Relay via LiveKit data channel
+      try {
+        await this.meetService.broadcastLiveKitEvent(
+          data.sessionId,
+          'canvas-cleared',
+          canvasClearedData,
+        );
+      } catch (error) {
+        this.logger.error(
+          `Failed to relay canvas-cleared via LiveKit for session ${data.sessionId}: ${error instanceof Error ? error.message : error}`,
+        );
+      }
+
+      this.logger.log(
+        `User ${user.userId} cleared canvas in session ${data.sessionId}`,
+      );
+    } catch (error) {
+      this.logger.error(`Failed to clear canvas: ${error.message}`);
+      let errorMessage = 'Failed to clear canvas';
+      if (error instanceof ForbiddenException) {
+        errorMessage = 'You are not the active canvas user';
+      } else if (error instanceof NotFoundException) {
+        errorMessage = 'Canvas is not active';
+      }
+      client.emit('canvas-error', { message: errorMessage });
+    }
+  }
+
+  /**
+   * Get Canvas State - Get current canvas state (for late joiners)
+   */
+  @SubscribeMessage('get-canvas-state')
+  async handleGetCanvasState(
+    @ConnectedSocket() client: Socket,
+    @MessageBody() data: GetCanvasStateDto,
+  ) {
+    try {
+      // Validate user is in this session
+      const user = this.meetService.getUserBySocket(client.id);
+      if (!user || user.sessionId !== data.sessionId) {
+        client.emit('canvas-error', { message: 'Not in this session' });
+        return;
+      }
+
+      const isActive = this.meetService.isCanvasActive(data.sessionId);
+      const canvasState = isActive
+        ? await this.meetService.getCanvasState(data.sessionId)
+        : null;
+
+      const response: CanvasStateResponseDto = {
+        sessionId: data.sessionId,
+        isActive,
+        canvasState: canvasState || undefined,
+      };
+
+      client.emit('canvas-state', response);
+
+      this.logger.log(
+        `Sent canvas state to user ${user.userId} for session ${data.sessionId}`,
+      );
+    } catch (error) {
+      this.logger.error(`Failed to get canvas state: ${error.message}`);
+      client.emit('canvas-error', {
+        message: 'Failed to get canvas state',
+      });
     }
   }
 
