@@ -42,15 +42,12 @@ export function MeetParticipantsPanel({
   const allJoined = offlineParticipants.length === 0 && onlineParticipants.length > 0;
 
   const localParticipant = localUserId ? participantsObject[localUserId] : null;
-  const canManageParticipants = localParticipant?.role?.toLowerCase() === 'admin' || localParticipant?.role?.toLowerCase() === 'teacher';
+  const canManageParticipants = localParticipant?.role === 'admin' || localParticipant?.role === 'teacher';
 
   const canManageTarget = (targetRole: string) => {
     if (!localParticipant) return false;
-    const localRole = localParticipant.role.toLowerCase();
-    const targetRoleLower = targetRole?.toLowerCase() || '';
-    
-    if (localRole === 'admin') return true;
-    if (localRole === 'teacher') return targetRoleLower === 'student';
+    if (localParticipant.role === 'admin') return true;
+    if (localParticipant.role === 'teacher') return targetRole === 'student';
     return false;
   };
 

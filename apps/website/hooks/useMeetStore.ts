@@ -110,14 +110,21 @@ export const useMeetStore = create<MeetStore>((set, _get) => ({
   setParticipantMediaState: (userId, updates) =>
     set((state) => {
       const participant = state.participants[userId];
-      if (!participant) return {};
+      if (!participant) return state;
+      
+      // Only update the specific fields provided in updates
+      // Preserve existing values for fields not in updates to prevent accidental overwrites
+      const newParticipant = {
+        ...participant,
+        ...(updates.isAudioEnabled !== undefined && { isAudioEnabled: updates.isAudioEnabled }),
+        ...(updates.isVideoEnabled !== undefined && { isVideoEnabled: updates.isVideoEnabled }),
+        ...(updates.isScreenSharing !== undefined && { isScreenSharing: updates.isScreenSharing }),
+      };
+      
       return {
         participants: {
           ...state.participants,
-          [userId]: {
-            ...participant,
-            ...updates,
-          },
+          [userId]: newParticipant,
         },
         lastUpdatedAt: Date.now(),
       };

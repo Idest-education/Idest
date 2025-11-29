@@ -2,9 +2,10 @@
 
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { LiveKitRoom } from "@livekit/components-react";
+import { LiveKitRoom, useRoomContext } from "@livekit/components-react";
 import { Loader2 } from "lucide-react";
 import { format } from "date-fns";
+import { Track } from "livekit-client";
 import { MeetVideoGrid } from "@/components/meet/MeetVideoGrid";
 import { MeetControls } from "@/components/meet/MeetControls";
 import { MeetParticipantsPanel } from "@/components/meet/MeetParticipantsPanel";
@@ -14,6 +15,229 @@ import { useMeetStore } from "@/hooks/useMeetStore";
 import { useMeetClient } from "@/hooks/useMeetClient";
 import { getSessionById } from "@/services/session.service";
 import { SessionData } from "@/types/session";
+
+// Component to sync LiveKit track events with store state
+function TrackStateSync() {
+  const room = useRoomContext();
+  const localUserId = useMeetStore((state) => state.localUserId);
+  const setAudioEnabled = useMeetStore((state) => state.setAudioEnabled);
+  const setVideoEnabled = useMeetStore((state) => state.setVideoEnabled);
+  const setScreenSharing = useMeetStore((state) => state.setScreenSharing);
+  const setParticipantMediaState = useMeetStore((state) => state.setParticipantMediaState);
+  const getStoreState = useMeetStore.getState;
+
+  useEffect(() => {
+    if (!room || !localUserId) return;
+
+    // Helper to find participant by LiveKit identity (uses latest state)
+    const findParticipantByIdentity = (identity: string) => {
+      const currentParticipants = getStoreState().participants;
+      return Object.values(currentParticipants).find(
+        (p) => p.userId === identity || p.socketId === identity
+      );
+    };
+
+    // Sync local participant track states (only update if changed)
+    const syncLocalTracks = () => {
+      const currentState = getStoreState();
+      const micPub = room.localParticipant.getTrackPublication(Track.Source.Microphone);
+      const cameraPub = room.localParticipant.getTrackPublication(Track.Source.Camera);
+      const screenPub = room.localParticipant.getTrackPublication(Track.Source.ScreenShare);
+
+      // Sync microphone state (only if changed)
+      const micEnabled = micPub ? (micPub.isMuted === false && micPub.track !== null) : false;
+      if (currentState.isAudioEnabled !== micEnabled) {
+        setAudioEnabled(micEnabled);
+      }
+
+      // Sync camera state (only if changed)
+      const cameraEnabled = cameraPub ? (cameraPub.isMuted === false && cameraPub.track !== null) : false;
+      if (currentState.isVideoEnabled !== cameraEnabled) {
+        setVideoEnabled(cameraEnabled);
+      }
+
+      // Sync screen share state (only if changed)
+      const screenSharing = screenPub ? (screenPub.track !== null) : false;
+      if (currentState.isScreenSharing !== screenSharing) {
+        setScreenSharing(screenSharing);
+      }
+    };
+
+    // Sync all remote participant tracks (only update if changed)
+    const syncRemoteTracks = () => {
+      const currentState = getStoreState();
+      room.remoteParticipants.forEach((participant) => {
+        const participantData = findParticipantByIdentity(participant.identity);
+        if (!participantData) return;
+
+        const currentParticipant = currentState.participants[participantData.userId];
+        if (!currentParticipant) return;
+
+        const micPub = participant.getTrackPublication(Track.Source.Microphone);
+        const cameraPub = participant.getTrackPublication(Track.Source.Camera);
+        const screenPub = participant.getTrackPublication(Track.Source.ScreenShare);
+
+        const updates: {
+          isAudioEnabled?: boolean;
+          isVideoEnabled?: boolean;
+          isScreenSharing?: boolean;
+        } = {};
+
+        // Only update if value actually changed
+        if (micPub) {
+          const micEnabled = micPub.isMuted === false && micPub.track !== null;
+          if (currentParticipant.isAudioEnabled !== micEnabled) {
+            updates.isAudioEnabled = micEnabled;
+          }
+        }
+
+        if (cameraPub) {
+          const cameraEnabled = cameraPub.isMuted === false && cameraPub.track !== null;
+          if (currentParticipant.isVideoEnabled !== cameraEnabled) {
+            updates.isVideoEnabled = cameraEnabled;
+          }
+        }
+
+        if (screenPub) {
+          const screenSharing = screenPub.track !== null;
+          if (currentParticipant.isScreenSharing !== screenSharing) {
+            updates.isScreenSharing = screenSharing;
+          }
+        }
+
+        // Only update if there are actual changes
+        if (Object.keys(updates).length > 0) {
+          setParticipantMediaState(participantData.userId, updates);
+        }
+      });
+    };
+
+    // Full sync function
+    const syncAllTracks = () => {
+      syncLocalTracks();
+      syncRemoteTracks();
+    };
+
+    // Handle local track published (only update if changed)
+    const handleLocalTrackPublished = (publication: any) => {
+      if (!publication?.track) return;
+
+      const currentState = getStoreState();
+      const source = publication.source;
+      if (source === Track.Source.Microphone && !currentState.isAudioEnabled) {
+        setAudioEnabled(true);
+      } else if (source === Track.Source.Camera && !currentState.isVideoEnabled) {
+        setVideoEnabled(true);
+      } else if (source === Track.Source.ScreenShare && !currentState.isScreenSharing) {
+        setScreenSharing(true);
+      }
+    };
+
+    // Handle local track unpublished (only update if changed)
+    const handleLocalTrackUnpublished = (publication: any) => {
+      if (!publication) return;
+
+      const currentState = getStoreState();
+      const source = publication.source;
+      if (source === Track.Source.Microphone && currentState.isAudioEnabled) {
+        setAudioEnabled(false);
+      } else if (source === Track.Source.Camera && currentState.isVideoEnabled) {
+        setVideoEnabled(false);
+      } else if (source === Track.Source.ScreenShare && currentState.isScreenSharing) {
+        setScreenSharing(false);
+      }
+    };
+
+    // Handle remote track published (only update if changed)
+    const handleTrackPublished = (publication: any, participant: any) => {
+      if (!publication?.track || !participant) return;
+
+      const participantData = findParticipantByIdentity(participant.identity);
+      if (!participantData) return;
+
+      const currentState = getStoreState();
+      const currentParticipant = currentState.participants[participantData.userId];
+      if (!currentParticipant) return;
+
+      const source = publication.source;
+      if (source === Track.Source.Microphone && currentParticipant.isAudioEnabled !== true) {
+        setParticipantMediaState(participantData.userId, { isAudioEnabled: true });
+      } else if (source === Track.Source.Camera && currentParticipant.isVideoEnabled !== true) {
+        setParticipantMediaState(participantData.userId, { isVideoEnabled: true });
+      } else if (source === Track.Source.ScreenShare && currentParticipant.isScreenSharing !== true) {
+        setParticipantMediaState(participantData.userId, { isScreenSharing: true });
+      }
+    };
+
+    // Handle remote track unpublished (only update if changed)
+    const handleTrackUnpublished = (publication: any, participant: any) => {
+      if (!publication || !participant) return;
+
+      const participantData = findParticipantByIdentity(participant.identity);
+      if (!participantData) return;
+
+      const currentState = getStoreState();
+      const currentParticipant = currentState.participants[participantData.userId];
+      if (!currentParticipant) return;
+
+      const source = publication.source;
+      if (source === Track.Source.Microphone && currentParticipant.isAudioEnabled !== false) {
+        setParticipantMediaState(participantData.userId, { isAudioEnabled: false });
+      } else if (source === Track.Source.Camera && currentParticipant.isVideoEnabled !== false) {
+        setParticipantMediaState(participantData.userId, { isVideoEnabled: false });
+      } else if (source === Track.Source.ScreenShare && currentParticipant.isScreenSharing !== false) {
+        setParticipantMediaState(participantData.userId, { isScreenSharing: false });
+      }
+    };
+
+    // Initial sync (only once on mount, with small delay to let room fully initialize)
+    const initialSyncTimeout = setTimeout(() => {
+      syncAllTracks();
+    }, 500);
+
+    // Periodic sync to ensure state consistency (every 10 seconds, less aggressive)
+    // This acts as a safety net to catch any state drift
+    const syncInterval = setInterval(() => {
+      syncAllTracks();
+    }, 10000);
+
+    // Subscribe to local participant events
+    room.localParticipant.on("localTrackPublished", handleLocalTrackPublished);
+    room.localParticipant.on("localTrackUnpublished", handleLocalTrackUnpublished);
+
+    // Subscribe to remote participant events
+    room.on("trackPublished", handleTrackPublished);
+    room.on("trackUnpublished", handleTrackUnpublished);
+
+    // Also listen to participant updates
+    const handleParticipantConnected = () => {
+      // Sync all tracks when participant connects
+      syncRemoteTracks();
+    };
+
+    const handleParticipantDisconnected = () => {
+      // Sync after participant disconnects
+      syncRemoteTracks();
+    };
+
+    room.on("participantConnected", handleParticipantConnected);
+    room.on("participantDisconnected", handleParticipantDisconnected);
+
+    // Cleanup
+    return () => {
+      clearTimeout(initialSyncTimeout);
+      clearInterval(syncInterval);
+      room.localParticipant.off("localTrackPublished", handleLocalTrackPublished);
+      room.localParticipant.off("localTrackUnpublished", handleLocalTrackUnpublished);
+      room.off("trackPublished", handleTrackPublished);
+      room.off("trackUnpublished", handleTrackUnpublished);
+      room.off("participantConnected", handleParticipantConnected);
+      room.off("participantDisconnected", handleParticipantDisconnected);
+    };
+  }, [room, localUserId, setAudioEnabled, setVideoEnabled, setScreenSharing, setParticipantMediaState, getStoreState]);
+
+  return null;
+}
 
 export default function SessionMeetPage() {
   const params = useParams<{ sessionId: string }>();
@@ -127,6 +351,7 @@ export default function SessionMeetPage() {
               onConnected={() => setLiveKitConnected(true)}
               onDisconnected={() => setLiveKitConnected(false)}
             >
+              <TrackStateSync />
               <div className="flex h-full min-h-0 flex-col">
                 <MeetVideoGrid />
                 <MeetControls

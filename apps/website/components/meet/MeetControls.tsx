@@ -52,6 +52,9 @@ export function MeetControls({
   const showParticipants = useMeetStore((state) => state.showParticipants);
   const localUserId = useMeetStore((state) => state.localUserId);
   const participants = useMeetStore((state) => state.participants);
+  const setAudioEnabled = useMeetStore((state) => state.setAudioEnabled);
+  const setVideoEnabled = useMeetStore((state) => state.setVideoEnabled);
+  const setScreenSharing = useMeetStore((state) => state.setScreenSharing);
 
   const disabled = !sessionId || !room;
 
@@ -75,27 +78,45 @@ export function MeetControls({
 
   const toggleAudio = useCallback(async () => {
     if (!room || !sessionId) return;
+    
     try {
       const nextState = !isAudioEnabled;
+      // LiveKit handles the actual media control
       await room.localParticipant.setMicrophoneEnabled(nextState);
+      
+      // Update state immediately for instant UI feedback
+      // TrackStateSync will verify/correct this if there's any mismatch
+      setAudioEnabled(nextState);
+      
+      // Optional: Emit socket event for backend logging/analytics only
       emitToggleMedia({ sessionId, type: "audio", isEnabled: nextState });
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : "Unable to toggle microphone";
       toast.error(message);
+      // State will sync from actual LiveKit state via TrackStateSync
     }
-  }, [emitToggleMedia, isAudioEnabled, room, sessionId]);
+  }, [emitToggleMedia, isAudioEnabled, room, sessionId, setAudioEnabled]);
 
   const toggleVideo = useCallback(async () => {
     if (!room || !sessionId) return;
+    
     try {
       const nextState = !isVideoEnabled;
+      // LiveKit handles the actual media control
       await room.localParticipant.setCameraEnabled(nextState);
+      
+      // Update state immediately for instant UI feedback
+      // TrackStateSync will verify/correct this if there's any mismatch
+      setVideoEnabled(nextState);
+      
+      // Optional: Emit socket event for backend logging/analytics only
       emitToggleMedia({ sessionId, type: "video", isEnabled: nextState });
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : "Unable to toggle camera";
       toast.error(message);
+      // State will sync from actual LiveKit state via TrackStateSync
     }
-  }, [emitToggleMedia, isVideoEnabled, room, sessionId]);
+  }, [emitToggleMedia, isVideoEnabled, room, sessionId, setVideoEnabled]);
 
   const toggleScreenShare = useCallback(async () => {
     if (!room || !sessionId) return;
@@ -103,15 +124,24 @@ export function MeetControls({
       toast.error(`Screen is currently being shared by ${activeSharerName}`);
       return;
     }
+    
     try {
       const enable = !isScreenSharing;
+      // LiveKit handles the actual screen share control
       await room.localParticipant.setScreenShareEnabled(enable);
+      
+      // Update state immediately for instant UI feedback
+      // TrackStateSync will verify/correct this if there's any mismatch
+      setScreenSharing(enable);
+      
+      // Optional: Emit socket event for backend logging/analytics only
       emitScreenShareEvent(enable ? "start" : "stop", { sessionId });
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : "Unable to toggle screen share";
       toast.error(message);
+      // State will sync from actual LiveKit state via TrackStateSync
     }
-  }, [emitScreenShareEvent, isScreenSharing, room, sessionId, canShareScreen, activeSharerName]);
+  }, [emitScreenShareEvent, isScreenSharing, room, sessionId, canShareScreen, activeSharerName, setScreenSharing]);
 
   const toggleRecording = useCallback(() => {
     if (!sessionId) return;

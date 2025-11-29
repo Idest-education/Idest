@@ -74,7 +74,6 @@ export function useMeetClient({ sessionId, autoJoin = true }: UseMeetClientOptio
   const setAudioEnabled = useMeetStore((state) => state.setAudioEnabled);
   const setVideoEnabled = useMeetStore((state) => state.setVideoEnabled);
   const setScreenSharing = useMeetStore((state) => state.setScreenSharing);
-  const setActiveScreenSharer = useMeetStore((state) => state.setActiveScreenSharer);
   const setRecording = useMeetStore((state) => state.setRecording); // NEW
   const setError = useMeetStore((state) => state.setError);
   const reset = useMeetStore((state) => state.reset);
@@ -274,34 +273,29 @@ export function useMeetClient({ sessionId, autoJoin = true }: UseMeetClientOptio
         setMessagesLoading(false);
       });
 
-      socket.on("media-toggled", (payload: ToggleMediaPayload & { userId: string }) => {
-        setParticipantMediaState(payload.userId, {
-          isAudioEnabled: payload.type === "audio" ? payload.isEnabled : undefined,
-          isVideoEnabled: payload.type === "video" ? payload.isEnabled : undefined,
-        });
-        if (payload.userId === getStoreState().localUserId) {
-          if (payload.type === "audio") setAudioEnabled(payload.isEnabled);
-          if (payload.type === "video") setVideoEnabled(payload.isEnabled);
-        }
+      // Media state is managed entirely by LiveKit track events
+      // Socket events are only for notifications/logging, not state management
+      // LiveKit automatically syncs track state across all participants via WebRTC
+      socket.on("media-toggled", () => {
+        // No state updates here - LiveKit track events handle all media state synchronization
+        // This event is only for logging/analytics if needed
       });
 
-      socket.on("screen-share-started", (payload: { userId: string }) => {
-        setActiveScreenSharer(payload.userId);
-        setParticipantMediaState(payload.userId, { isScreenSharing: true });
+      // Screen share state is managed by LiveKit track events
+      // Socket events are only for notifications/logging
+      socket.on("screen-share-started", () => {
+        // TrackStateSync will handle state updates from LiveKit track events
+        // This is just for notification/logging purposes
       });
 
-      socket.on("screen-share-stopped", (payload: { userId: string }) => {
-        setParticipantMediaState(payload.userId, { isScreenSharing: false });
-        setActiveScreenSharer(null);
+      socket.on("screen-share-stopped", () => {
+        // TrackStateSync will handle state updates from LiveKit track events
+        // This is just for notification/logging purposes
       });
 
       socket.on("screen-share-error", (payload: { message: string }) => {
         setError(payload.message);
-        // Revert local state if we tried to share but failed
-        const state = getStoreState();
-        if (state.isScreenSharing) {
-          setScreenSharing(false);
-        }
+        // TrackStateSync will sync the actual state from LiveKit
       });
 
       // --- NEW EVENTS ---
@@ -368,7 +362,6 @@ export function useMeetClient({ sessionId, autoJoin = true }: UseMeetClientOptio
       handleJoinSuccess,
       prependChatMessages,
       removeParticipant,
-      setActiveScreenSharer,
       setAudioEnabled,
       setError,
       setLiveKitConnected,
@@ -376,7 +369,6 @@ export function useMeetClient({ sessionId, autoJoin = true }: UseMeetClientOptio
       setParticipantMediaState,
       setParticipants,
       setRecording,
-      setScreenSharing,
       setSocketConnected,
       setVideoEnabled,
       upsertParticipant,
@@ -479,11 +471,13 @@ export function useMeetClient({ sessionId, autoJoin = true }: UseMeetClientOptio
     (payload: ToggleMediaPayload) => {
       const socket = socketRef.current;
       if (!socket?.connected) return;
+      
+      // Emit socket event to notify other participants
+      // Don't update local state here - let TrackStateSync handle it from LiveKit events
+      // This prevents race conditions and ensures state matches actual track state
       socket.emit("toggle-media", payload);
-      if (payload.type === "audio") setAudioEnabled(payload.isEnabled);
-      if (payload.type === "video") setVideoEnabled(payload.isEnabled);
     },
-    [setAudioEnabled, setVideoEnabled],
+    [],
   );
 
   const emitScreenShareEvent = useCallback(
