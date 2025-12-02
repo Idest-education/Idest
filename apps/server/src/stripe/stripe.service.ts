@@ -73,6 +73,82 @@ export class StripeService {
     }
   }
 
+  /**
+   * Create a Stripe Checkout Session for purchasing a class.
+   */
+  async createClassCheckoutSession(userId: string, classId: string) {
+    try {
+      const classData = (await this.prisma.class.findUnique({
+        where: { id: classId },
+      })) as any;
+
+      if (!classData) {
+        throw new BadRequestException('Class not found');
+      }
+
+      const user = (await this.prisma.user.findUnique({
+        where: { id: userId },
+      })) as any;
+
+      if (!user) {
+        throw new BadRequestException('User not found');
+      }
+
+      if (Array.isArray(user.purchases) && user.purchases.includes(classId)) {
+        return { alreadyOwned: true };
+      }
+
+      // Free class: enroll immediately
+      if (classData.price == null) {
+        await this.recordPurchaseAndEnrollment(userId, classId);
+        return { isFree: true };
+      }
+
+      const frontendBase = this.configService.get<string>('FRONTEND_BASE_URL');
+      if (!frontendBase) {
+        throw new InternalServerErrorException('FRONTEND_BASE_URL is not configured');
+      }
+
+      const currency = (classData.currency || 'vnd').toLowerCase();
+
+      const session = await this.stripe.checkout.sessions.create({
+        mode: 'payment',
+        payment_method_types: ['card'],
+        line_items: [
+          {
+            price_data: {
+              currency,
+              unit_amount: classData.price,
+              product_data: {
+                name: classData.name,
+                description: classData.description,
+              },
+            },
+            quantity: 1,
+          },
+        ],
+        success_url: `${frontendBase}/?checkout=success&classId=${classId}&session_id={CHECKOUT_SESSION_ID}`,
+        cancel_url: `${frontendBase}/?checkout=cancel&classId=${classId}`,
+        metadata: {
+          userId,
+          classId,
+        },
+      });
+
+      return {
+        isFree: false,
+        alreadyOwned: false,
+        url: session.url,
+      };
+    } catch (error) {
+      console.error('Error creating checkout session:', error);
+      if (error instanceof BadRequestException) {
+        throw error;
+      }
+      throw new InternalServerErrorException('Failed to create checkout session');
+    }
+  }
+
   async confirmClassPurchase(
     userId: string,
     classId: string,

@@ -1,5 +1,12 @@
 import { Body, Controller, Param, Post, UseGuards } from '@nestjs/common';
-import { ApiBearerAuth, ApiBody, ApiOkResponse, ApiOperation, ApiParam, ApiTags } from '@nestjs/swagger';
+import {
+  ApiBearerAuth,
+  ApiBody,
+  ApiOkResponse,
+  ApiOperation,
+  ApiParam,
+  ApiTags,
+} from '@nestjs/swagger';
 import { AuthGuard } from 'src/common/guard/auth.guard';
 import { CurrentUser } from 'src/common/decorator/currentUser.decorator';
 import { userPayload } from 'src/common/types/userPayload.interface';
@@ -35,6 +42,27 @@ export class StripeController {
     @Param('classId') classId: string,
   ) {
     return this.stripeService.createClassPaymentIntent(user.id, classId);
+  }
+
+  @Post('classes/:classId/checkout-session')
+  @ApiOperation({
+    summary: 'Create Stripe Checkout Session for a class',
+    description:
+      'Creates a Stripe Checkout Session URL for purchasing a class. If the class is free or already owned, returns flags instead of a URL.',
+  })
+  @ApiParam({
+    name: 'classId',
+    description: 'ID of the class to purchase',
+    example: 'class-uuid-here',
+  })
+  @ApiOkResponse({
+    description: 'Checkout session created or class is free/already owned',
+  })
+  async createClassCheckoutSession(
+    @CurrentUser() user: userPayload,
+    @Param('classId') classId: string,
+  ) {
+    return this.stripeService.createClassCheckoutSession(user.id, classId);
   }
 
   @Post('classes/:classId/confirm')
