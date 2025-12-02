@@ -536,6 +536,7 @@ export class ClassQueryService {
           id: true,
           name: true,
           description: true,
+          price: true,
           is_group: true,
           invite_code: true,
           created_by: true,
@@ -571,6 +572,7 @@ export class ClassQueryService {
           id: true,
           name: true,
           description: true,
+          price: true,
           is_group: true,
           created_by: true,
           creator: {

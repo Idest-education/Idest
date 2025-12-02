@@ -123,6 +123,15 @@ export class ClassResponseDto {
   is_group: boolean;
 
   @ApiPropertyOptional({
+    description: 'Price of the class in Vietnamese đồng (VND). Null means the class is free.',
+    example: 500000,
+    nullable: true,
+  })
+  @IsNumber()
+  @IsOptional()
+  price?: number | null;
+
+  @ApiPropertyOptional({
     description: 'Invite code for students to join the class',
     example: 'IELTS2025',
   })

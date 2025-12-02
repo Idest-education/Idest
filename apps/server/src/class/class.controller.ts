@@ -508,11 +508,10 @@ export class ClassController {
   }
 
   @Get('all')
-  @Roles(Role.ADMIN)
   @ApiOperation({
-    summary: 'Get all classes (Admin only)',
+    summary: 'Get all classes',
     description:
-      'Retrieves all classes with pagination, filtering, and sorting options. Only accessible by admins.',
+      'Retrieves all classes with pagination, filtering, and sorting options.',
   })
   @ApiQuery({
     name: 'page',
@@ -591,11 +590,16 @@ export class ClassController {
     });
   }
 
+  
+  /**
+   * @deprecated This endpoint is deprecated and will be removed in a future release.
+   */
   @Get('public')
   @ApiOperation({
     summary: 'Get public classes',
     description:
       'Retrieves all public classes that are open for enrollment. No authentication required.',
+    deprecated: true,
   })
   @ApiOkResponse({
     description: 'Successfully retrieved public classes',
@@ -603,7 +607,7 @@ export class ClassController {
   })
   @ApiInternalServerErrorResponse({ description: 'Internal server error' })
   async getPublicClasses(): Promise<string> {
-    console.log('getPublicClasses route called');
+    console.warn('DEPRECATED: getPublicClasses route called');
     return "unavailable";
   }
 

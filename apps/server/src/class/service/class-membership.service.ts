@@ -409,12 +409,35 @@ export class ClassMembershipService {
         throw new ConflictException('You are already a member of this class');
       }
 
-      await this.prisma.classMember.create({
-        data: {
-          class_id: classData.id,
-          student_id: userId,
-          status: 'active',
-        },
+      // Join the class and record the purchase/grant in a single transaction
+      await this.prisma.$transaction(async (tx) => {
+        await tx.classMember.create({
+          data: {
+            class_id: classData.id,
+            student_id: userId,
+            status: 'active',
+          },
+        });
+
+        // Treat invite-based access as a granted purchase by storing the class id
+        const user = await tx.user.findUnique({
+          where: { id: userId },
+          select: { purchases: true },
+        });
+
+        if (user) {
+          const currentPurchases = user.purchases || [];
+          if (!currentPurchases.includes(classData.id)) {
+            await tx.user.update({
+              where: { id: userId },
+              data: {
+                purchases: {
+                  set: [...currentPurchases, classData.id],
+                },
+              },
+            });
+          }
+        }
       });
 
       // Fetch the complete class data after joining

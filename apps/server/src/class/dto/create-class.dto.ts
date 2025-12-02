@@ -4,6 +4,7 @@ import {
   IsString,
   IsObject,
   IsBoolean,
+  IsNumber,
 } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
@@ -33,6 +34,15 @@ export class CreateClassDto {
   })
   @IsBoolean()
   is_group: boolean;
+
+  @ApiPropertyOptional({
+    description:
+      'Price of the class in Vietnamese đồng (VND). Null/undefined means the class is free.',
+    example: 500000,
+  })
+  @IsNumber()
+  @IsOptional()
+  price?: number;
 
   @ApiPropertyOptional({
     description:

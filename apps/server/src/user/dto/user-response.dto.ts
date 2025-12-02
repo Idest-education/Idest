@@ -43,6 +43,14 @@ export class UserResponseDto {
   })
   is_active: boolean;
 
+  @ApiPropertyOptional({
+    description:
+      'IDs of classes this user has purchased or been granted access to (e.g. via invite code).',
+    example: ['class-uuid-1', 'class-uuid-2'],
+    nullable: true,
+  })
+  purchases?: string[];
+
   @ApiProperty({
     description: 'Timestamp when the user was created',
     example: '2025-01-01T00:00:00.000Z',

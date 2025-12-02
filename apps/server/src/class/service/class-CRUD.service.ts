@@ -60,6 +60,7 @@ export class ClassCRUDService {
           description: dto.description,
           is_group: dto.is_group,
           invite_code: inviteCode,
+          price: dto.price ?? null,
           schedule: dto.schedule || {},
           created_by: user.id,
         },

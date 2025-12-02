@@ -16,6 +16,7 @@ model User {
   is_active                Boolean                   @default(true)
   created_at               DateTime                  @default(now())
   updated_at               DateTime                  @updatedAt
+  purchases                String[]                  @default([])
   Assignments              Assignment[]
   ClassesCreated           Class[]                   @relation("CreatedClasses")
   ClassMembers             ClassMember[]
@@ -52,6 +53,9 @@ model Class {
   description   String
   is_group      Boolean
   invite_code   String         @unique
+   /// Price in Vietnamese đồng (VND). Null means the class is free.
+  price         Int?
+  currency      String         @default("vnd")
   schedule      Json
   created_by    String
   created_at    DateTime       @default(now())

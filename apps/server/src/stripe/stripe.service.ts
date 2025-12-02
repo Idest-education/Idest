@@ -1,0 +1,181 @@
+import { Injectable, BadRequestException, InternalServerErrorException } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import { PrismaService } from 'src/prisma/prisma.service';
+import Stripe from 'stripe';
+
+@Injectable()
+export class StripeService {
+  private readonly stripe: Stripe;
+
+  constructor(
+    private readonly configService: ConfigService,
+    private readonly prisma: PrismaService,
+  ) {
+    const secretKey = this.configService.get<string>('STRIPE_SECRET_KEY');
+    if (!secretKey) {
+      throw new Error('STRIPE_SECRET_KEY is not configured');
+    }
+    // Use Stripe's default API version from the installed SDK
+    this.stripe = new Stripe(secretKey);
+  }
+
+  async createClassPaymentIntent(userId: string, classId: string) {
+    try {
+      const classData = await this.prisma.class.findUnique({
+        where: { id: classId },
+        select: { id: true, name: true, price: true, currency: true },
+      });
+
+      if (!classData) {
+        throw new BadRequestException('Class not found');
+      }
+
+      if (classData.price == null) {
+        // Free class, no payment required
+        return { isFree: true };
+      }
+
+      const user = await this.prisma.user.findUnique({
+        where: { id: userId },
+        select: { purchases: true, email: true },
+      });
+
+      if (!user) {
+        throw new BadRequestException('User not found');
+      }
+
+      if (user.purchases?.includes(classData.id)) {
+        return { alreadyOwned: true };
+      }
+
+      const currency = (classData.currency || 'vnd').toLowerCase();
+
+      const paymentIntent = await this.stripe.paymentIntents.create({
+        amount: classData.price,
+        currency,
+        metadata: {
+          userId,
+          classId: classData.id,
+        },
+        receipt_email: user.email ?? undefined,
+      });
+
+      return {
+        isFree: false,
+        alreadyOwned: false,
+        paymentIntentId: paymentIntent.id,
+        clientSecret: paymentIntent.client_secret,
+      };
+    } catch (error) {
+      console.error('Error creating class payment intent:', error);
+      if (error instanceof BadRequestException) {
+        throw error;
+      }
+      throw new InternalServerErrorException('Failed to create payment intent');
+    }
+  }
+
+  async confirmClassPurchase(
+    userId: string,
+    classId: string,
+    paymentIntentId?: string,
+  ) {
+    try {
+      const classData = await this.prisma.class.findUnique({
+        where: { id: classId },
+        select: {
+          id: true,
+          price: true,
+          currency: true,
+        },
+      });
+
+      if (!classData) {
+        throw new BadRequestException('Class not found');
+      }
+
+      // For free classes we don't hit Stripe, just record purchase + enrollment
+      if (classData.price == null) {
+        await this.recordPurchaseAndEnrollment(userId, classId);
+        return { success: true, isFree: true };
+      }
+
+      if (!paymentIntentId) {
+        throw new BadRequestException('paymentIntentId is required for paid classes');
+      }
+
+      const pi = await this.stripe.paymentIntents.retrieve(paymentIntentId);
+
+      if (pi.status !== 'succeeded') {
+        throw new BadRequestException('Payment is not completed');
+      }
+
+      const metaUserId = (pi.metadata?.userId as string) || null;
+      const metaClassId = (pi.metadata?.classId as string) || null;
+
+      if (metaUserId !== userId || metaClassId !== classId) {
+        throw new BadRequestException('Payment metadata does not match user/class');
+      }
+
+      const currency = (classData.currency || 'vnd').toLowerCase();
+      if (pi.currency.toLowerCase() !== currency) {
+        throw new BadRequestException('Currency mismatch');
+      }
+
+      if (pi.amount !== classData.price) {
+        throw new BadRequestException('Amount mismatch');
+      }
+
+      await this.recordPurchaseAndEnrollment(userId, classId);
+
+      return { success: true, isFree: false };
+    } catch (error) {
+      console.error('Error confirming class purchase:', error);
+      if (error instanceof BadRequestException) {
+        throw error;
+      }
+      throw new InternalServerErrorException('Failed to confirm class purchase');
+    }
+  }
+
+  private async recordPurchaseAndEnrollment(userId: string, classId: string) {
+    await this.prisma.$transaction(async (tx) => {
+      // Ensure membership
+      const existingMember = await tx.classMember.findFirst({
+        where: { class_id: classId, student_id: userId },
+      });
+
+      if (!existingMember) {
+        await tx.classMember.create({
+          data: {
+            class_id: classId,
+            student_id: userId,
+            status: 'active',
+          },
+        });
+      }
+
+      // Ensure purchase recorded in user.purchases array
+      const user = await tx.user.findUnique({
+        where: { id: userId },
+        select: { purchases: true },
+      });
+
+      if (user) {
+        const currentPurchases = user.purchases || [];
+        if (!currentPurchases.includes(classId)) {
+          await tx.user.update({
+            where: { id: userId },
+            data: {
+              purchases: {
+                set: [...currentPurchases, classId],
+              },
+            },
+          });
+        }
+      }
+    });
+  }
+}
+
+

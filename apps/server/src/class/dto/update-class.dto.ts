@@ -1,4 +1,4 @@
-import { IsOptional, IsString, IsObject, IsBoolean } from 'class-validator';
+import { IsOptional, IsString, IsObject, IsBoolean, IsNumber } from 'class-validator';
 import { ApiPropertyOptional } from '@nestjs/swagger';
 
 export class UpdateClassDto {
@@ -28,6 +28,15 @@ export class UpdateClassDto {
   @IsBoolean()
   @IsOptional()
   is_group?: boolean;
+
+  @ApiPropertyOptional({
+    description:
+      'Updated price of the class in Vietnamese đồng (VND). Null/undefined means the class is free.',
+    example: 600000,
+  })
+  @IsNumber()
+  @IsOptional()
+  price?: number;
 
   @ApiPropertyOptional({
     description: 'Updated class schedule information',

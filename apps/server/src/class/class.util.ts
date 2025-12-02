@@ -7,6 +7,7 @@ export function toFullClassResponseDto(classData: any): FullClassResponseDto {
     slug: classData.slug,
     description: classData.description ?? null,
     is_group: classData.is_group,
+    price: classData.price ?? null,
     invite_code: classData.invite_code,
     created_by: classData.created_by,
     schedule: classData.schedule ?? null,

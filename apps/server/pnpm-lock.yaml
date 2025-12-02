@@ -140,6 +140,9 @@ importers:
       socket.io:
         specifier: ^4.8.1
         version: 4.8.1
+      stripe:
+        specifier: ^20.0.0
+        version: 20.0.0(@types/node@22.15.33)
       swagger-ui-express:
         specifier: ^5.0.1
         version: 5.0.1(express@5.1.0)
@@ -3911,6 +3914,15 @@ packages:
   strip-json-comments@3.1.1:
     resolution: {integrity: sha512-6fPc+R4ihwqP6N/aIv2f1gMH8lOVtWQHoqC4yK6oSDVVocumAsfCqjkXnqiYMhmMwS/mEHLp7Vehlt3ql6lEig==}
     engines: {node: '>=8'}
+
+  stripe@20.0.0:
+    resolution: {integrity: sha512-EaZeWpbJOCcDytdjKSwdrL5BxzbDGNueiCfHjHXlPdBQvLqoxl6AAivC35SPzTmVXJb5duXQlXFGS45H0+e6Gg==}
+    engines: {node: '>=16'}
+    peerDependencies:
+      '@types/node': '>=16'
+    peerDependenciesMeta:
+      '@types/node':
+        optional: true
 
   strtok3@10.3.1:
     resolution: {integrity: sha512-3JWEZM6mfix/GCJBBUrkA8p2Id2pBkyTkVCJKto55w080QBKZ+8R171fGrbiSp+yMO/u6F8/yUh7K4V9K+YCnw==}
@@ -8369,6 +8381,12 @@ snapshots:
   strip-final-newline@2.0.0: {}
 
   strip-json-comments@3.1.1: {}
+
+  stripe@20.0.0(@types/node@22.15.33):
+    dependencies:
+      qs: 6.14.0
+    optionalDependencies:
+      '@types/node': 22.15.33
 
   strtok3@10.3.1:
     dependencies:
