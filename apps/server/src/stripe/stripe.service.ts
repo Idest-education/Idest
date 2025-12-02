@@ -21,10 +21,9 @@ export class StripeService {
 
   async createClassPaymentIntent(userId: string, classId: string) {
     try {
-      const classData = await this.prisma.class.findUnique({
+      const classData = (await this.prisma.class.findUnique({
         where: { id: classId },
-        select: { id: true, name: true, price: true, currency: true },
-      });
+      })) as any;
 
       if (!classData) {
         throw new BadRequestException('Class not found');
@@ -35,10 +34,9 @@ export class StripeService {
         return { isFree: true };
       }
 
-      const user = await this.prisma.user.findUnique({
+      const user = (await this.prisma.user.findUnique({
         where: { id: userId },
-        select: { purchases: true, email: true },
-      });
+      })) as any;
 
       if (!user) {
         throw new BadRequestException('User not found');
@@ -81,14 +79,9 @@ export class StripeService {
     paymentIntentId?: string,
   ) {
     try {
-      const classData = await this.prisma.class.findUnique({
+      const classData = (await this.prisma.class.findUnique({
         where: { id: classId },
-        select: {
-          id: true,
-          price: true,
-          currency: true,
-        },
-      });
+      })) as any;
 
       if (!classData) {
         throw new BadRequestException('Class not found');
@@ -156,15 +149,16 @@ export class StripeService {
       }
 
       // Ensure purchase recorded in user.purchases array
-      const user = await tx.user.findUnique({
+      const user = (await tx.user.findUnique({
         where: { id: userId },
-        select: { purchases: true },
-      });
+      })) as any;
 
       if (user) {
         const currentPurchases = user.purchases || [];
         if (!currentPurchases.includes(classId)) {
-          await tx.user.update({
+          // Cast to any to avoid type mismatches when Prisma client types
+          // have not yet been regenerated for new schema fields.
+          await (tx.user.update as any)({
             where: { id: userId },
             data: {
               purchases: {
