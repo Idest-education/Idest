@@ -41,6 +41,7 @@ export interface ClassDetail {
     days: string[];
     time: string;
     duration: number;
+    timezone?: string;
   };
   creator: {
     id: string;

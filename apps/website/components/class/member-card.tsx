@@ -1,6 +1,5 @@
 "use client";
 
-import Image from "next/image";
 import { useState, useRef, useEffect } from "react";
 import DefaultAvatar from "@/assets/default-avatar.png";
 import { conversationService } from "@/services/conversation.service";
@@ -10,6 +9,7 @@ interface MemberCardProps {
     member: {
         id: string;
         full_name: string;
+        avatar_url?: string;
     };
     onConversationCreated?: (conversationId: string, fullName: string) => void;
 }
@@ -63,12 +63,18 @@ export default function MemberCard({ member, onConversationCreated }: MemberCard
                 className="bg-gradient-to-br from-blue-50 to-indigo-50 p-4 rounded-xl text-center border border-blue-200 hover:shadow-md hover:scale-105 transition-all cursor-pointer"
                 onClick={() => setShowMenu((prev) => !prev)}
             >
-                <Image
-                    src={DefaultAvatar}
+                {/* Use a regular img so we can support any avatar domain without Next image config */}
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                    src={
+                        member.avatar_url ||
+                        // DefaultAvatar is a static import object; use its src field
+                        (typeof DefaultAvatar === "string" ? DefaultAvatar : (DefaultAvatar as { src: string }).src)
+                    }
                     alt={member.full_name}
                     width={60}
                     height={60}
-                    className="mx-auto rounded-full ring-4 ring-white shadow-md"
+                    className="mx-auto rounded-full ring-4 ring-white shadow-md object-cover"
                 />
                 <p className="mt-3 text-sm font-semibold text-gray-800 line-clamp-2">
                     {member.full_name}

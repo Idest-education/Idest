@@ -179,6 +179,16 @@ export default function ClassDetailPage() {
 
   const { name, description, creator, schedule, _count, members, teachers } = classData;
 
+  const memberCount = Array.isArray(members) ? members.length : _count.members;
+  const teacherList =
+    (Array.isArray(teachers) && teachers.length > 0
+      ? teachers
+      : Array.isArray(members)
+        ? members.filter((m) => m.role === "TEACHER")
+        : []);
+  const teacherCount =
+    teacherList.length > 0 ? teacherList.length : _count.teachers;
+
   return (
     <div className="min-h-screen bg-white">
       <div className="max-w-7xl mx-auto p-6 md:p-8 space-y-8">
@@ -215,38 +225,46 @@ export default function ClassDetailPage() {
         {/* Schedule */}
         <div className="border border-gray-200 rounded-lg p-6">
           <h2 className="text-xl font-semibold text-gray-900 mb-4">Schedule</h2>
-          <div className="flex flex-wrap gap-2 mb-4">
-            {schedule.days?.map((d) => (
-              <span
-                key={d}
-                className="px-3 py-1 bg-gray-100 text-gray-700 rounded-md text-sm font-medium capitalize"
-              >
-                {d}
-              </span>
-            ))}
-          </div>
-          <div className="flex flex-wrap gap-4 text-sm text-gray-700">
-            <div className="flex items-center gap-2">
-              <Clock className="w-4 h-4 text-gray-500" />
-              <span className="font-medium">{schedule.time}</span>
+          {schedule?.days?.length ? (
+            <div className="space-y-2">
+              {schedule.days.map((day) => (
+                <div
+                  key={day}
+                  className="flex items-center justify-between bg-gray-50 border border-gray-200 rounded-md px-4 py-2 text-sm text-gray-800"
+                >
+                  <span className="font-medium capitalize">{day}</span>
+                  <div className="flex items-center gap-3">
+                    <span className="inline-flex items-center gap-1">
+                      <Clock className="w-4 h-4 text-gray-500" />
+                      <span>{schedule.time}</span>
+                    </span>
+                    <span className="text-gray-500">•</span>
+                    <span>{schedule.duration} minutes</span>
+                    {schedule.timezone && (
+                      <>
+                        <span className="text-gray-500">•</span>
+                        <span className="text-xs text-gray-500">{schedule.timezone}</span>
+                      </>
+                    )}
+                  </div>
+                </div>
+              ))}
             </div>
-            <div className="flex items-center gap-2">
-              <Clock className="w-4 h-4 text-gray-500" />
-              <span className="font-medium">{schedule.duration} minutes</span>
-            </div>
-          </div>
+          ) : (
+            <p className="text-sm text-gray-500">No schedule set for this class.</p>
+          )}
         </div>
 
         {/* Stats Grid */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div className="border border-gray-200 rounded-lg p-6">
             <Users className="w-6 h-6 text-gray-600 mb-3" />
-            <p className="text-3xl font-semibold text-gray-900 mb-1">{_count.members}</p>
+            <p className="text-3xl font-semibold text-gray-900 mb-1">{memberCount}</p>
             <p className="text-sm text-gray-600">Members</p>
           </div>
           <div className="border border-gray-200 rounded-lg p-6">
             <Award className="w-6 h-6 text-gray-600 mb-3" />
-            <p className="text-3xl font-semibold text-gray-900 mb-1">{_count.teachers}</p>
+            <p className="text-3xl font-semibold text-gray-900 mb-1">{teacherCount}</p>
             <p className="text-sm text-gray-600">Teachers</p>
           </div>
           <div className="border border-gray-200 rounded-lg p-6">
@@ -260,7 +278,7 @@ export default function ClassDetailPage() {
         <div className="border border-gray-200 rounded-lg p-6">
           <h2 className="text-xl font-semibold text-gray-900 mb-4">Teachers</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {teachers.map((t) => (
+            {teacherList.map((t) => (
               <div key={t.id} className="flex items-center gap-3 p-3 border border-gray-200 rounded-lg hover:border-gray-900 transition-colors">
                 <Image
                   src={DefaultAvatar}
