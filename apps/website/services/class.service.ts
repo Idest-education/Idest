@@ -1,10 +1,13 @@
 import { http } from "./http";
-import { CreateClassPayload } from "@/types/class";
+import { CreateClassPayload, ClassResponse, ClassData } from "@/types/class";
 
-export async function getClasses() {
+export async function getClasses(): Promise<{ data: ClassResponse }> {
   const res = await http.get("/class");
   return res.data;
 }
+
+// Alias for clarity in places where we care about the semantic meaning
+export const getUserClasses = getClasses;
 
 export async function getClassById(id: string) {
   const res = await http.get(`/class/${id}`);
@@ -20,6 +23,14 @@ export const searchClasses = async (q: string) => {
   if (!q.trim()) return [];
   const res = await http.get(`/class/search?q=${encodeURIComponent(q)}`);
   return res.data;
+};
+
+// Get all visible classes for the current user (including those not yet enrolled),
+// without requiring a non-empty search term.
+export const getAllVisibleClasses = async (): Promise<ClassData[]> => {
+  const res = await http.get("/class/search?q=");
+  // API typically wraps payload in { data, ... }
+  return res.data?.data || [];
 };
 
 export const createClass = async (payload: CreateClassPayload) => {

@@ -4,6 +4,8 @@ export interface ClassData {
   name: string;
   description: string;
   invite_code: string;
+  price?: number | null;
+  currency?: string;
   creator: {
     full_name: string;
     email: string;
@@ -35,6 +37,9 @@ export interface ClassDetail {
   slug: string;
   description: string;
   is_group: boolean;
+  // Price in Vietnamese đồng (VND). Null/undefined means the class is free.
+  price?: number | null;
+  currency?: string;
   invite_code: string;
   created_by: string;
   schedule: {
@@ -77,7 +82,7 @@ export interface ClassDetail {
     end_time: string;
     is_recorded: boolean;
     recording_url?: string;
-    whiteboard_data?: any;
+    whiteboard_data?: Record<string, unknown>;
     metadata?: {
       topic?: string;
       attendees_count?: number;

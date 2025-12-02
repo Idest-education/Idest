@@ -1,12 +1,21 @@
 import Link from "next/link";
-import { ArrowRight, BookOpen, MessageSquare, Brain, Sparkles } from "lucide-react";
+import {
+  ArrowRight,
+  BookOpen,
+  MessageSquare,
+  Brain,
+  Sparkles,
+} from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { AuthButton } from "@/components/auth-button";
+import ClassShowcaseClient from "@/components/class/ClassShowcaseClient";
 
 export default async function Home() {
   const supabase = await createClient();
   const { data } = await supabase.auth.getClaims();
   const user = data?.claims;
+
+  const isAuthenticated = !!user;
 
   return (
     <main className="min-h-screen bg-white">
@@ -17,7 +26,7 @@ export default async function Home() {
             Idest
           </Link>
           <div className="flex items-center gap-4">
-            {user ? (
+            {isAuthenticated ? (
               <>
                 <Link
                   href="/classes"
@@ -47,31 +56,27 @@ export default async function Home() {
         </div>
       </nav>
 
-      {/* Hero Section */}
-      <section className="max-w-7xl mx-auto px-6 pt-20 pb-24">
-        <div className="max-w-3xl mx-auto text-center">
-          <div className="inline-flex items-center gap-2 px-4 py-2 bg-gray-100 rounded-full text-sm text-gray-700 mb-8">
-            <Sparkles className="w-4 h-4" />
-            AI-Powered English Learning
-          </div>
-          <h1 className="text-5xl md:text-6xl font-bold text-gray-900 mb-6 leading-tight">
-            Master English with
-            <span className="block mt-2">confidence and ease</span>
-          </h1>
-          <p className="text-xl text-gray-600 mb-10 leading-relaxed">
-            Practice speaking, writing, and comprehension with AI tutors that adapt to your learning style.
-          </p>
-          <div className="flex items-center justify-center gap-4">
-            {user ? (
-              <Link
-                href="/classes"
-                className="inline-flex items-center gap-2 px-6 py-3 bg-gray-900 text-white rounded-lg hover:bg-gray-800 transition-colors text-lg font-medium"
-              >
-                Go to Dashboard
-                <ArrowRight className="w-5 h-5" />
-              </Link>
-            ) : (
-              <>
+      {isAuthenticated ? (
+        // Authenticated users see the class marketplace as the primary home experience
+        <ClassShowcaseClient />
+      ) : (
+        <>
+          {/* Hero Section */}
+          <section className="max-w-7xl mx-auto px-6 pt-20 pb-24">
+            <div className="max-w-3xl mx-auto text-center">
+              <div className="inline-flex items-center gap-2 px-4 py-2 bg-gray-100 rounded-full text-sm text-gray-700 mb-8">
+                <Sparkles className="w-4 h-4" />
+                AI-Powered English Learning
+              </div>
+              <h1 className="text-5xl md:text-6xl font-bold text-gray-900 mb-6 leading-tight">
+                Master English with
+                <span className="block mt-2">confidence and ease</span>
+              </h1>
+              <p className="text-xl text-gray-600 mb-10 leading-relaxed">
+                Practice speaking, writing, and comprehension with AI tutors
+                that adapt to your learning style.
+              </p>
+              <div className="flex items-center justify-center gap-4">
                 <Link
                   href="/auth/sign-up"
                   className="inline-flex items-center gap-2 px-6 py-3 bg-gray-900 text-white rounded-lg hover:bg-gray-800 transition-colors text-lg font-medium"
@@ -85,88 +90,82 @@ export default async function Home() {
                 >
                   Learn more
                 </Link>
-              </>
-            )}
-          </div>
-        </div>
-      </section>
-
-      {/* Features Section */}
-      <section className="max-w-7xl mx-auto px-6 py-24 border-t border-gray-200">
-        <div className="grid md:grid-cols-3 gap-12">
-          <div className="text-center">
-            <div className="inline-flex items-center justify-center w-12 h-12 bg-gray-100 rounded-lg mb-4">
-              <MessageSquare className="w-6 h-6 text-gray-900" />
+              </div>
             </div>
-            <h3 className="text-xl font-semibold text-gray-900 mb-3">
-              Speaking Practice
-            </h3>
-            <p className="text-gray-600 leading-relaxed">
-              Have natural conversations with AI tutors and receive instant feedback on pronunciation and fluency.
-            </p>
-          </div>
+          </section>
 
-          <div className="text-center">
-            <div className="inline-flex items-center justify-center w-12 h-12 bg-gray-100 rounded-lg mb-4">
-              <BookOpen className="w-6 h-6 text-gray-900" />
+          {/* Features Section */}
+          <section className="max-w-7xl mx-auto px-6 py-24 border-t border-gray-200">
+            <div className="grid md:grid-cols-3 gap-12">
+              <div className="text-center">
+                <div className="inline-flex items-center justify-center w-12 h-12 bg-gray-100 rounded-lg mb-4">
+                  <MessageSquare className="w-6 h-6 text-gray-900" />
+                </div>
+                <h3 className="text-xl font-semibold text-gray-900 mb-3">
+                  Speaking Practice
+                </h3>
+                <p className="text-gray-600 leading-relaxed">
+                  Have natural conversations with AI tutors and receive instant
+                  feedback on pronunciation and fluency.
+                </p>
+              </div>
+
+              <div className="text-center">
+                <div className="inline-flex items-center justify-center w-12 h-12 bg-gray-100 rounded-lg mb-4">
+                  <BookOpen className="w-6 h-6 text-gray-900" />
+                </div>
+                <h3 className="text-xl font-semibold text-gray-900 mb-3">
+                  Writing Assistance
+                </h3>
+                <p className="text-gray-600 leading-relaxed">
+                  Improve your writing skills with AI-powered suggestions,
+                  grammar corrections, and style recommendations.
+                </p>
+              </div>
+
+              <div className="text-center">
+                <div className="inline-flex items-center justify-center w-12 h-12 bg-gray-100 rounded-lg mb-4">
+                  <Brain className="w-6 h-6 text-gray-900" />
+                </div>
+                <h3 className="text-xl font-semibold text-gray-900 mb-3">
+                  Personalized Learning
+                </h3>
+                <p className="text-gray-600 leading-relaxed">
+                  Adaptive curriculum that adjusts to your level and learning
+                  pace for optimal progress.
+                </p>
+              </div>
             </div>
-            <h3 className="text-xl font-semibold text-gray-900 mb-3">
-              Writing Assistance
-            </h3>
-            <p className="text-gray-600 leading-relaxed">
-              Improve your writing skills with AI-powered suggestions, grammar corrections, and style recommendations.
-            </p>
-          </div>
+          </section>
 
-          <div className="text-center">
-            <div className="inline-flex items-center justify-center w-12 h-12 bg-gray-100 rounded-lg mb-4">
-              <Brain className="w-6 h-6 text-gray-900" />
+          {/* CTA Section */}
+          <section className="max-w-7xl mx-auto px-6 py-24 border-t border-gray-200">
+            <div className="max-w-3xl mx-auto text-center">
+              <h2 className="text-4xl font-bold text-gray-900 mb-6">
+                Ready to get started?
+              </h2>
+              <p className="text-xl text-gray-600 mb-8">
+                Join thousands of learners improving their English every day.
+              </p>
+              <Link
+                href="/auth/sign-up"
+                className="inline-flex items-center gap-2 px-6 py-3 bg-gray-900 text-white rounded-lg hover:bg-gray-800 transition-colors text-lg font-medium"
+              >
+                Start learning for free
+                <ArrowRight className="w-5 h-5" />
+              </Link>
             </div>
-            <h3 className="text-xl font-semibold text-gray-900 mb-3">
-              Personalized Learning
-            </h3>
-            <p className="text-gray-600 leading-relaxed">
-              Adaptive curriculum that adjusts to your level and learning pace for optimal progress.
-            </p>
-          </div>
-        </div>
-      </section>
+          </section>
 
-      {/* CTA Section */}
-      <section className="max-w-7xl mx-auto px-6 py-24 border-t border-gray-200">
-        <div className="max-w-3xl mx-auto text-center">
-          <h2 className="text-4xl font-bold text-gray-900 mb-6">
-            Ready to get started?
-          </h2>
-          <p className="text-xl text-gray-600 mb-8">
-            Join thousands of learners improving their English every day.
-          </p>
-          {user ? (
-            <Link
-              href="/classes"
-              className="inline-flex items-center gap-2 px-6 py-3 bg-gray-900 text-white rounded-lg hover:bg-gray-800 transition-colors text-lg font-medium"
-            >
-              Go to Dashboard
-              <ArrowRight className="w-5 h-5" />
-            </Link>
-          ) : (
-            <Link
-              href="/auth/sign-up"
-              className="inline-flex items-center gap-2 px-6 py-3 bg-gray-900 text-white rounded-lg hover:bg-gray-800 transition-colors text-lg font-medium"
-            >
-              Start learning for free
-              <ArrowRight className="w-5 h-5" />
-            </Link>
-          )}
-        </div>
-      </section>
-
-      {/* Footer */}
-      <footer className="border-t border-gray-200 mt-24">
-        <div className="max-w-7xl mx-auto px-6 py-8 text-center text-sm text-gray-600">
-          <p>© {new Date().getFullYear()} Idest. All rights reserved.</p>
-        </div>
-      </footer>
+          {/* Footer */}
+          <footer className="border-t border-gray-200 mt-24">
+            <div className="max-w-7xl mx-auto px-6 py-8 text-center text-sm text-gray-600">
+              <p>© {new Date().getFullYear()} Idest. All rights reserved.</p>
+            </div>
+          </footer>
+        </>
+      )}
     </main>
   );
 }
+
