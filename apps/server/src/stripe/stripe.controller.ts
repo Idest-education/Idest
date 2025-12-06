@@ -12,7 +12,11 @@ import { CurrentUser } from 'src/common/decorator/currentUser.decorator';
 import { userPayload } from 'src/common/types/userPayload.interface';
 import { StripeService } from './stripe.service';
 
+import { IsNotEmpty, IsString } from 'class-validator';
+
 class VerifyEnrollmentDto {
+  @IsString()
+  @IsNotEmpty()
   sessionId: string;
 }
 

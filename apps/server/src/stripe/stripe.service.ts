@@ -111,19 +111,50 @@ export class StripeService {
     sessionId: string,
   ) {
     try {
+      if (!sessionId) {
+        throw new BadRequestException('Session ID is required');
+      }
+
       // Verify the session exists and payment succeeded
       const session = await this.stripe.checkout.sessions.retrieve(sessionId);
 
+      console.log('Retrieved Stripe session:', {
+        sessionId: session.id,
+        paymentStatus: session.payment_status,
+        metadata: session.metadata,
+      });
+
+      // Check payment status - allow 'paid' status
+      // Note: In test mode, payment_status might be 'unpaid' initially but still valid
       if (session.payment_status !== 'paid') {
-        throw new BadRequestException('Payment has not been completed');
+        console.warn('Payment status is not "paid":', {
+          sessionId: session.id,
+          paymentStatus: session.payment_status,
+          mode: session.mode,
+        });
+        // For test sessions, we might want to be more lenient
+        // But for production, we should only accept 'paid'
+        throw new BadRequestException(
+          `Payment has not been completed. Status: ${session.payment_status}. Please ensure the payment was successful.`,
+        );
       }
 
       // Verify metadata matches
       const metaUserId = session.metadata?.userId;
       const metaClassId = session.metadata?.classId;
 
+      console.log('Metadata check:', {
+        metaUserId,
+        userId,
+        metaClassId,
+        classId,
+        match: metaUserId === userId && metaClassId === classId,
+      });
+
       if (metaUserId !== userId || metaClassId !== classId) {
-        throw new BadRequestException('Session metadata does not match');
+        throw new BadRequestException(
+          `Session metadata does not match. Expected userId: ${userId}, classId: ${classId}, but got userId: ${metaUserId}, classId: ${metaClassId}`,
+        );
       }
 
       // Check if already enrolled
