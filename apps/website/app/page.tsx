@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Suspense } from "react";
 import {
   ArrowRight,
   BookOpen,
@@ -58,7 +59,16 @@ export default async function Home() {
 
       {isAuthenticated ? (
         // Authenticated users see the class marketplace as the primary home experience
-        <ClassShowcaseClient />
+        <Suspense fallback={
+          <div className="py-24 flex justify-center">
+            <div className="flex flex-col items-center gap-3">
+              <div className="w-10 h-10 rounded-full border-2 border-gray-900 border-t-transparent animate-spin" />
+              <p className="text-gray-600 text-sm">Loading classes for you...</p>
+            </div>
+          </div>
+        }>
+          <ClassShowcaseClient />
+        </Suspense>
       ) : (
         <>
           {/* Hero Section */}

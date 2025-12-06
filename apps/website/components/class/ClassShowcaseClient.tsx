@@ -3,11 +3,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { ClassData, ClassResponse } from "@/types/class";
 import { getUserClasses, getAllVisibleClasses } from "@/services/class.service";
-import {
-  createClassPaymentIntent,
-  confirmClassPurchase,
-} from "@/services/stripe.service";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { createClassCheckoutSession } from "@/services/stripe.service";
+import { Card, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -77,6 +74,7 @@ export default function ClassShowcaseClient() {
     load();
   }, []);
 
+
   const openModal = (cls: ClassData) => {
     setSelectedId(cls.id);
     setModalOpen(true);
@@ -102,29 +100,43 @@ export default function ClassShowcaseClient() {
     setError(null);
     setSuccessMessage(null);
     try {
-      const intent = await createClassPaymentIntent(selectedId);
+      const session = await createClassCheckoutSession(selectedId);
 
-      if (intent.isFree) {
-        await confirmClassPurchase(selectedId);
+      // Log the response for debugging (remove in production if needed)
+      console.log("Checkout session response:", session);
+
+      // Handle free classes
+      if (session.isFree) {
+        // Free class - already enrolled by backend
         await refreshUserClasses();
         setSuccessMessage("You have been enrolled in this class.");
+        setPurchaseLoading(false);
         return;
       }
 
-      if (intent.alreadyOwned) {
+      // Handle already owned classes
+      if (session.alreadyOwned) {
         await refreshUserClasses();
         setSuccessMessage("You already own this class.");
+        setPurchaseLoading(false);
         return;
       }
 
-      // For now, we optimistically confirm immediately without Stripe.js UI.
-      await confirmClassPurchase(selectedId, intent.paymentIntentId);
-      await refreshUserClasses();
-      setSuccessMessage("Purchase successful! You are now enrolled.");
+      // Redirect to Stripe Checkout
+      if (session.url) {
+        window.location.href = session.url;
+        // Note: setPurchaseLoading won't be called here since we're redirecting
+      } else {
+        // Log the full response for debugging
+        console.error("Checkout session response missing URL:", session);
+        throw new Error(
+          "No checkout URL received from server. The payment session may not have been created properly. Please try again or contact support."
+        );
+      }
     } catch (e) {
       console.error("Purchase failed", e);
-      setError("Purchase failed. Please try again.");
-    } finally {
+      const errorMessage = e instanceof Error ? e.message : "Purchase failed. Please try again.";
+      setError(errorMessage);
       setPurchaseLoading(false);
     }
   };
@@ -144,6 +156,34 @@ export default function ClassShowcaseClient() {
 
   return (
     <section className="max-w-7xl mx-auto px-6 py-16">
+      {/* Global success/error message banner */}
+      {successMessage && (
+        <div className="mb-6 p-4 bg-emerald-50 border border-emerald-200 rounded-lg text-emerald-800 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <ShieldCheck className="w-5 h-5" />
+            <span className="font-medium">{successMessage}</span>
+          </div>
+          <button
+            onClick={() => setSuccessMessage(null)}
+            className="text-emerald-600 hover:text-emerald-800"
+          >
+            ×
+          </button>
+        </div>
+      )}
+      {error && !successMessage && (
+        <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg text-red-800 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <span className="font-medium">{error}</span>
+          </div>
+          <button
+            onClick={() => setError(null)}
+            className="text-red-600 hover:text-red-800"
+          >
+            ×
+          </button>
+        </div>
+      )}
       {/* Header strip */}
       <div className="mb-10 flex flex-col md:flex-row md:items-end md:justify-between gap-6">
         <div>
