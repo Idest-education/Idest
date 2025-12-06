@@ -19,60 +19,6 @@ export class StripeService {
     this.stripe = new Stripe(secretKey);
   }
 
-  async createClassPaymentIntent(userId: string, classId: string) {
-    try {
-      const classData = (await this.prisma.class.findUnique({
-        where: { id: classId },
-      })) as any;
-
-      if (!classData) {
-        throw new BadRequestException('Class not found');
-      }
-
-      if (classData.price == null) {
-        // Free class, no payment required
-        return { isFree: true };
-      }
-
-      const user = (await this.prisma.user.findUnique({
-        where: { id: userId },
-      })) as any;
-
-      if (!user) {
-        throw new BadRequestException('User not found');
-      }
-
-      if (user.purchases?.includes(classData.id)) {
-        return { alreadyOwned: true };
-      }
-
-      const currency = (classData.currency || 'vnd').toLowerCase();
-
-      const paymentIntent = await this.stripe.paymentIntents.create({
-        amount: classData.price,
-        currency,
-        metadata: {
-          userId,
-          classId: classData.id,
-        },
-        receipt_email: user.email ?? undefined,
-      });
-
-      return {
-        isFree: false,
-        alreadyOwned: false,
-        paymentIntentId: paymentIntent.id,
-        clientSecret: paymentIntent.client_secret,
-      };
-    } catch (error) {
-      console.error('Error creating class payment intent:', error);
-      if (error instanceof BadRequestException) {
-        throw error;
-      }
-      throw new InternalServerErrorException('Failed to create payment intent');
-    }
-  }
-
   /**
    * Create a Stripe Checkout Session for purchasing a class.
    */
@@ -127,13 +73,19 @@ export class StripeService {
             quantity: 1,
           },
         ],
-        success_url: `${frontendBase}/?checkout=success&classId=${classId}&session_id={CHECKOUT_SESSION_ID}`,
-        cancel_url: `${frontendBase}/?checkout=cancel&classId=${classId}`,
+        success_url: `${frontendBase}/checkout/success?classId=${classId}&className=${encodeURIComponent(classData.name)}&session_id={CHECKOUT_SESSION_ID}&price=${classData.price}&currency=${currency}`,
+        cancel_url: `${frontendBase}/checkout/cancel?classId=${classId}&className=${encodeURIComponent(classData.name)}`,
         metadata: {
           userId,
           classId,
         },
       });
+
+      // Validate that the session has a URL
+      if (!session.url) {
+        console.error('Stripe checkout session created but URL is missing:', session);
+        throw new InternalServerErrorException('Checkout session created but URL is missing');
+      }
 
       return {
         isFree: false,
@@ -149,61 +101,50 @@ export class StripeService {
     }
   }
 
-  async confirmClassPurchase(
+  /**
+   * Verify checkout session and complete enrollment if payment succeeded.
+   * This serves as a fallback if the webhook didn't process the payment.
+   */
+  async verifyAndCompleteEnrollment(
     userId: string,
     classId: string,
-    paymentIntentId?: string,
+    sessionId: string,
   ) {
     try {
-      const classData = (await this.prisma.class.findUnique({
-        where: { id: classId },
-      })) as any;
+      // Verify the session exists and payment succeeded
+      const session = await this.stripe.checkout.sessions.retrieve(sessionId);
 
-      if (!classData) {
-        throw new BadRequestException('Class not found');
+      if (session.payment_status !== 'paid') {
+        throw new BadRequestException('Payment has not been completed');
       }
 
-      // For free classes we don't hit Stripe, just record purchase + enrollment
-      if (classData.price == null) {
-        await this.recordPurchaseAndEnrollment(userId, classId);
-        return { success: true, isFree: true };
-      }
-
-      if (!paymentIntentId) {
-        throw new BadRequestException('paymentIntentId is required for paid classes');
-      }
-
-      const pi = await this.stripe.paymentIntents.retrieve(paymentIntentId);
-
-      if (pi.status !== 'succeeded') {
-        throw new BadRequestException('Payment is not completed');
-      }
-
-      const metaUserId = (pi.metadata?.userId as string) || null;
-      const metaClassId = (pi.metadata?.classId as string) || null;
+      // Verify metadata matches
+      const metaUserId = session.metadata?.userId;
+      const metaClassId = session.metadata?.classId;
 
       if (metaUserId !== userId || metaClassId !== classId) {
-        throw new BadRequestException('Payment metadata does not match user/class');
+        throw new BadRequestException('Session metadata does not match');
       }
 
-      const currency = (classData.currency || 'vnd').toLowerCase();
-      if (pi.currency.toLowerCase() !== currency) {
-        throw new BadRequestException('Currency mismatch');
+      // Check if already enrolled
+      const user = (await this.prisma.user.findUnique({
+        where: { id: userId },
+      })) as any;
+
+      if (user && Array.isArray(user.purchases) && user.purchases.includes(classId)) {
+        return { success: true, alreadyEnrolled: true };
       }
 
-      if (pi.amount !== classData.price) {
-        throw new BadRequestException('Amount mismatch');
-      }
-
+      // Complete enrollment
       await this.recordPurchaseAndEnrollment(userId, classId);
 
-      return { success: true, isFree: false };
+      return { success: true, alreadyEnrolled: false };
     } catch (error) {
-      console.error('Error confirming class purchase:', error);
+      console.error('Error verifying and completing enrollment:', error);
       if (error instanceof BadRequestException) {
         throw error;
       }
-      throw new InternalServerErrorException('Failed to confirm class purchase');
+      throw new InternalServerErrorException('Failed to verify and complete enrollment');
     }
   }
 

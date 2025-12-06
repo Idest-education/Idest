@@ -44,11 +44,30 @@ export class StripeWebhookController {
       const userId = session.metadata?.userId;
       const classId = session.metadata?.classId;
 
+      console.log('Checkout session completed:', {
+        sessionId: session.id,
+        userId,
+        classId,
+        paymentStatus: session.payment_status,
+      });
+
       if (userId && classId) {
-        await (this.stripeService as any)['recordPurchaseAndEnrollment'](
+        try {
+          await (this.stripeService as any)['recordPurchaseAndEnrollment'](
+            userId,
+            classId,
+          );
+          console.log('Successfully recorded purchase and enrollment:', { userId, classId });
+        } catch (error) {
+          console.error('Error recording purchase and enrollment:', error);
+          throw error;
+        }
+      } else {
+        console.warn('Missing userId or classId in checkout session metadata:', {
           userId,
           classId,
-        );
+          metadata: session.metadata,
+        });
       }
     }
 
