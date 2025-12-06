@@ -49,13 +49,22 @@ function CheckoutSuccessContent() {
         } else {
           throw new Error("Enrollment verification failed");
         }
-      } catch (err) {
-        console.error("Failed to verify enrollment:", err);
-        setError(
-          err instanceof Error
-            ? err.message
-            : "Payment succeeded but enrollment failed. Please contact support."
-        );
+        } catch (err: unknown) {
+          console.error("Failed to verify enrollment:", err);
+          let errorMessage = "Payment succeeded but enrollment failed. Please contact support.";
+          
+          if (err && typeof err === 'object' && 'response' in err) {
+            const axiosError = err as { response?: { data?: { message?: string }; status?: number } };
+            console.error("Error details:", {
+              message: axiosError.response?.data?.message,
+              status: axiosError.response?.status,
+            });
+            errorMessage = axiosError.response?.data?.message || errorMessage;
+          } else if (err instanceof Error) {
+            errorMessage = err.message;
+          }
+          
+          setError(errorMessage);
       } finally {
         setLoading(false);
       }
