@@ -2,6 +2,7 @@ import { Controller, Get, Delete, Param, UseGuards, Query } from '@nestjs/common
 import { AssignmentService } from './assignment.service';
 import { JwtAuthGuard } from '../guards/jwt-auth.guard';
 import { ApiBearerAuth, ApiOperation, ApiQuery } from '@nestjs/swagger';
+import { PaginationDto } from './dto/pagination.dto';
 
 @Controller('assignments')
 @ApiBearerAuth()
@@ -10,8 +11,10 @@ export class AssignmentController {
   constructor(private readonly assignmentService: AssignmentService) {}
 
   @Get()
-  findAll() {
-    return this.assignmentService.findAll();
+  @ApiQuery({ name: 'page', required: false, type: Number, description: 'Page number (1-based) for each skill' })
+  @ApiQuery({ name: 'limit', required: false, type: Number, description: 'Items per page for each skill' })
+  findAll(@Query() pagination?: PaginationDto) {
+    return this.assignmentService.findAll(pagination);
   }
 
   @Get('submissions')

@@ -9,6 +9,7 @@ import { ReadingService } from './reading/reading.service';
 import { ListeningService } from './listening/listening.service';
 import { WritingService } from './writing/writing.service';
 import { SpeakingService } from './speaking/speaking.service';
+import { PaginationDto } from './dto/pagination.dto';
 
 @Injectable()
 export class AssignmentService {
@@ -27,12 +28,12 @@ export class AssignmentService {
     private readonly speakingService: SpeakingService,
   ) {}
 
-  async findAll() {
+  async findAll(pagination?: PaginationDto) {
     const [reading, listening, writing, speaking] = await Promise.all([
-      this.readingService.findAll(),
-      this.listeningService.findAll(),
-      this.writingService.findAll(),
-      this.speakingService.findAll(),
+      this.readingService.findAll(pagination),
+      this.listeningService.findAll(pagination),
+      this.writingService.findAll(pagination),
+      this.speakingService.findAll(pagination),
     ]);
 
     return {

@@ -1,11 +1,12 @@
-import { Controller, Get, Post, Patch, Delete, Param, Body, HttpStatus, UseGuards, UseInterceptors, UploadedFile, UploadedFiles } from '@nestjs/common';
-import { ApiTags, ApiBearerAuth, ApiOperation, ApiResponse, ApiConsumes, ApiBody } from '@nestjs/swagger';
+import { Controller, Get, Post, Patch, Delete, Param, Body, HttpStatus, UseGuards, UseInterceptors, UploadedFile, UploadedFiles, Query } from '@nestjs/common';
+import { ApiTags, ApiBearerAuth, ApiOperation, ApiResponse, ApiConsumes, ApiBody, ApiQuery } from '@nestjs/swagger';
 import { SpeakingService } from './speaking.service';
 import { CreateSpeakingAssignmentDto } from './dto/create-speaking-assignment.dto';
 import { UpdateSpeakingAssignmentDto } from './dto/update-speaking-assignment.dto';
 import { CreateSpeakingResponseDto } from './dto/create-speaking-response.dto';
 import { JwtAuthGuard } from '../../guards/jwt-auth.guard';
 import { FileInterceptor, FileFieldsInterceptor } from '@nestjs/platform-express';
+import { PaginationDto } from '../dto/pagination.dto';
 
 @ApiTags('speaking')
 @ApiBearerAuth()
@@ -24,9 +25,11 @@ export class SpeakingController {
 
   @Get('assignments')
   @ApiOperation({ summary: 'List speaking assignments' })
+  @ApiQuery({ name: 'page', required: false, type: Number, description: 'Page number (1-based)' })
+  @ApiQuery({ name: 'limit', required: false, type: Number, description: 'Items per page' })
   @ApiResponse({ status: HttpStatus.OK })
-  async findAll() {
-    const data = await this.speakingService.findAll();
+  async findAll(@Query() pagination: PaginationDto) {
+    const data = await this.speakingService.findAll(pagination);
     return { status: true, message: 'Fetched', data, statusCode: HttpStatus.OK };
   }
 

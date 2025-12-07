@@ -7,6 +7,7 @@ import { UpdateWritingAssignmentDto } from './dto/update-writing-assignment.dto'
 import { WritingSubmission, WritingSubmissionDocument } from './schemas/writing-submission.schema';
 import { CreateWritingSubmissionDto } from './dto/create-writing-submission.dto';
 import { GradeService } from '../../grade/grade.service';
+import { PaginationDto, PaginatedResponse } from '../dto/pagination.dto';
 
 @Injectable()
 export class WritingService {
@@ -24,8 +25,33 @@ export class WritingService {
     return created.save();
   }
 
-  async findAll() {
-    return this.writingAssignmentModel.find().exec();
+  async findAll(pagination?: PaginationDto): Promise<PaginatedResponse<any> | any[]> {
+    if (!pagination) {
+      return this.writingAssignmentModel.find().exec();
+    }
+
+    const page = pagination.page || 1;
+    const limit = pagination.limit || 6;
+    const skip = (page - 1) * limit;
+
+    const [data, total] = await Promise.all([
+      this.writingAssignmentModel.find().skip(skip).limit(limit).exec(),
+      this.writingAssignmentModel.countDocuments().exec(),
+    ]);
+
+    const totalPages = Math.ceil(total / limit);
+
+    return {
+      data,
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages,
+        hasNext: page < totalPages,
+        hasPrev: page > 1,
+      },
+    };
   }
 
   async findOne(id: string) {

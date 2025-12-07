@@ -10,6 +10,7 @@ import { GradeService } from '../../grade/grade.service';
 import { SupabaseService } from '../../supabase/supabase.service';
 import { concatenateAudioFiles, getExtensionFromMimetype } from '../utils/audio.util';
 import { v4 as uuidv4 } from 'uuid';
+import { PaginationDto, PaginatedResponse } from '../dto/pagination.dto';
 
 @Injectable()
 export class SpeakingService {
@@ -28,8 +29,33 @@ export class SpeakingService {
     return created.save();
   }
 
-  async findAll() {
-    return this.speakingAssignmentModel.find().exec();
+  async findAll(pagination?: PaginationDto): Promise<PaginatedResponse<any> | any[]> {
+    if (!pagination) {
+      return this.speakingAssignmentModel.find().exec();
+    }
+
+    const page = pagination.page || 1;
+    const limit = pagination.limit || 6;
+    const skip = (page - 1) * limit;
+
+    const [data, total] = await Promise.all([
+      this.speakingAssignmentModel.find().skip(skip).limit(limit).exec(),
+      this.speakingAssignmentModel.countDocuments().exec(),
+    ]);
+
+    const totalPages = Math.ceil(total / limit);
+
+    return {
+      data,
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages,
+        hasNext: page < totalPages,
+        hasPrev: page > 1,
+      },
+    };
   }
 
   async findOne(id: string) {

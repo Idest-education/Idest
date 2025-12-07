@@ -1,10 +1,11 @@
-import { Controller, Get, Post, Patch, Delete, Param, Body, HttpStatus, UseGuards, Req } from '@nestjs/common';
-import { ApiTags, ApiBearerAuth, ApiOperation, ApiResponse } from '@nestjs/swagger';
+import { Controller, Get, Post, Patch, Delete, Param, Body, HttpStatus, UseGuards, Req, Query } from '@nestjs/common';
+import { ApiTags, ApiBearerAuth, ApiOperation, ApiResponse, ApiQuery } from '@nestjs/swagger';
 import { ReadingService } from './reading.service';
 import { CreateAssignmentDto } from '../dto/create-assignment.dto';
 import { UpdateAssignmentDto } from '../dto/update-assignment.dto';
 import { SubmitAssignmentDto } from '../dto/submit-assignment.dto';
 import { JwtAuthGuard } from '../../guards/jwt-auth.guard';
+import { PaginationDto } from '../dto/pagination.dto';
 
 @ApiTags('reading')
 @ApiBearerAuth()
@@ -28,9 +29,11 @@ export class ReadingController {
 
   @Get('assignments')
   @ApiOperation({ summary: 'List reading assignments' })
+  @ApiQuery({ name: 'page', required: false, type: Number, description: 'Page number (1-based)' })
+  @ApiQuery({ name: 'limit', required: false, type: Number, description: 'Items per page' })
   @ApiResponse({ status: HttpStatus.OK })
-  async findAll() {
-    const data = await this.readingService.findAll();
+  async findAll(@Query() pagination: PaginationDto) {
+    const data = await this.readingService.findAll(pagination);
     return { status: true, message: 'Fetched', data, statusCode: HttpStatus.OK };
   }
   @Get('submissions')

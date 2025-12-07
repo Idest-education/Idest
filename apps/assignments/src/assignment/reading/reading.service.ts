@@ -8,6 +8,7 @@ import { UpdateAssignmentDto } from '../dto/update-assignment.dto';
 import { SubmitAssignmentDto } from '../dto/submit-assignment.dto';
 import { generateUniqueSlug } from '../utils/slug.util';
 import { gradeAssignment, GradingResult } from '../utils/grading.util';
+import { PaginationDto, PaginatedResponse } from '../dto/pagination.dto';
 
 @Injectable()
 export class ReadingService {
@@ -37,8 +38,33 @@ export class ReadingService {
     return created.save();
   }
 
-  async findAll() {
-    return this.assignmentModel.find({ skill: 'reading' }).exec();
+  async findAll(pagination?: PaginationDto): Promise<PaginatedResponse<any> | any[]> {
+    if (!pagination) {
+      return this.assignmentModel.find({ skill: 'reading' }).exec();
+    }
+
+    const page = pagination.page || 1;
+    const limit = pagination.limit || 6;
+    const skip = (page - 1) * limit;
+
+    const [data, total] = await Promise.all([
+      this.assignmentModel.find({ skill: 'reading' }).skip(skip).limit(limit).exec(),
+      this.assignmentModel.countDocuments({ skill: 'reading' }).exec(),
+    ]);
+
+    const totalPages = Math.ceil(total / limit);
+
+    return {
+      data,
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages,
+        hasNext: page < totalPages,
+        hasPrev: page > 1,
+      },
+    };
   }
 
   async findOne(id: string) {
