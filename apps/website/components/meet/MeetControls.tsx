@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo } from "react";
+import { useCallback, useMemo, useEffect, useRef } from "react";
 import { useRoomContext } from "@livekit/components-react";
 import {
   Mic,
@@ -14,13 +14,11 @@ import {
   MessageSquare,
   Disc,
   StopCircle,
-  PencilRuler,
-  X,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { useMeetStore } from "@/hooks/useMeetStore";
-import { ScreenSharePayload, ToggleMediaPayload, CanvasState } from "@/types/meet";
+import { ScreenSharePayload, ToggleMediaPayload } from "@/types/meet";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 interface MeetControlsProps {
@@ -30,8 +28,6 @@ interface MeetControlsProps {
   emitScreenShareEvent: (type: "start" | "stop", payload: ScreenSharePayload) => void;
   startRecording: () => void;
   stopRecording: () => void;
-  openCanvas: () => void;
-  closeCanvas: (canvasState?: CanvasState) => void;
   toggleChat: () => void;
   toggleParticipants: () => void;
 }
@@ -43,8 +39,6 @@ export function MeetControls({
   emitScreenShareEvent,
   startRecording,
   stopRecording,
-  openCanvas,
-  closeCanvas,
   toggleChat,
   toggleParticipants,
 }: MeetControlsProps) {
@@ -58,13 +52,25 @@ export function MeetControls({
   const showParticipants = useMeetStore((state) => state.showParticipants);
   const localUserId = useMeetStore((state) => state.localUserId);
   const participants = useMeetStore((state) => state.participants);
-  const isCanvasActive = useMeetStore((state) => state.isCanvasActive);
-  const activeCanvasUser = useMeetStore((state) => state.activeCanvasUser);
   const setAudioEnabled = useMeetStore((state) => state.setAudioEnabled);
   const setVideoEnabled = useMeetStore((state) => state.setVideoEnabled);
   const setScreenSharing = useMeetStore((state) => state.setScreenSharing);
+  const error = useMeetStore((state) => state.error);
+  const pendingScreenShareRef = useRef<boolean>(false);
 
   const disabled = !sessionId || !room;
+
+  // Stop screen share in LiveKit if backend rejects it
+  useEffect(() => {
+    if (error && pendingScreenShareRef.current && isScreenSharing && room) {
+      // Backend rejected the screen share attempt, stop it in LiveKit
+      room.localParticipant.setScreenShareEnabled(false).catch((err) => {
+        console.error("Failed to stop screen share after backend rejection:", err);
+      });
+      setScreenSharing(false);
+      pendingScreenShareRef.current = false;
+    }
+  }, [error, isScreenSharing, room, setScreenSharing]);
 
   const canShareScreen = useMemo(() => {
     if (!activeScreenSharer) return true;
@@ -83,32 +89,6 @@ export function MeetControls({
     // Backend uses uppercase roles: TEACHER, ADMIN, STUDENT
     return role === 'TEACHER' || role === 'ADMIN';
   }, [localUserId, participants]);
-
-  const isTeacher = useMemo(() => {
-    if (!localUserId) {
-      console.log('[Canvas] isTeacher check: no localUserId');
-      return false;
-    }
-    const localParticipant = participants[localUserId];
-    if (!localParticipant) {
-      console.log('[Canvas] isTeacher check: no localParticipant found for userId:', localUserId);
-      return false;
-    }
-    const role = localParticipant?.role?.toUpperCase();
-    const isTeacherRole = role === 'TEACHER' || role === 'ADMIN';
-    console.log('[Canvas] isTeacher check:', {
-      userId: localUserId,
-      role: localParticipant.role,
-      roleUpper: role,
-      isTeacherRole,
-      participant: localParticipant,
-    });
-    // Backend uses uppercase roles: TEACHER, ADMIN, STUDENT
-    // Also allow if user is host/creator (backend will validate)
-    return isTeacherRole;
-  }, [localUserId, participants]);
-
-  const isActiveCanvasUser = activeCanvasUser === localUserId;
 
   const toggleAudio = useCallback(async () => {
     if (!room || !sessionId) return;
@@ -161,6 +141,15 @@ export function MeetControls({
     
     try {
       const enable = !isScreenSharing;
+      
+      if (enable) {
+        // Mark that we're attempting to start screen share
+        pendingScreenShareRef.current = true;
+      } else {
+        // Stopping screen share, clear pending flag
+        pendingScreenShareRef.current = false;
+      }
+      
       // LiveKit handles the actual screen share control
       await room.localParticipant.setScreenShareEnabled(enable);
       
@@ -168,11 +157,19 @@ export function MeetControls({
       // TrackStateSync will verify/correct this if there's any mismatch
       setScreenSharing(enable);
       
-      // Optional: Emit socket event for backend logging/analytics only
+      // Emit socket event to backend - backend will enforce single screen share
       emitScreenShareEvent(enable ? "start" : "stop", { sessionId });
+      
+      // Clear pending flag after a short delay to allow backend response
+      if (enable) {
+        setTimeout(() => {
+          pendingScreenShareRef.current = false;
+        }, 2000);
+      }
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : "Unable to toggle screen share";
       toast.error(message);
+      pendingScreenShareRef.current = false;
       // State will sync from actual LiveKit state via TrackStateSync
     }
   }, [emitScreenShareEvent, isScreenSharing, room, sessionId, canShareScreen, activeSharerName, setScreenSharing]);
@@ -185,22 +182,6 @@ export function MeetControls({
       startRecording();
     }
   }, [sessionId, isRecording, stopRecording, startRecording]);
-
-  const handleOpenCanvas = useCallback(() => {
-    if (!sessionId) {
-      console.warn('[Canvas] Cannot open canvas: no sessionId');
-      toast.error('Cannot open canvas: session not found');
-      return;
-    }
-    console.log('[Canvas] Opening canvas for session:', sessionId);
-    openCanvas();
-  }, [sessionId, openCanvas]);
-
-  const handleCloseCanvas = useCallback(() => {
-    if (!sessionId) return;
-    const canvasState = useMeetStore.getState().canvasState;
-    closeCanvas(canvasState || undefined);
-  }, [sessionId, closeCanvas]);
 
   const leaveMeeting = useCallback(async () => {
     try {
@@ -293,34 +274,6 @@ export function MeetControls({
                 {isRecording ? "Stop Rec" : "Record"}
               </span>
             </Button>
-          )}
-
-          {isTeacher && (
-            <>
-              {!isCanvasActive ? (
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  onClick={handleOpenCanvas}
-                  disabled={disabled}
-                  className="h-10 rounded-full"
-                >
-                  <PencilRuler className="h-5 w-5" />
-                  <span className="ml-2 hidden sm:inline">Open Canvas</span>
-                </Button>
-              ) : isActiveCanvasUser ? (
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  onClick={handleCloseCanvas}
-                  disabled={disabled}
-                  className="h-10 rounded-full"
-                >
-                  <X className="h-5 w-5" />
-                  <span className="ml-2 hidden sm:inline">Close Canvas</span>
-                </Button>
-              ) : null}
-            </>
           )}
 
           <div className="mx-2 h-6 w-px bg-border hidden sm:block" />

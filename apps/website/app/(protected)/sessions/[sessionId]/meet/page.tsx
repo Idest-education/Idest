@@ -2,28 +2,19 @@
 
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import dynamic from "next/dynamic";
 import { LiveKitRoom, useRoomContext } from "@livekit/components-react";
 import { Loader2 } from "lucide-react";
 import { format } from "date-fns";
-import { cn } from "@/lib/utils";
 import { Track } from "livekit-client";
 import { MeetVideoGrid } from "@/components/meet/MeetVideoGrid";
 import { MeetControls } from "@/components/meet/MeetControls";
 import { MeetParticipantsPanel } from "@/components/meet/MeetParticipantsPanel";
 import { MeetChatPanel } from "@/components/meet/MeetChatPanel";
 import { MeetStatusBanner } from "@/components/meet/MeetStatusBanner";
-import { MeetCanvasTab } from "@/components/meet/MeetCanvasTab";
 import { useMeetStore } from "@/hooks/useMeetStore";
 import { useMeetClient } from "@/hooks/useMeetClient";
 import { getSessionById } from "@/services/session.service";
 import { SessionData } from "@/types/session";
-
-// Dynamically import MeetCanvas to avoid SSR issues with fabric.js
-const MeetCanvas = dynamic(
-  () => import("@/components/meet/MeetCanvas").then((mod) => ({ default: mod.MeetCanvas })),
-  { ssr: false, loading: () => <div className="flex h-full items-center justify-center">Loading canvas...</div> }
-);
 
 // Component to sync LiveKit track events with store state
 function TrackStateSync() {
@@ -255,11 +246,9 @@ export default function SessionMeetPage() {
   const [session, setSession] = useState<SessionData | null>(null);
   const [sessionError, setSessionError] = useState<string | null>(null);
   const [loadingSession, setLoadingSession] = useState(true);
-  const [activeTab, setActiveTab] = useState<'video' | 'canvas'>('video');
   const livekitCredentials = useMeetStore((state) => state.livekitCredentials);
   const showChat = useMeetStore((state) => state.showChat);
   const showParticipants = useMeetStore((state) => state.showParticipants);
-  const isCanvasActive = useMeetStore((state) => state.isCanvasActive);
   const toggleChat = useMeetStore((state) => state.toggleChat);
   const toggleParticipants = useMeetStore((state) => state.toggleParticipants);
   const setLiveKitConnected = useMeetStore((state) => state.setLiveKitConnected);
@@ -274,9 +263,6 @@ export default function SessionMeetPage() {
     stopRecording,
     kickParticipant,
     stopParticipantMedia,
-    openCanvas,
-    closeCanvas,
-    socket
   } = useMeetClient({
       sessionId,
       autoJoin: Boolean(sessionId),
@@ -310,13 +296,6 @@ export default function SessionMeetPage() {
       ignore = true;
     };
   }, [sessionId]);
-
-  // Auto-switch to video tab when canvas closes
-  useEffect(() => {
-    if (!isCanvasActive && activeTab === 'canvas') {
-      setActiveTab('video');
-    }
-  }, [isCanvasActive, activeTab]);
 
   const leaveAndNavigate = () => {
     leaveSession();
@@ -374,28 +353,9 @@ export default function SessionMeetPage() {
             >
               <TrackStateSync />
               <div className="flex h-full min-h-0 flex-col">
-                {/* Tab Switcher */}
-                <MeetCanvasTab 
-                  activeTab={activeTab} 
-                  onTabChange={(tab) => {
-                    setActiveTab(tab);
-                    // Switch back to video if canvas is closed while on canvas tab
-                    if (tab === 'canvas' && !isCanvasActive) {
-                      setActiveTab('video');
-                    }
-                  }} 
-                />
-                
                 {/* Main Content Area */}
                 <div className="relative flex-1 min-h-0">
-                  <div className={cn("h-full w-full", activeTab !== 'video' && "hidden")}>
-                    <MeetVideoGrid />
-                  </div>
-                  {isCanvasActive && (
-                    <div className={cn("h-full w-full", activeTab !== 'canvas' && "hidden")}>
-                      <MeetCanvas sessionId={sessionId} socket={socket} />
-                    </div>
-                  )}
+                  <MeetVideoGrid />
                 </div>
                 
                 <MeetControls
@@ -405,8 +365,6 @@ export default function SessionMeetPage() {
                   emitScreenShareEvent={emitScreenShareEvent}
                   startRecording={startRecording}
                   stopRecording={stopRecording}
-                  openCanvas={openCanvas}
-                  closeCanvas={closeCanvas}
                   toggleChat={toggleChat}
                   toggleParticipants={toggleParticipants}
                 />

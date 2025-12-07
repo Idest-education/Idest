@@ -6,7 +6,6 @@ import {
   MeetChatMessage,
   MeetParticipant,
   MeetState,
-  CanvasState,
 } from "@/types/meet";
 
 export interface MeetStore extends MeetState {
@@ -42,13 +41,6 @@ export interface MeetStore extends MeetState {
   toggleChat: (value?: boolean) => void;
   toggleParticipants: (value?: boolean) => void;
 
-  // Canvas
-  setCanvasActive: (isActive: boolean) => void;
-  setActiveCanvasUser: (userId: string | null) => void;
-  setCanvasState: (state: CanvasState | null) => void;
-  toggleCanvas: (value?: boolean) => void;
-  resetCanvas: () => void;
-
   // Errors
   setError: (message: string | null) => void;
 
@@ -73,10 +65,6 @@ const initialState: MeetState = {
   isLoadingMessages: false,
   showChat: false,
   showParticipants: false,
-  isCanvasActive: false,
-  activeCanvasUser: null,
-  canvasState: null,
-  showCanvas: false,
   error: null,
   lastUpdatedAt: Date.now(),
 };
@@ -193,26 +181,6 @@ export const useMeetStore = create<MeetStore>((set, _get) => ({
         // Close chat panel when opening participants
         showChat: newValue ? false : state.showChat,
       };
-    }),
-
-  setCanvasActive: (isCanvasActive) => set({ isCanvasActive, lastUpdatedAt: Date.now() }),
-  setActiveCanvasUser: (activeCanvasUser) => set({ activeCanvasUser, lastUpdatedAt: Date.now() }),
-  setCanvasState: (canvasState) => set({ canvasState, lastUpdatedAt: Date.now() }),
-  toggleCanvas: (value) =>
-    set((state) => {
-      const newValue = typeof value === "boolean" ? value : !state.showCanvas;
-      return {
-        showCanvas: newValue,
-        lastUpdatedAt: Date.now(),
-      };
-    }),
-  resetCanvas: () =>
-    set({
-      isCanvasActive: false,
-      activeCanvasUser: null,
-      canvasState: null,
-      showCanvas: false,
-      lastUpdatedAt: Date.now(),
     }),
 
   setError: (error) => set({ error }),

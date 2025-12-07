@@ -22,18 +22,6 @@ import {
   ParticipantMediaStoppedEvent,
   RecordingStartedEvent,
   RecordingStoppedEvent,
-  CanvasOpenedEvent,
-  CanvasClosedEvent,
-  CanvasDrawEvent,
-  CanvasClearedEvent,
-  CanvasErrorEvent,
-  CanvasStateResponse,
-  OpenCanvasPayload,
-  CloseCanvasPayload,
-  DrawEventPayload,
-  ClearCanvasPayload,
-  GetCanvasStatePayload,
-  CanvasState,
 } from "@/types/meet";
 import { getLivekitToken } from "@/services/meet.service";
 import { useRouter } from "next/navigation";
@@ -86,10 +74,8 @@ export function useMeetClient({ sessionId, autoJoin = true }: UseMeetClientOptio
   const setAudioEnabled = useMeetStore((state) => state.setAudioEnabled);
   const setVideoEnabled = useMeetStore((state) => state.setVideoEnabled);
   const setScreenSharing = useMeetStore((state) => state.setScreenSharing);
+  const setActiveScreenSharer = useMeetStore((state) => state.setActiveScreenSharer);
   const setRecording = useMeetStore((state) => state.setRecording);
-  const setCanvasActive = useMeetStore((state) => state.setCanvasActive);
-  const setActiveCanvasUser = useMeetStore((state) => state.setActiveCanvasUser);
-  const setCanvasState = useMeetStore((state) => state.setCanvasState);
   const setError = useMeetStore((state) => state.setError);
   const reset = useMeetStore((state) => state.reset);
   const getStoreState = useMeetStore.getState;
@@ -297,20 +283,27 @@ export function useMeetClient({ sessionId, autoJoin = true }: UseMeetClientOptio
       });
 
       // Screen share state is managed by LiveKit track events
-      // Socket events are only for notifications/logging
-      socket.on("screen-share-started", () => {
-        // TrackStateSync will handle state updates from LiveKit track events
-        // This is just for notification/logging purposes
+      // Socket events update activeScreenSharer to enforce single screen share
+      socket.on("screen-share-started", (payload: { userId: string; sessionId: string; userFullName: string; userAvatar?: string; isSharing: boolean }) => {
+        // Update activeScreenSharer to enforce that only one person can share at a time
+        setActiveScreenSharer(payload.userId);
+        // TrackStateSync will handle local screen sharing state updates from LiveKit track events
       });
 
-      socket.on("screen-share-stopped", () => {
-        // TrackStateSync will handle state updates from LiveKit track events
-        // This is just for notification/logging purposes
+      socket.on("screen-share-stopped", (payload: { userId: string; sessionId: string; userFullName: string; userAvatar?: string; isSharing: boolean }) => {
+        // Clear activeScreenSharer when screen share stops
+        const currentActiveSharer = useMeetStore.getState().activeScreenSharer;
+        if (currentActiveSharer === payload.userId) {
+          setActiveScreenSharer(null);
+        }
+        // TrackStateSync will handle local screen sharing state updates from LiveKit track events
       });
 
       socket.on("screen-share-error", (payload: { message: string }) => {
         setError(payload.message);
-        // TrackStateSync will sync the actual state from LiveKit
+        toast.error(payload.message);
+        // If backend rejected screen share, we need to stop it in LiveKit
+        // This will be handled in MeetControls component which has room access
       });
 
       // --- NEW EVENTS ---
@@ -372,65 +365,6 @@ export function useMeetClient({ sessionId, autoJoin = true }: UseMeetClientOptio
       socket.on("stop-recording-error", (payload: { message: string }) => {
         toast.error(payload.message);
       });
-
-      // --- CANVAS EVENTS ---
-
-      socket.on("canvas-opened", (payload: CanvasOpenedEvent) => {
-        setCanvasActive(true);
-        setActiveCanvasUser(payload.userId);
-        if (payload.canvasState) {
-          setCanvasState(payload.canvasState);
-        }
-        toast.info(`Canvas opened by ${payload.userFullName}`);
-        // Request full canvas state if not provided
-        if (!payload.canvasState) {
-          socket.emit("get-canvas-state", { sessionId: payload.sessionId });
-        }
-      });
-
-      socket.on("canvas-closed", (payload: CanvasClosedEvent) => {
-        setCanvasActive(false);
-        setActiveCanvasUser(null);
-        setCanvasState(null);
-        toast.info(`Canvas closed by ${payload.userFullName}`);
-      });
-
-      socket.on("canvas-draw", (payload: CanvasDrawEvent) => {
-        // This will be handled by the canvas component directly
-        // Store update can happen here if needed for UI indicators
-        const state = getStoreState();
-        // Only update if this is for our session
-        if (payload.sessionId === state.sessionId) {
-          // Canvas component will handle the actual drawing
-          // We could emit a custom event here for the component to listen to
-        }
-      });
-
-      socket.on("canvas-cleared", (payload: CanvasClearedEvent) => {
-        setCanvasState({
-          operations: [],
-          metadata: {
-            width: 800,
-            height: 600,
-            backgroundColor: '#ffffff',
-          },
-        });
-        toast.info(`Canvas cleared by ${payload.userFullName}`);
-      });
-
-      socket.on("canvas-state", (payload: CanvasStateResponse) => {
-        if (payload.isActive) {
-          setCanvasActive(true);
-          if (payload.canvasState) {
-            setCanvasState(payload.canvasState);
-          }
-        }
-      });
-
-      socket.on("canvas-error", (payload: CanvasErrorEvent) => {
-        console.error('[Canvas] Error received:', payload);
-        toast.error(payload.message || 'Canvas error occurred');
-      });
     },
     [
       handleJoinSuccess,
@@ -450,9 +384,6 @@ export function useMeetClient({ sessionId, autoJoin = true }: UseMeetClientOptio
       leaveSession,
       router,
       setJoining,
-      setCanvasActive,
-      setActiveCanvasUser,
-      setCanvasState,
     ],
   );
 
@@ -599,67 +530,6 @@ export function useMeetClient({ sessionId, autoJoin = true }: UseMeetClientOptio
     socket.emit("stop-recording", payload);
   }, [sessionId]);
 
-  // --- CANVAS ACTIONS ---
-
-  const openCanvas = useCallback(() => {
-    const socket = socketRef.current;
-    if (!sessionId) {
-      console.error('[Canvas] Cannot open canvas: no sessionId');
-      toast.error('Cannot open canvas: session not found');
-      return;
-    }
-    if (!socket) {
-      console.error('[Canvas] Cannot open canvas: socket not initialized');
-      toast.error('Cannot open canvas: connection not ready');
-      return;
-    }
-    if (!socket.connected) {
-      console.error('[Canvas] Cannot open canvas: socket not connected');
-      toast.error('Cannot open canvas: please wait for connection');
-      return;
-    }
-    console.log('[Canvas] Emitting open-canvas event for session:', sessionId);
-    const payload: OpenCanvasPayload = { sessionId };
-    socket.emit("open-canvas", payload);
-  }, [sessionId]);
-
-  const closeCanvas = useCallback((canvasState?: CanvasState) => {
-    const socket = socketRef.current;
-    if (!sessionId || !socket?.connected) return;
-    const payload: CloseCanvasPayload = { sessionId, canvasState };
-    socket.emit("close-canvas", payload);
-  }, [sessionId]);
-
-  const sendCanvasDraw = useCallback((
-    type: 'draw' | 'shape' | 'text' | 'erase',
-    data: Record<string, unknown>,
-    timestamp?: string,
-  ) => {
-    const socket = socketRef.current;
-    if (!sessionId || !socket?.connected) return;
-    const payload: DrawEventPayload = {
-      sessionId,
-      type,
-      data,
-      timestamp: timestamp || new Date().toISOString(),
-    };
-    socket.emit("canvas-draw", payload);
-  }, [sessionId]);
-
-  const clearCanvas = useCallback(() => {
-    const socket = socketRef.current;
-    if (!sessionId || !socket?.connected) return;
-    const payload: ClearCanvasPayload = { sessionId };
-    socket.emit("clear-canvas", payload);
-  }, [sessionId]);
-
-  const getCanvasState = useCallback(() => {
-    const socket = socketRef.current;
-    if (!sessionId || !socket?.connected) return;
-    const payload: GetCanvasStatePayload = { sessionId };
-    socket.emit("get-canvas-state", payload);
-  }, [sessionId]);
-
   useEffect(() => {
     if (!autoJoin || !sessionId) return;
     joinSession(sessionId);
@@ -679,10 +549,5 @@ export function useMeetClient({ sessionId, autoJoin = true }: UseMeetClientOptio
     stopParticipantMedia,
     startRecording,
     stopRecording,
-    openCanvas,
-    closeCanvas,
-    sendCanvasDraw,
-    clearCanvas,
-    getCanvasState,
   };
 }
