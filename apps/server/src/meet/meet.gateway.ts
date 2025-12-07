@@ -1164,9 +1164,11 @@ export class MeetGateway
       }
 
       // Check if user is teacher (authorization)
+      // Pass the user's role from connected user to avoid database lookup
       const isTeacher = await this.meetService.isTeacherInSession(
         user.userId,
         data.sessionId,
+        user.role,
       );
       if (!isTeacher) {
         client.emit('canvas-error', {

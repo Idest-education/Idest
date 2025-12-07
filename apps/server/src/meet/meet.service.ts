@@ -860,8 +860,15 @@ export class MeetService {
   async isTeacherInSession(
     userId: string,
     sessionId: string,
+    userRole?: string,
   ): Promise<boolean> {
     try {
+      // If role is provided (e.g., from connected user), check it first
+      if (userRole) {
+        if (userRole === 'ADMIN') return true;
+        if (userRole === 'TEACHER') return true;
+      }
+
       const session = await this.prisma.session.findUnique({
         where: { id: sessionId },
         include: {
@@ -875,8 +882,12 @@ export class MeetService {
 
       if (!session) return false;
 
-      const user = await this.userService.getUserDetails(userId);
-      if (user?.role === 'ADMIN') return true;
+      // If role wasn't provided, fetch from database
+      if (!userRole) {
+        const user = await this.userService.getUserDetails(userId);
+        if (user?.role === 'ADMIN') return true;
+        if (user?.role === 'TEACHER') return true;
+      }
 
       return (
         session.host_id === userId ||
