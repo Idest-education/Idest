@@ -10,6 +10,7 @@ import {
 import { createClient } from "@/lib/supabase/server";
 import { AuthButton } from "@/components/auth-button";
 import ClassShowcaseClient from "@/components/class/ClassShowcaseClient";
+import AssignmentShowcaseClient from "@/components/assignment/AssignmentShowcaseClient";
 
 export default async function Home() {
   const supabase = await createClient();
@@ -59,16 +60,90 @@ export default async function Home() {
 
       {isAuthenticated ? (
         // Authenticated users see the class marketplace as the primary home experience
-        <Suspense fallback={
-          <div className="py-24 flex justify-center">
-            <div className="flex flex-col items-center gap-3">
-              <div className="w-10 h-10 rounded-full border-2 border-gray-900 border-t-transparent animate-spin" />
-              <p className="text-gray-600 text-sm">Loading classes for you...</p>
+        <>
+          <Suspense fallback={
+            <div className="py-24 flex justify-center">
+              <div className="flex flex-col items-center gap-3">
+                <div className="w-10 h-10 rounded-full border-2 border-gray-900 border-t-transparent animate-spin" />
+                <p className="text-gray-600 text-sm">Loading classes for you...</p>
+              </div>
             </div>
-          </div>
-        }>
-          <ClassShowcaseClient />
-        </Suspense>
+          }>
+            <ClassShowcaseClient />
+          </Suspense>
+          <Suspense fallback={
+            <div className="py-24 flex justify-center">
+              <div className="flex flex-col items-center gap-3">
+                <div className="w-10 h-10 rounded-full border-2 border-gray-900 border-t-transparent animate-spin" />
+                <p className="text-gray-600 text-sm">Loading assignments...</p>
+              </div>
+            </div>
+          }>
+            <AssignmentShowcaseClient />
+          </Suspense>
+          
+          {/* Footer */}
+          <footer className="border-t border-gray-200 mt-24">
+            <div className="max-w-7xl mx-auto px-6 py-12">
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-8 mb-8">
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-900 mb-4">Idest</h3>
+                  <p className="text-sm text-gray-600">
+                    Master English with confidence through AI-powered learning and practice.
+                  </p>
+                </div>
+                <div>
+                  <h4 className="text-sm font-semibold text-gray-900 mb-4">Learn</h4>
+                  <ul className="space-y-2 text-sm text-gray-600">
+                    <li>
+                      <Link href="/classes" className="hover:text-gray-900 transition-colors">
+                        Classes
+                      </Link>
+                    </li>
+                    <li>
+                      <Link href="/assignment" className="hover:text-gray-900 transition-colors">
+                        Assignments
+                      </Link>
+                    </li>
+                    <li>
+                      <Link href="/sessions" className="hover:text-gray-900 transition-colors">
+                        Sessions
+                      </Link>
+                    </li>
+                  </ul>
+                </div>
+                <div>
+                  <h4 className="text-sm font-semibold text-gray-900 mb-4">Account</h4>
+                  <ul className="space-y-2 text-sm text-gray-600">
+                    <li>
+                      <Link href="/settings" className="hover:text-gray-900 transition-colors">
+                        Settings
+                      </Link>
+                    </li>
+                    <li>
+                      <Link href="/ai" className="hover:text-gray-900 transition-colors">
+                        AI Tools
+                      </Link>
+                    </li>
+                  </ul>
+                </div>
+                <div>
+                  <h4 className="text-sm font-semibold text-gray-900 mb-4">Support</h4>
+                  <ul className="space-y-2 text-sm text-gray-600">
+                    <li>
+                      <Link href="/service-status" className="hover:text-gray-900 transition-colors">
+                        Service Status
+                      </Link>
+                    </li>
+                  </ul>
+                </div>
+              </div>
+              <div className="border-t border-gray-200 pt-8 text-center text-sm text-gray-600">
+                <p>© {new Date().getFullYear()} Idest. All rights reserved.</p>
+              </div>
+            </div>
+          </footer>
+        </>
       ) : (
         <>
           {/* Hero Section */}

@@ -4,22 +4,58 @@ import { WritingAssignmentDetail, WritingSubmissionPayload, WritingSubmissionRes
   SpeakingSubmissionPayload,
   ListeningAssignmentDetail,
   ListeningSubmissionPayload,
-  ListeningSubmissionResult,} from "@/types/assignment";
+  ListeningSubmissionResult,
+  PaginationDto,
+  PaginatedAssignmentResponse,} from "@/types/assignment";
 
-export async function getAssignments(): Promise<AssignmentResponse> {
-  const res = await http.get("https://ie-backend.fly.dev/hehe/assignments");
+export async function getAssignments(pagination?: PaginationDto): Promise<AssignmentResponse> {
+  const params = pagination ? { page: pagination.page, limit: pagination.limit } : {};
+  const res = await http.get("https://ie-backend.fly.dev/hehe/assignments", { params });
   const data = res.data;
 
-  // Add skill to each item
-  const mapWithSkill = (items: AssignmentOverview[], skill: string) =>
-    items.map((item) => ({ ...item, skill }));
+  // Helper to normalize response (handle both paginated and non-paginated)
+  const normalizeResponse = (response: any, skill: string): AssignmentOverview[] | PaginatedAssignmentResponse => {
+    // Check if it's a paginated response
+    if (response && typeof response === 'object' && 'data' in response && 'pagination' in response) {
+      const paginated = response as PaginatedAssignmentResponse;
+      return {
+        data: paginated.data.map((item: any) => ({ ...item, skill })),
+        pagination: paginated.pagination,
+      };
+    }
+    // Non-paginated array response
+    const items = Array.isArray(response) ? response : [];
+    return items.map((item: any) => ({ ...item, skill }));
+  };
 
   return {
-    reading: mapWithSkill(data.reading ?? [], "reading"),
-    listening: mapWithSkill(data.listening ?? [], "listening"),
-    writing: mapWithSkill(data.writing ?? [], "writing"),
-    speaking: mapWithSkill(data.speaking ?? [], "speaking"),
+    reading: normalizeResponse(data.reading ?? [], "reading"),
+    listening: normalizeResponse(data.listening ?? [], "listening"),
+    writing: normalizeResponse(data.writing ?? [], "writing"),
+    speaking: normalizeResponse(data.speaking ?? [], "speaking"),
   } as AssignmentResponse;
+}
+
+export async function getAssignmentsBySkill(
+  skill: "reading" | "listening" | "writing" | "speaking",
+  pagination?: PaginationDto
+): Promise<PaginatedAssignmentResponse | AssignmentOverview[]> {
+  const params = pagination ? { page: pagination.page, limit: pagination.limit } : {};
+  const res = await http.get(`https://ie-backend.fly.dev/hehe/${skill}/assignments`, { params });
+  const data = res.data?.data || res.data;
+
+  // Check if it's a paginated response
+  if (data && typeof data === 'object' && 'data' in data && 'pagination' in data) {
+    const paginated = data as PaginatedAssignmentResponse;
+    return {
+      data: paginated.data.map((item: any) => ({ ...item, skill })),
+      pagination: paginated.pagination,
+    };
+  }
+
+  // Non-paginated array response
+  const items = Array.isArray(data) ? data : [];
+  return items.map((item: any) => ({ ...item, skill }));
 }
 
 //Reading

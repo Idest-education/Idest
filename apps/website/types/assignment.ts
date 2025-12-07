@@ -10,11 +10,30 @@ export interface AssignmentOverview {
   created_at: string;
 }
 
+export interface PaginationDto {
+  page?: number;
+  limit?: number;
+}
+
+export interface PaginationMeta {
+  page: number;
+  limit: number;
+  total: number;
+  totalPages: number;
+  hasNext: boolean;
+  hasPrev: boolean;
+}
+
+export interface PaginatedAssignmentResponse {
+  data: AssignmentOverview[];
+  pagination: PaginationMeta;
+}
+
 export interface AssignmentResponse {
-  reading: AssignmentOverview[];
-  listening: AssignmentOverview[];
-  writing: AssignmentOverview[];
-  speaking: AssignmentOverview[];
+  reading: AssignmentOverview[] | PaginatedAssignmentResponse;
+  listening: AssignmentOverview[] | PaginatedAssignmentResponse;
+  writing: AssignmentOverview[] | PaginatedAssignmentResponse;
+  speaking: AssignmentOverview[] | PaginatedAssignmentResponse;
 }
 
 // =======================
