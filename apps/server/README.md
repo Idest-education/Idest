@@ -50,4 +50,8 @@ pnpm test
 
 ## API docs
 
-Swagger UI is served at `/api` when the server is running 
+Swagger UI is served at `/api` when the server is running
+
+## Note
+
+For the assignment module to function, you also need to run [Idest-Assignment Service](https://github.com/LuckiPhoenix/Idest-Assignment).
