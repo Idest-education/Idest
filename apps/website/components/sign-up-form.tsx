@@ -187,7 +187,7 @@ export function SignUpForm({
                 </div>
               </div>
               <Button variant="outline" type="button" disabled={isLoading}>
-                Google
+                Google (Coming Soon)
               </Button>
             </div>
             <p className="px-8 text-center text-sm text-muted-foreground">
