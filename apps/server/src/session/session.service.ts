@@ -72,14 +72,13 @@ export class SessionService {
         class_id: dto.class_id,
         host_id: user.id,
         start_time: startTime,
+        // Prisma schema requires is_recorded (no default), so enforce false when omitted
+        is_recorded: dto.is_recorded ?? false,
       };
 
       // Only set optional fields if explicitly provided
       if (dto.end_time !== undefined) {
         sessionData.end_time = endTime;
-      }
-      if (dto.is_recorded !== undefined) {
-        sessionData.is_recorded = dto.is_recorded;
       }
       if (dto.metadata !== undefined) {
         sessionData.metadata = dto.metadata;

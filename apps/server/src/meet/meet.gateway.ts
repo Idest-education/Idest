@@ -49,6 +49,11 @@ import {
   GetCanvasStateDto,
 } from './dto/canvas-controls.dto';
 import {
+  WhiteboardUpdateDto,
+  GetWhiteboardStateDto,
+  WhiteboardStateResponseDto,
+} from './dto/whiteboard.dto';
+import {
   CanvasOpenedDto,
   CanvasClosedDto,
   CanvasDrawEventDto,
@@ -83,6 +88,9 @@ export class MeetGateway
   private readonly logger = new Logger(MeetGateway.name);
   // Track scheduled attendance marking timers: sessionId_userId -> NodeJS.Timeout
   private attendanceTimers = new Map<string, NodeJS.Timeout>();
+  
+  // Track whiteboard state: sessionId -> state
+  private whiteboardStates = new Map<string, WhiteboardStateResponseDto>();
 
   constructor(
     private readonly meetService: MeetService,
@@ -1525,6 +1533,63 @@ export class MeetGateway
       client.emit('canvas-error', {
         message: 'Failed to get canvas state',
       });
+    }
+  }
+
+  /**
+   * Whiteboard Update - Handle Excalidraw updates
+   */
+  @SubscribeMessage('whiteboard-update')
+  async handleWhiteboardUpdate(
+    @ConnectedSocket() client: Socket,
+    @MessageBody() data: WhiteboardUpdateDto,
+  ) {
+    try {
+      // Validate user is in this session
+      const user = this.meetService.getUserBySocket(client.id);
+      if (!user || user.sessionId !== data.sessionId) {
+        return;
+      }
+
+      // Update stored state
+      this.whiteboardStates.set(data.sessionId, {
+        elements: data.elements,
+        appState: data.appState,
+      });
+
+      // Broadcast to other users in the session (exclude sender)
+      client.to(data.sessionId).emit('whiteboard-update', {
+        sessionId: data.sessionId,
+        userId: user.userId,
+        elements: data.elements,
+        appState: data.appState,
+      });
+    } catch (error) {
+      this.logger.error(`Failed to handle whiteboard update: ${error.message}`);
+    }
+  }
+
+  /**
+   * Get Whiteboard State - Return current state for new joiners
+   */
+  @SubscribeMessage('get-whiteboard-state')
+  async handleGetWhiteboardState(
+    @ConnectedSocket() client: Socket,
+    @MessageBody() data: GetWhiteboardStateDto,
+  ) {
+    try {
+      // Validate user is in this session
+      const user = this.meetService.getUserBySocket(client.id);
+      if (!user || user.sessionId !== data.sessionId) {
+        return;
+      }
+
+      const state = this.whiteboardStates.get(data.sessionId);
+      if (state) {
+        client.emit('whiteboard-state', state);
+      }
+    } catch (error) {
+      this.logger.error(`Failed to get whiteboard state: ${error.message}`);
     }
   }
 
