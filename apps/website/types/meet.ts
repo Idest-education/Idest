@@ -142,3 +142,16 @@ export interface MeetState {
   error: string | null;
   lastUpdatedAt: number;
 }
+
+// Whiteboard Types
+export interface WhiteboardUpdatePayload {
+  sessionId: string;
+  userId?: string;
+  elements: readonly any[]; // ExcalidrawElement[]
+  appState: Partial<any>; // AppState
+}
+
+export interface WhiteboardStateResponse {
+  elements: readonly any[]; // ExcalidrawElement[]
+  appState: Partial<any>; // AppState
+}

@@ -5,16 +5,18 @@ import { useParams, useRouter } from "next/navigation";
 import { LiveKitRoom, useRoomContext } from "@livekit/components-react";
 import { Loader2 } from "lucide-react";
 import { format } from "date-fns";
-import { Track } from "livekit-client";
+import { Track, LocalTrackPublication, RemoteTrackPublication, Participant } from "livekit-client";
 import { MeetVideoGrid } from "@/components/meet/MeetVideoGrid";
 import { MeetControls } from "@/components/meet/MeetControls";
 import { MeetParticipantsPanel } from "@/components/meet/MeetParticipantsPanel";
 import { MeetChatPanel } from "@/components/meet/MeetChatPanel";
 import { MeetStatusBanner } from "@/components/meet/MeetStatusBanner";
+import { MeetingWhiteboard } from "@/components/meet/MeetingWhiteboard";
 import { useMeetStore } from "@/hooks/useMeetStore";
 import { useMeetClient } from "@/hooks/useMeetClient";
 import { getSessionById } from "@/services/session.service";
 import { SessionData } from "@/types/session";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 // Component to sync LiveKit track events with store state
 function TrackStateSync() {
@@ -119,7 +121,7 @@ function TrackStateSync() {
     };
 
     // Handle local track published (only update if changed)
-    const handleLocalTrackPublished = (publication: any) => {
+    const handleLocalTrackPublished = (publication: LocalTrackPublication) => {
       if (!publication?.track) return;
 
       const currentState = getStoreState();
@@ -134,7 +136,7 @@ function TrackStateSync() {
     };
 
     // Handle local track unpublished (only update if changed)
-    const handleLocalTrackUnpublished = (publication: any) => {
+    const handleLocalTrackUnpublished = (publication: LocalTrackPublication) => {
       if (!publication) return;
 
       const currentState = getStoreState();
@@ -149,7 +151,7 @@ function TrackStateSync() {
     };
 
     // Handle remote track published (only update if changed)
-    const handleTrackPublished = (publication: any, participant: any) => {
+    const handleTrackPublished = (publication: RemoteTrackPublication, participant: Participant) => {
       if (!publication?.track || !participant) return;
 
       const participantData = findParticipantByIdentity(participant.identity);
@@ -170,7 +172,7 @@ function TrackStateSync() {
     };
 
     // Handle remote track unpublished (only update if changed)
-    const handleTrackUnpublished = (publication: any, participant: any) => {
+    const handleTrackUnpublished = (publication: RemoteTrackPublication, participant: Participant) => {
       if (!publication || !participant) return;
 
       const participantData = findParticipantByIdentity(participant.identity);
@@ -254,6 +256,7 @@ export default function SessionMeetPage() {
   const setLiveKitConnected = useMeetStore((state) => state.setLiveKitConnected);
 
   const { 
+    socket,
     sendChatMessage, 
     loadMessageHistory, 
     emitToggleMedia, 
@@ -352,23 +355,44 @@ export default function SessionMeetPage() {
               onDisconnected={() => setLiveKitConnected(false)}
             >
               <TrackStateSync />
-              <div className="flex h-full min-h-0 flex-col">
-                {/* Main Content Area */}
-                <div className="relative flex-1 min-h-0">
-                  <MeetVideoGrid />
+              
+              <Tabs defaultValue="video" className="flex h-full flex-col min-h-0">
+                <div className="flex-shrink-0 px-2 pb-2">
+                  <TabsList className="grid w-full max-w-[400px] grid-cols-2">
+                    <TabsTrigger value="video">Video Call</TabsTrigger>
+                    <TabsTrigger value="whiteboard">Whiteboard</TabsTrigger>
+                  </TabsList>
                 </div>
-                
-                <MeetControls
-                  sessionId={sessionId}
-                  onLeave={leaveAndNavigate}
-                  emitToggleMedia={emitToggleMedia}
-                  emitScreenShareEvent={emitScreenShareEvent}
-                  startRecording={startRecording}
-                  stopRecording={stopRecording}
-                  toggleChat={toggleChat}
-                  toggleParticipants={toggleParticipants}
-                />
-              </div>
+
+                <div className="relative flex-1 min-h-0 flex flex-col">
+                  <TabsContent value="video" forceMount className="flex-1 min-h-0 data-[state=inactive]:hidden mt-0">
+                    <MeetVideoGrid />
+                  </TabsContent>
+                  
+                  <TabsContent value="whiteboard" forceMount className="flex-1 min-h-0 data-[state=inactive]:hidden mt-0">
+                    {sessionId && (
+                      <MeetingWhiteboard 
+                        sessionId={sessionId} 
+                        socket={socket} 
+                        className="rounded-md border border-border"
+                      />
+                    )}
+                  </TabsContent>
+                </div>
+
+                <div className="flex-shrink-0 pt-2">
+                  <MeetControls
+                    sessionId={sessionId}
+                    onLeave={leaveAndNavigate}
+                    emitToggleMedia={emitToggleMedia}
+                    emitScreenShareEvent={emitScreenShareEvent}
+                    startRecording={startRecording}
+                    stopRecording={stopRecording}
+                    toggleChat={toggleChat}
+                    toggleParticipants={toggleParticipants}
+                  />
+                </div>
+              </Tabs>
             </LiveKitRoom>
           ) : (
             <div className="flex h-full items-center justify-center text-center text-sm text-muted-foreground">
