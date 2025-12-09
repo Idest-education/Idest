@@ -177,7 +177,7 @@ export default function ProfileSettingsPage() {
                 // eslint-disable-next-line @next/next/no-img-element
                 <img
                   src={user.avatarUrl}
-                  alt={user.name || user.email}
+                  alt={user.fullName || user.email}
                   className="h-full w-full object-cover"
                 />
               ) : (
