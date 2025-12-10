@@ -57,6 +57,10 @@ export default async function Home() {
           </div>
         </div>
       </nav>
+      {/* Mobile disclaimer */}
+      <div className="md:hidden bg-red-50 border-b border-red-500 text-red-800 px-6 py-3 text-sm text-center">
+        Mobile view is unsupported, please use a desktop for optimal experience!
+      </div>
 
       {isAuthenticated ? (
         // Authenticated users see the class marketplace as the primary home experience
