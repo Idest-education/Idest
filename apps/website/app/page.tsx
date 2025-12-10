@@ -8,9 +8,9 @@ import {
   Sparkles,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
-import { AuthButton } from "@/components/auth-button";
 import ClassShowcaseClient from "@/components/class/ClassShowcaseClient";
 import AssignmentShowcaseClient from "@/components/assignment/AssignmentShowcaseClient";
+import Navbar from "@/components/navbar-content";
 
 export default async function Home() {
   const supabase = await createClient();
@@ -22,41 +22,31 @@ export default async function Home() {
   return (
     <main className="min-h-screen bg-white">
       {/* Navigation */}
-      <nav className="border-b border-gray-200">
-        <div className="max-w-7xl mx-auto px-6 py-4 flex justify-between items-center">
-          <Link href="/" className="text-2xl font-semibold text-gray-900">
-            Idest
-          </Link>
-          <div className="flex items-center gap-4">
-            {isAuthenticated ? (
-              <>
-                <Link
-                  href="/classes"
-                  className="px-4 py-2 text-sm text-gray-700 hover:text-gray-900 transition-colors"
-                >
-                  Dashboard
-                </Link>
-                <AuthButton />
-              </>
-            ) : (
-              <>
-                <Link
-                  href="/auth/login"
-                  className="px-4 py-2 text-sm text-gray-700 hover:text-gray-900 transition-colors"
-                >
-                  Log in
-                </Link>
-                <Link
-                  href="/auth/sign-up"
-                  className="px-4 py-2 text-sm bg-gray-900 text-white rounded-lg hover:bg-gray-800 transition-colors"
-                >
-                  Sign up
-                </Link>
-              </>
-            )}
+      {isAuthenticated ? (
+        <Navbar />
+      ) : (
+        <nav className="border-b border-gray-200">
+          <div className="max-w-7xl mx-auto px-6 py-4 flex justify-between items-center">
+            <Link href="/" className="text-2xl font-semibold text-gray-900">
+              Idest
+            </Link>
+            <div className="flex items-center gap-4">
+              <Link
+                href="/auth/login"
+                className="px-4 py-2 text-sm text-gray-700 hover:text-gray-900 transition-colors"
+              >
+                Log in
+              </Link>
+              <Link
+                href="/auth/sign-up"
+                className="px-4 py-2 text-sm bg-gray-900 text-white rounded-lg hover:bg-gray-800 transition-colors"
+              >
+                Sign up
+              </Link>
+            </div>
           </div>
-        </div>
-      </nav>
+        </nav>
+      )}
       {/* Mobile disclaimer */}
       <div className="md:hidden bg-red-50 border-b border-red-500 text-red-800 px-6 py-3 text-sm text-center">
         Mobile view is unsupported, please use a desktop for optimal experience!

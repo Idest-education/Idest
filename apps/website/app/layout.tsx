@@ -3,6 +3,7 @@ import { Nunito } from "next/font/google";
 import { ThemeProvider } from "next-themes";
 import "./globals.css";
 import { Toaster } from "sonner";
+import logoIcon from "@/assets/logo-icon.png";
 
 const defaultUrl = process.env.VERCEL_URL
   ? `https://${process.env.VERCEL_URL}`
@@ -12,6 +13,9 @@ export const metadata: Metadata = {
   metadataBase: new URL(defaultUrl),
   title: "Idest",
   description: "AI-powered English learning platform",
+  icons: {
+    icon: logoIcon.src,
+  },
 };
 
 const nunito = Nunito({

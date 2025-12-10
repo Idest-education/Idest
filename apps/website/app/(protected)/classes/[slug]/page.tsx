@@ -178,6 +178,7 @@ export default function ClassDetailPage() {
   }
 
   const { name, description, creator, schedule, _count, members, teachers } = classData;
+  const isStaff = userRole === "TEACHER" || userRole === "ADMIN";
 
   const memberCount = Array.isArray(members) ? members.length : _count.members;
   const teacherList =
@@ -207,18 +208,20 @@ export default function ClassDetailPage() {
               </div>
             </div>
 
-            <div className="flex flex-col gap-2">
-              <button
-                onClick={handleCopyCode}
-                className="flex items-center gap-2 px-4 py-2 bg-gray-900 text-white rounded-lg hover:bg-gray-800 transition-colors font-medium text-sm"
-              >
-                {copied ? <CheckCircle2 className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
-                {copied ? "Copied!" : "Copy Invite Code"}
-              </button>
-              <p className="text-center text-xs font-mono text-gray-600">
-                {classData.invite_code}
-              </p>
-            </div>
+            {isStaff && (
+              <div className="flex flex-col gap-2">
+                <button
+                  onClick={handleCopyCode}
+                  className="flex items-center gap-2 px-4 py-2 bg-gray-900 text-white rounded-lg hover:bg-gray-800 transition-colors font-medium text-sm"
+                >
+                  {copied ? <CheckCircle2 className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+                  {copied ? "Copied!" : "Copy Invite Code"}
+                </button>
+                <p className="text-center text-xs font-mono text-gray-600">
+                  {classData.invite_code}
+                </p>
+              </div>
+            )}
           </div>
         </div>
 
