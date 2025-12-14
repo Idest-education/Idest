@@ -7,6 +7,7 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { userPayload } from 'src/common/types/userPayload.interface';
+import { Role } from 'src/common/enum/role.enum';
 import { CreateClassDto } from '../dto/create-class.dto';
 import { UpdateClassDto } from '../dto/update-class.dto';
 import {
@@ -104,6 +105,27 @@ export class ClassCRUDService {
           conversationId: classConversation.id,
         },
       });
+
+      // Auto-enroll class creator based on their role
+      // If teacher: enroll as teacher
+      // If admin: enroll as member
+      if (user.role === Role.TEACHER) {
+        await this.prisma.classTeacher.create({
+          data: {
+            class_id: newClass.id,
+            teacher_id: user.id,
+            role: 'teacher',
+          },
+        });
+      } else if (user.role === Role.ADMIN) {
+        await this.prisma.classMember.create({
+          data: {
+            class_id: newClass.id,
+            student_id: user.id,
+            status: 'active',
+          },
+        });
+      }
 
       return newClass;
     } catch (error) {
