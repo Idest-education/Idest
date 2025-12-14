@@ -11,6 +11,7 @@ import { MessageType } from '@prisma/client';
 import { CreateConversationDto } from './dto/create-conversation.dto';
 import { AddParticipantDto } from './dto/add-participant.dto';
 import { SendMessageDto } from './dto/send-message.dto';
+import { UpdateConversationDto } from './dto/update-conversation.dto';
 import {
   ConversationDto,
   ConversationsListDto,
@@ -105,6 +106,7 @@ export class ConversationService {
         data: {
           isGroup: dto.isGroup || false,
           title: dto.title,
+          avatar_url: dto.avatar_url,
           createdBy: user.id,
           ownerId: dto.ownerId || user.id,
           classId: dto.classId,
@@ -632,6 +634,180 @@ export class ConversationService {
         throw error;
       }
       throw new InternalServerErrorException('Failed to remove participant');
+    }
+  }
+
+  /**
+   * Soft delete a conversation.
+   *
+   * - Direct conversations: either participant may delete.
+   * - Group/Class conversations: only creator/owner may delete.
+   */
+  async deleteConversation(
+    conversationId: string,
+    userId: string,
+  ): Promise<boolean> {
+    try {
+      const conversation = await this.prisma.conversation.findUnique({
+        where: { id: conversationId },
+        select: {
+          id: true,
+          isDeleted: true,
+          isGroup: true,
+          createdBy: true,
+          ownerId: true,
+        },
+      });
+
+      if (!conversation || conversation.isDeleted) {
+        throw new NotFoundException('Conversation not found');
+      }
+
+      const isParticipant =
+        await this.prisma.conversationParticipant.findUnique({
+          where: {
+            userId_conversationId: {
+              userId,
+              conversationId,
+            },
+          },
+          select: { id: true },
+        });
+
+      if (!isParticipant) {
+        throw new ForbiddenException('Access denied to this conversation');
+      }
+
+      const canDeleteDirect = !conversation.isGroup;
+      const canDeleteGroup =
+        conversation.createdBy === userId || conversation.ownerId === userId;
+
+      if (!canDeleteDirect && !canDeleteGroup) {
+        throw new ForbiddenException(
+          'Only the conversation owner/creator can delete this conversation',
+        );
+      }
+
+      await this.prisma.conversation.update({
+        where: { id: conversationId },
+        data: { isDeleted: true },
+      });
+
+      this.conversationGateway
+        .emitConversationDeleted(conversationId)
+        .catch((error) =>
+          console.error('Failed to emit conversation deleted:', error),
+        );
+
+      return true;
+    } catch (error) {
+      console.error('Error deleting conversation:', error);
+      if (error instanceof NotFoundException || error instanceof ForbiddenException) {
+        throw error;
+      }
+      throw new InternalServerErrorException('Failed to delete conversation');
+    }
+  }
+
+  /**
+   * Update group conversation metadata (title/avatar).
+   */
+  async updateConversation(
+    conversationId: string,
+    userId: string,
+    dto: UpdateConversationDto,
+  ): Promise<ConversationDto> {
+    try {
+      const conversation = await this.prisma.conversation.findUnique({
+        where: { id: conversationId },
+        select: {
+          id: true,
+          isDeleted: true,
+          isGroup: true,
+          createdBy: true,
+          ownerId: true,
+        },
+      });
+
+      if (!conversation || conversation.isDeleted) {
+        throw new NotFoundException('Conversation not found');
+      }
+
+      if (!conversation.isGroup) {
+        throw new ForbiddenException('Only group conversations can be updated');
+      }
+
+      const isParticipant =
+        await this.prisma.conversationParticipant.findUnique({
+          where: {
+            userId_conversationId: {
+              userId,
+              conversationId,
+            },
+          },
+          select: { id: true },
+        });
+
+      if (!isParticipant) {
+        throw new ForbiddenException('Access denied to this conversation');
+      }
+
+      const canUpdate = conversation.createdBy === userId || conversation.ownerId === userId;
+      if (!canUpdate) {
+        throw new ForbiddenException(
+          'Only the conversation owner/creator can update this conversation',
+        );
+      }
+
+      const updated = await this.prisma.conversation.update({
+        where: { id: conversationId },
+        data: {
+          ...(dto.title !== undefined ? { title: dto.title } : {}),
+          ...(dto.avatar_url !== undefined ? { avatar_url: dto.avatar_url } : {}),
+        },
+        include: {
+          participants: {
+            include: {
+              user: {
+                select: {
+                  id: true,
+                  full_name: true,
+                  email: true,
+                  avatar_url: true,
+                },
+              },
+            },
+          },
+          messages: {
+            take: 10,
+            orderBy: { sentAt: 'desc' },
+            include: {
+              sender: {
+                select: {
+                  id: true,
+                  full_name: true,
+                  avatar_url: true,
+                },
+              },
+            },
+          },
+          _count: { select: { messages: true } },
+        },
+      });
+
+      this.conversationGateway
+        .emitConversationUpdated(updated)
+        .catch((error) =>
+          console.error('Failed to emit conversation updated:', error),
+        );
+
+      return updated as ConversationDto;
+    } catch (error) {
+      console.error('Error updating conversation:', error);
+      if (error instanceof NotFoundException || error instanceof ForbiddenException) {
+        throw error;
+      }
+      throw new InternalServerErrorException('Failed to update conversation');
     }
   }
 

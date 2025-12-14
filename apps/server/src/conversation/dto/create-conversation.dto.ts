@@ -39,6 +39,15 @@ export class CreateConversationDto {
   title?: string;
 
   @ApiPropertyOptional({
+    description: 'Avatar URL for the conversation (typically group chats)',
+    example: 'https://example.com/group-avatar.png',
+    nullable: true,
+  })
+  @IsString()
+  @IsOptional()
+  avatar_url?: string;
+
+  @ApiPropertyOptional({
     description: 'ID of the class this conversation belongs to',
     example: 'class-uuid-here',
   })

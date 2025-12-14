@@ -671,4 +671,53 @@ export class UserService {
       );
     }
   }
+
+  /**
+   * Search users by full name.
+   * - STUDENT: cannot see ADMIN users in results
+   * - TEACHER/ADMIN: can see all users
+   */
+  async searchUsers(query: string, requesterId: string) {
+    const q = (query || '').trim();
+    if (!q) {
+      return { users: [], total: 0 };
+    }
+
+    try {
+      const requester = await this.prisma.user.findUnique({
+        where: { id: requesterId },
+        select: { role: true },
+      });
+
+      const where: Prisma.UserWhereInput = {
+        is_active: true,
+        full_name: { contains: q, mode: 'insensitive' },
+      };
+
+      if (requester?.role === Role.STUDENT) {
+        where.role = { not: Role.ADMIN };
+      }
+
+      const take = 50;
+      const [total, users] = await this.prisma.$transaction([
+        this.prisma.user.count({ where }),
+        this.prisma.user.findMany({
+          where,
+          take,
+          orderBy: { full_name: 'asc' },
+          select: {
+            id: true,
+            full_name: true,
+            email: true,
+            avatar_url: true,
+            role: true,
+          },
+        }),
+      ]);
+
+      return { users, total };
+    } catch (error) {
+      throw new InternalServerErrorException(`Error searching users: ${error}`);
+    }
+  }
 }

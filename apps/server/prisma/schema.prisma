@@ -132,6 +132,7 @@ model Conversation {
   createdAt     DateTime                  @default(now())
   updatedAt     DateTime                  @updatedAt
   title         String?
+  avatar_url    String?
   createdBy     String
   ownerId       String?
   isDeleted     Boolean                   @default(false)

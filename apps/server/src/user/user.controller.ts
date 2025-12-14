@@ -29,6 +29,7 @@ import {
   StudentProfileResponseDto,
   TeacherProfileResponseDto,
 } from './dto/user-response.dto';
+import { SearchUsersResponseDto } from './dto/search-users.dto';
 import {
   ApiBearerAuth,
   ApiOkResponse,
@@ -186,6 +187,31 @@ export class UserController {
   @ApiInternalServerErrorResponse({ description: 'Internal server error' })
   async createTeacherProfile(@Body() request: CreateTeacherProfileDto) {
     return await this.userService.createTeacherProfile(request);
+  }
+
+  @Get('search')
+  @ApiOperation({
+    summary: 'Search users by name',
+    description:
+      'Searches users by full name (case-insensitive). Students cannot see ADMIN users in results.',
+  })
+  @ApiQuery({
+    name: 'q',
+    required: true,
+    description: 'Search query (full name)',
+    example: 'john',
+  })
+  @ApiOkResponse({
+    description: 'Successfully retrieved search results',
+    type: SearchUsersResponseDto,
+  })
+  @ApiUnauthorizedResponse({ description: 'Authentication required' })
+  @ApiInternalServerErrorResponse({ description: 'Internal server error' })
+  async searchUsers(
+    @Query('q') query: string,
+    @CurrentUser() user: userPayload,
+  ): Promise<SearchUsersResponseDto> {
+    return await this.userService.searchUsers(query, user.id);
   }
 
   @Get(':id')

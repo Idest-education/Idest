@@ -2,6 +2,7 @@ import {
   Controller,
   Get,
   Post,
+  Patch,
   Delete,
   Body,
   Param,
@@ -15,6 +16,7 @@ import { userPayload } from 'src/common/types/userPayload.interface';
 import { CreateConversationDto } from './dto/create-conversation.dto';
 import { AddParticipantDto } from './dto/add-participant.dto';
 import { SendMessageDto } from './dto/send-message.dto';
+import { UpdateConversationDto } from './dto/update-conversation.dto';
 import {
   ConversationDto,
   ConversationsListDto,
@@ -305,6 +307,60 @@ export class ConversationController {
       user.id,
       dto,
     );
+  }
+
+  @Delete(':id')
+  @ApiOperation({
+    summary: 'Delete conversation',
+    description:
+      'Soft deletes a conversation. For group/class chats only the owner/creator can delete; for direct chats either participant can delete.',
+  })
+  @ApiParam({
+    name: 'id',
+    description: 'Conversation ID',
+    example: 'conversation-uuid-here',
+  })
+  @ApiOkResponse({
+    description: 'Conversation successfully deleted',
+    schema: { type: 'boolean', example: true },
+  })
+  @ApiNotFoundResponse({ description: 'Conversation not found' })
+  @ApiForbiddenResponse({ description: 'Access denied' })
+  @ApiUnauthorizedResponse({ description: 'Authentication required' })
+  @ApiInternalServerErrorResponse({ description: 'Internal server error' })
+  async deleteConversation(
+    @Param('id') conversationId: string,
+    @CurrentUser() user: userPayload,
+  ): Promise<boolean> {
+    return this.conversationService.deleteConversation(conversationId, user.id);
+  }
+
+  @Patch(':id')
+  @ApiOperation({
+    summary: 'Update conversation (group only)',
+    description:
+      'Updates a group conversation metadata such as title and avatar. Only the conversation owner/creator can update.',
+  })
+  @ApiParam({
+    name: 'id',
+    description: 'Conversation ID',
+    example: 'conversation-uuid-here',
+  })
+  @ApiBody({ type: UpdateConversationDto })
+  @ApiOkResponse({
+    description: 'Conversation successfully updated',
+    type: ConversationDto,
+  })
+  @ApiNotFoundResponse({ description: 'Conversation not found' })
+  @ApiForbiddenResponse({ description: 'Access denied' })
+  @ApiUnauthorizedResponse({ description: 'Authentication required' })
+  @ApiInternalServerErrorResponse({ description: 'Internal server error' })
+  async updateConversation(
+    @Param('id') conversationId: string,
+    @CurrentUser() user: userPayload,
+    @Body() dto: UpdateConversationDto,
+  ): Promise<ConversationDto> {
+    return this.conversationService.updateConversation(conversationId, user.id, dto);
   }
 
   @Delete(':id/participants/:participantId')

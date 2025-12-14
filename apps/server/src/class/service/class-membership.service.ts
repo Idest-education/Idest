@@ -17,6 +17,7 @@ import {
   checkClassManagementPermission,
   toFullClassResponseDto,
 } from '../class.util';
+import { getClassConversationParticipants } from 'src/conversation/conversation.util';
 
 @Injectable()
 export class ClassMembershipService {
@@ -439,6 +440,44 @@ export class ClassMembershipService {
           }
         }
       });
+
+      // Auto-join the class group conversation (create if missing)
+      const classConversation = await this.prisma.conversation.findUnique({
+        where: { classId: classData.id },
+        select: { id: true, isDeleted: true },
+      });
+
+      if (!classConversation || classConversation.isDeleted) {
+        const created = await this.prisma.conversation.create({
+          data: {
+            isGroup: true,
+            title: classData.name,
+            avatar_url: null,
+            createdBy: classData.created_by,
+            ownerId: classData.created_by,
+            classId: classData.id,
+          },
+          select: { id: true },
+        });
+
+        const participants = await getClassConversationParticipants(
+          this.prisma,
+          classData.id,
+          created.id,
+        );
+
+        if (participants.length > 0) {
+          await this.prisma.conversationParticipant.createMany({
+            data: participants,
+            skipDuplicates: true,
+          });
+        }
+      } else {
+        await this.prisma.conversationParticipant.createMany({
+          data: [{ userId, conversationId: classConversation.id }],
+          skipDuplicates: true,
+        });
+      }
 
       // Fetch the complete class data after joining
       const updatedClass = await this.prisma.class.findUnique({

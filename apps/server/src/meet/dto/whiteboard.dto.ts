@@ -26,3 +26,5 @@ export class WhiteboardStateResponseDto {
   @IsObject()
   appState: Record<string, any>;
 }
+
+

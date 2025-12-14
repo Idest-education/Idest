@@ -84,6 +84,27 @@ export class ClassCRUDService {
         },
       });
 
+      // Auto-create the class group conversation (one conversation per class)
+      // NOTE: at class creation time, only the creator is guaranteed to be a participant.
+      const classConversation = await this.prisma.conversation.create({
+        data: {
+          isGroup: true,
+          title: dto.name,
+          avatar_url: null,
+          createdBy: user.id,
+          ownerId: user.id,
+          classId: newClass.id,
+        },
+        select: { id: true },
+      });
+
+      await this.prisma.conversationParticipant.create({
+        data: {
+          userId: user.id,
+          conversationId: classConversation.id,
+        },
+      });
+
       return newClass;
     } catch (error) {
       console.error('Error creating class:', error);

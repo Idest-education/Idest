@@ -105,6 +105,19 @@ export class ConversationGateway implements OnGatewayInit {
     }
   }
 
+  async emitConversationUpdated(conversation: any) {
+    if (conversation?.participants && conversation.participants.length > 0) {
+      const participantIds = conversation.participants.map((p: any) => p.userId);
+      for (const userId of participantIds) {
+        this.server.to(userId).emit('conversation-updated', conversation);
+      }
+      // Also emit to conversation room (if any clients joined it)
+      if (conversation.id) {
+        this.server.to(conversation.id).emit('conversation-updated', conversation);
+      }
+    }
+  }
+
   async emitNewMessage(conversationId: string, message: any) {
     // Get conversation participants
     const conversation = await this.prisma.conversation.findUnique({
