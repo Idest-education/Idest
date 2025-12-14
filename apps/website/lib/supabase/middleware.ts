@@ -47,8 +47,9 @@ export async function updateSession(request: NextRequest) {
   const { data } = await supabase.auth.getClaims();
   const user = data?.claims;
 
-  // Allow public access to homepage and auth routes
-  const publicRoutes = ["/", "/auth"];
+  // Allow public access to homepage, auth routes, and static public assets
+  // (e.g. landing page videos served from `/public/assets/...`).
+  const publicRoutes = ["/", "/auth", "/assets"];
   const isPublicRoute = publicRoutes.some(route => 
     request.nextUrl.pathname === route || request.nextUrl.pathname.startsWith(route + "/")
   );
