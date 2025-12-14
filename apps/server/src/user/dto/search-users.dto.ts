@@ -16,10 +16,13 @@ export class SearchUserSummaryDto {
   @IsEmail()
   email: string;
 
-  @ApiProperty({ example: 'https://example.com/avatar.png', nullable: true, required: false })
-  @IsString()
+  @ApiProperty({
+    example: 'https://example.com/avatar.png',
+    nullable: true,
+    required: false,
+  })
   @IsOptional()
-  avatar_url?: string;
+  avatar_url?: string | null;
 
   @ApiProperty({ example: 'STUDENT' })
   @IsString()

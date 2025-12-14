@@ -677,7 +677,10 @@ export class UserService {
    * - STUDENT: cannot see ADMIN users in results
    * - TEACHER/ADMIN: can see all users
    */
-  async searchUsers(query: string, requesterId: string) {
+  async searchUsers(
+    query: string,
+    requesterId: string,
+  ): Promise<{ users: { id: string; full_name: string; email: string; avatar_url: string | null; role: string }[]; total: number }> {
     const q = (query || '').trim();
     if (!q) {
       return { users: [], total: 0 };
