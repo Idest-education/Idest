@@ -13,6 +13,7 @@ const navItems = [
   { href: "/classes", label: "Lớp học" },
   { href: "/sessions", label: "Buổi học" },
   { href: "/assignment", label: "Bài tập" },
+  { href: "/assignment/submissions", label: "Bài nộp" },
   { href: "/service-status", label: "Trạng thái dịch vụ" },
 ];
 
@@ -23,7 +24,7 @@ export default function Navbar() {
   const closeMenu = () => setIsMenuOpen(false);
 
   return (
-    <nav className="sticky top-0 z-50 w-full border-b border-gray-200 h-16 bg-white backdrop-blur-sm flex items-center shadow-sm relative">
+    <nav className="sticky top-0 z-50 w-full border-b border-gray-200 h-16 bg-white backdrop-blur-sm flex items-center shadow-sm">
       <div className="w-full max-w-7xl mx-auto flex justify-between items-center px-6 relative">
         {/* Left side: logo + menu */}
         <div className="flex items-center gap-3 lg:gap-8">

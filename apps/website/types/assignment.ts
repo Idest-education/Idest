@@ -288,3 +288,74 @@ export interface ListeningSubmissionResult {
   details: ListeningSubmissionResultDetail[];
 }
 
+// =======================
+// CREATE ASSIGNMENT PAYLOADS (ADMIN/TEACHER)
+// =======================
+
+export type Skill = "reading" | "listening" | "writing" | "speaking";
+
+export interface CreateReadingOrListeningAssignmentPayload {
+  created_by?: string;
+  class_id?: string;
+  skill: "reading" | "listening";
+  slug?: string;
+  title: string;
+  description?: string;
+  is_public: boolean;
+  sections: Array<{
+    id: string; // uuid
+    title: string;
+    order_index: number;
+    material_url?: string;
+    reading_material?: { document: string; image_url?: string };
+    listening_material?: { audio_url: string; transcript?: string; image_url?: string };
+    questions: Array<{
+      id: string; // uuid
+      type: "fill_blank" | "multiple_choice" | "matching" | "map_labeling" | "true_false";
+      prompt: string;
+      subquestions: Array<{
+        subprompt?: string;
+        options: string[];
+        answer: string | number | string[] | number[] | boolean;
+      }>;
+    }>;
+  }>;
+}
+
+export interface CreateWritingAssignmentPayload {
+  title: string;
+  taskone: string;
+  tasktwo: string;
+  img?: string;
+  imgDescription?: string;
+}
+
+export interface CreateSpeakingAssignmentPayload {
+  title: string;
+  parts: Array<{
+    part_number: 1 | 2 | 3;
+    questions: Array<{
+      prompt: string;
+      order_index: number;
+    }>;
+  }>;
+}
+
+// =======================
+// MY SUBMISSIONS (PAGINATED)
+// =======================
+
+export interface SubmissionListItem {
+  submissionId: string;
+  assignmentId: string;
+  skill: Skill;
+  createdAt: string; // ISO string
+  score?: number;
+  assignmentTitle?: string;
+}
+
+export interface MySubmissionsResponse {
+  data: SubmissionListItem[];
+  pagination: PaginationMeta;
+}
+

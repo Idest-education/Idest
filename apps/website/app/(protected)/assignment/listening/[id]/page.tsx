@@ -9,6 +9,7 @@ import {
 import SidebarListening from "@/components/assignment/SidebarListening";
 import QuestionsPanel from "@/components/assignment/ListeningQuestionsPanel";
 import LoadingScreen from "@/components/loading-screen";
+import { createClient } from "@/lib/supabase/client";
 
 interface Props {
     params: Promise<{ id: string }>;
@@ -47,7 +48,14 @@ export default function ListeningAssignmentPage(props: Props) {
     async function handleSubmit() {
         if (!assignment) return;
 
-        const userId = localStorage.getItem("user_id");
+        const supabase = createClient();
+        const { data: { session } } = await supabase.auth.getSession();
+        const userId = session?.user?.id || localStorage.getItem("user_id");
+        
+        if (!userId) {
+            console.error("User ID not found");
+            return;
+        }
 
         const payload: ListeningSubmissionPayload = {
             assignment_id: assignment.id,

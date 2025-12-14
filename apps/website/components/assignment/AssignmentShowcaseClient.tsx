@@ -64,8 +64,8 @@ export default function AssignmentShowcaseClient() {
     <section className="max-w-7xl mx-auto px-6 py-24 border-t border-gray-200">
       {/* Header */}
       <div className="mb-10 text-center">
-        <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-gradient-to-r from-amber-100 via-pink-100 to-indigo-100 text-xs font-medium text-gray-800 shadow-sm mb-4">
-          <Sparkles className="w-4 h-4 text-indigo-500" />
+        <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-gradient-to-r from-amber-100 via-orange-100 to-orange-100 text-xs font-medium text-gray-800 shadow-sm mb-4">
+          <Sparkles className="w-4 h-4 text-orange-500" />
           Luyện tập tạo nên sự hoàn hảo
         </div>
         <h2 className="text-4xl font-bold text-gray-900 tracking-tight mb-3">
@@ -94,13 +94,13 @@ export default function AssignmentShowcaseClient() {
         <Link href="/assignment" className="inline-block group">
           <Button
             size="lg"
-            className="relative overflow-visible bg-gradient-to-r from-gray-900 via-indigo-900 via-purple-900 to-gray-800 text-white font-extrabold text-xl px-12 py-8 rounded-3xl shadow-[0_20px_60px_rgba(0,0,0,0.5)] transition-all duration-700 hover:scale-150 hover:rotate-3 hover:bg-gradient-to-r hover:from-pink-200 hover:via-purple-200 hover:via-indigo-200 hover:to-blue-200 hover:text-gray-900 hover:shadow-[0_0_80px_rgba(236,72,153,0.6),0_0_120px_rgba(139,92,246,0.5)] hover:brightness-110 animate-bounce-soft border-4 border-white/60 hover:border-white/90 hover:border-8"
+            className="relative overflow-visible bg-gradient-to-r from-gray-900 via-orange-900 to-orange-800 text-white font-extrabold text-xl px-12 py-8 rounded-3xl shadow-[0_20px_60px_rgba(0,0,0,0.5)] transition-all duration-700 hover:scale-150 hover:rotate-3 hover:bg-gradient-to-r hover:from-orange-200 hover:via-orange-200 hover:to-amber-200 hover:text-gray-900 hover:shadow-[0_0_80px_rgba(251,146,60,0.6),0_0_120px_rgba(249,115,22,0.5)] hover:brightness-110 animate-bounce-soft border-4 border-white/60 hover:border-white/90 hover:border-8"
           >
             {/* Animated gradient overlay */}
             <span className="absolute inset-0 bg-gradient-to-r from-transparent via-white/50 to-transparent -skew-x-12 translate-x-[-200%] group-hover:translate-x-[200%] transition-transform duration-1000" />
             
             {/* Glowing background effect */}
-            <span className="absolute inset-0 bg-gradient-to-r from-pink-200 via-purple-200 to-indigo-200 opacity-0 group-hover:opacity-100 blur-3xl transition-opacity duration-700 -z-10 scale-150" />
+            <span className="absolute inset-0 bg-gradient-to-r from-orange-200 via-orange-200 to-amber-200 opacity-0 group-hover:opacity-100 blur-3xl transition-opacity duration-700 -z-10 scale-150" />
             
             {/* Pulsing ring effect */}
             <span className="absolute -inset-4 rounded-3xl border-4 border-white/0 group-hover:border-white/80 group-hover:scale-150 group-hover:animate-ping transition-all duration-700" />
@@ -119,7 +119,7 @@ export default function AssignmentShowcaseClient() {
             <span className="absolute bottom-2 left-1/3 w-4 h-4 bg-blue-300 rounded-full opacity-0 group-hover:opacity-100 group-hover:animate-float-up group-hover:animation-delay-400 shadow-lg" />
             <span className="absolute top-1/2 right-1/3 w-3 h-3 bg-white rounded-full opacity-0 group-hover:opacity-100 group-hover:animate-float-up group-hover:animation-delay-600 shadow-lg" />
             <span className="absolute top-1/4 left-1/2 w-3 h-3 bg-purple-300 rounded-full opacity-0 group-hover:opacity-100 group-hover:animate-float-up group-hover:animation-delay-300 shadow-lg" />
-            <span className="absolute bottom-1/4 right-1/2 w-3 h-3 bg-indigo-300 rounded-full opacity-0 group-hover:opacity-100 group-hover:animate-float-up group-hover:animation-delay-500 shadow-lg" />
+            <span className="absolute bottom-1/4 right-1/2 w-3 h-3 bg-orange-300 rounded-full opacity-0 group-hover:opacity-100 group-hover:animate-float-up group-hover:animation-delay-500 shadow-lg" />
           </Button>
         </Link>
       </div>

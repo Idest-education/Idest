@@ -11,6 +11,7 @@ import { ReadingAssignmentDetail } from "@/types/assignment";
 import { use } from "react";
 import { useRouter } from "next/navigation";
 import LoadingScreen from "@/components/loading-screen";
+import { createClient } from "@/lib/supabase/client";
 
 interface ReadingAssignmentPageProps {
     params: Promise<{ id: string }>;
@@ -65,7 +66,15 @@ export default function ReadingAssignmentPage(props: ReadingAssignmentPageProps)
         if (!assignment) return;
 
         try {
-            const userId = localStorage.getItem("user_id");
+            const supabase = createClient();
+            const { data: { session } } = await supabase.auth.getSession();
+            const userId = session?.user?.id || localStorage.getItem("user_id");
+            
+            if (!userId) {
+                console.error("User ID not found");
+                return;
+            }
+            
             const section_answers = assignment.sections.map((section) => ({
                 id: section.id,
                 question_answers: section.questions.map((question) => ({

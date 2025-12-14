@@ -7,6 +7,13 @@ import { WritingAssignmentDetail, WritingSubmissionPayload, WritingSubmissionRes
   ListeningSubmissionResult,
   PaginationDto,
   PaginatedAssignmentResponse,} from "@/types/assignment";
+import type {
+  CreateReadingOrListeningAssignmentPayload,
+  CreateSpeakingAssignmentPayload,
+  CreateWritingAssignmentPayload,
+  MySubmissionsResponse,
+  Skill,
+} from "@/types/assignment";
 
 export async function getAssignments(pagination?: PaginationDto): Promise<AssignmentResponse> {
   const params = pagination ? { page: pagination.page, limit: pagination.limit } : {};
@@ -167,5 +174,41 @@ export async function submitListening(
 
 export async function getListeningSubmissionResult(id: string) {
   const res = await http.get(`https://ie-backend.fly.dev/hehe/listening/submissions/${id}`);
+  return res.data;
+}
+
+// =======================
+// CREATE ASSIGNMENT
+// =======================
+
+export async function createReadingAssignment(payload: CreateReadingOrListeningAssignmentPayload) {
+  const res = await http.post("https://ie-backend.fly.dev/hehe/reading/assignments", payload);
+  return res.data;
+}
+
+export async function createListeningAssignment(payload: CreateReadingOrListeningAssignmentPayload) {
+  const res = await http.post("https://ie-backend.fly.dev/hehe/listening/assignments", payload);
+  return res.data;
+}
+
+export async function createWritingAssignment(payload: CreateWritingAssignmentPayload) {
+  const res = await http.post("https://ie-backend.fly.dev/hehe/writing/assignments", payload);
+  return res.data;
+}
+
+export async function createSpeakingAssignment(payload: CreateSpeakingAssignmentPayload) {
+  const res = await http.post("https://ie-backend.fly.dev/hehe/speaking/assignments", payload);
+  return res.data;
+}
+
+// =======================
+// MY SUBMISSIONS
+// =======================
+
+export async function getMySubmissions(params: PaginationDto & { skill?: Skill }): Promise<MySubmissionsResponse> {
+  const res = await http.get("https://ie-backend.fly.dev/hehe/assignments/submissions/me", {
+    params: { page: params.page, limit: params.limit, skill: params.skill },
+  });
+  // backend returns the paginated object directly: { data: [...], pagination: {...} }
   return res.data;
 }

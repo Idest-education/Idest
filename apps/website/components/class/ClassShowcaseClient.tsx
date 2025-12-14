@@ -222,13 +222,13 @@ export default function ClassShowcaseClient() {
       {/* Header strip */}
       <div className="mb-10 flex flex-col md:flex-row md:items-end md:justify-between gap-6 animate-in fade-in slide-in-from-top-4">
         <div>
-          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-gradient-to-r from-amber-100 via-pink-100 to-indigo-100 text-xs font-medium text-gray-800 shadow-sm mb-4 hover:shadow-md transition-shadow duration-300">
-            <Sparkles className="w-4 h-4 text-indigo-500 animate-pulse" />
+          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-gradient-to-r from-amber-100 via-orange-100 to-orange-100 text-xs font-medium text-gray-800 shadow-sm mb-4 hover:shadow-md transition-shadow duration-300">
+            <Sparkles className="w-4 h-4 text-orange-500 animate-pulse" />
             Các lớp tiếng Anh được tuyển chọn dành cho bạn
           </div>
-          <h2 className="text-3xl md:text-4xl font-bold text-gray-900 tracking-tight mb-3 bg-gradient-to-r from-gray-900 via-indigo-900 to-purple-900 bg-clip-text text-transparent">
+          <h2 className="text-3xl md:text-4xl font-bold text-gray-900 tracking-tight mb-3 bg-gradient-to-r from-gray-900 via-orange-900 to-orange-800 bg-clip-text text-transparent">
             Khám phá{" "}
-            <span className="bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 bg-clip-text text-transparent">
+            <span className="bg-gradient-to-r from-orange-500 via-orange-500 to-orange-600 bg-clip-text text-transparent">
               lớp học đột phá
             </span>{" "}
             tiếp theo của bạn
@@ -255,13 +255,13 @@ export default function ClassShowcaseClient() {
       {/* Search Bar */}
       <div className="mb-6 animate-in fade-in slide-in-from-top-4">
         <div className="relative max-w-md group">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5 group-focus-within:text-indigo-500 transition-colors duration-300" />
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5 group-focus-within:text-orange-500 transition-colors duration-300" />
           <Input
             type="text"
             placeholder="Tìm kiếm lớp học theo tên, mô tả hoặc giáo viên..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-10 w-full transition-all duration-300 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 hover:border-gray-400 shadow-sm hover:shadow-md"
+            className="pl-10 w-full transition-all duration-300 focus:ring-2 focus:ring-orange-500 focus:border-orange-500 hover:border-gray-400 shadow-sm hover:shadow-md"
           />
         </div>
         {searchQuery && (
@@ -329,8 +329,8 @@ export default function ClassShowcaseClient() {
                   <div className="flex items-start justify-between gap-3 mb-4">
                     <div className="space-y-2 flex-1">
                       <div className="flex items-center gap-2 mb-2">
-                        <div className="p-2 rounded-lg bg-indigo-500/20 group-hover:bg-indigo-500/30 group-hover:scale-105 transition-all duration-300">
-                          <BookOpen className="w-4 h-4 text-indigo-300 group-hover:text-indigo-200" />
+                        <div className="p-2 rounded-lg bg-orange-500/20 group-hover:bg-orange-500/30 group-hover:scale-105 transition-all duration-300">
+                          <BookOpen className="w-4 h-4 text-orange-300 group-hover:text-orange-200" />
                         </div>
                         <Badge
                           variant={isEnrolled ? "secondary" : "outline"}
@@ -418,7 +418,7 @@ export default function ClassShowcaseClient() {
                         onClick={() => setCurrentPage(page)}
                         className={`min-w-[40px] transition-all duration-300 hover:scale-110 ${
                           currentPage === page
-                            ? "shadow-lg ring-2 ring-indigo-500/50"
+                                ? "shadow-lg ring-2 ring-orange-500/50"
                             : "hover:bg-gray-100"
                         }`}
                       >
@@ -495,7 +495,7 @@ export default function ClassShowcaseClient() {
                     </h4>
                     <ul className="text-sm text-gray-700 space-y-2">
                       <li className="flex items-start gap-2">
-                        <Sparkles className="w-4 h-4 text-indigo-500 mt-0.5" />
+                        <Sparkles className="w-4 h-4 text-orange-500 mt-0.5" />
                         <span>
                           Các buổi học tương tác trực tiếp được thiết kế để tăng cường sự tự tin
                           của bạn trong các tình huống thi thực tế.

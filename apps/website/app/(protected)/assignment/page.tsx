@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Search, ChevronLeft, ChevronRight, BookOpen, X } from "lucide-react";
 import Image, { type StaticImageData } from "next/image";
+import Link from "next/link";
 import readingImage from "@/assets/assignment-reading.png";
 import listeningImage from "@/assets/assignment-listening.png";
 import writingImage from "@/assets/assignment-writing.png";
@@ -125,13 +126,23 @@ export default function AssignmentsPage() {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-center">
           {/* Left Column - Text Content */}
           <div>
-            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-gradient-to-r from-amber-100 via-pink-100 to-indigo-100 text-xs font-medium text-gray-800 shadow-sm mb-4 hover:shadow-md transition-shadow duration-300">
-              <BookOpen className="w-4 h-4 text-indigo-500 animate-pulse" />
+            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-gradient-to-r from-amber-100 via-orange-100 to-orange-100 text-xs font-medium text-gray-800 shadow-sm mb-4 hover:shadow-md transition-shadow duration-300">
+              <BookOpen className="w-4 h-4 text-orange-500 animate-pulse" />
               Luyện tập tạo nên sự hoàn hảo
             </div>
-            <h1 className="text-4xl font-bold text-gray-900 tracking-tight mb-3 bg-gradient-to-r from-gray-900 via-indigo-900 to-purple-900 bg-clip-text text-transparent">
-              Bài tập
-            </h1>
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+              <h1 className="text-4xl font-bold text-gray-900 tracking-tight mb-0 bg-gradient-to-r from-gray-900 via-orange-900 to-orange-800 bg-clip-text text-transparent">
+                Bài tập
+              </h1>
+              <div className="flex items-center gap-2">
+                <Button asChild variant="outline" size="sm">
+                  <Link href="/assignment/submissions">My submissions</Link>
+                </Button>
+                <Button asChild size="sm">
+                  <Link href="/assignment/create">Create assignment</Link>
+                </Button>
+              </div>
+            </div>
             <p className="text-gray-600 max-w-2xl">
               Khám phá và luyện tập với bộ sưu tập bài tập IELTS được tuyển chọn qua tất cả các kỹ năng.
             </p>
@@ -158,13 +169,13 @@ export default function AssignmentsPage() {
       {/* Search Bar */}
       <div className="mb-6 animate-in fade-in slide-in-from-top-4">
         <div className="relative max-w-md group">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5 group-focus-within:text-indigo-500 transition-colors duration-300" />
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5 group-focus-within:text-orange-500 transition-colors duration-300" />
           <Input
             type="text"
             placeholder="Tìm kiếm bài tập theo tiêu đề hoặc mô tả..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-10 pr-10 w-full transition-all duration-300 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 hover:border-gray-400"
+            className="pl-10 pr-10 w-full transition-all duration-300 focus:ring-2 focus:ring-orange-500 focus:border-orange-500 hover:border-gray-400"
           />
           {searchQuery && (
             <button
@@ -201,7 +212,7 @@ export default function AssignmentsPage() {
                 {/* Active state gradient background */}
                 {isActive && (
                   <>
-                    <span className="absolute inset-0 bg-gradient-to-r from-pink-200 via-purple-200 to-indigo-200 rounded-xl shadow-lg animate-in fade-in duration-500" />
+                    <span className="absolute inset-0 bg-gradient-to-r from-orange-200 via-orange-200 to-orange-200 rounded-xl shadow-lg animate-in fade-in duration-500" />
                     {/* Animated shine effect */}
                     <span className="absolute inset-0 bg-gradient-to-r from-transparent via-white/40 to-transparent -skew-x-12 animate-shine" />
                   </>
@@ -229,7 +240,7 @@ export default function AssignmentsPage() {
                 
                 {/* Active indicator dot */}
                 {isActive && (
-                  <span className="absolute bottom-1 left-1/2 -translate-x-1/2 w-1.5 h-1.5 rounded-full bg-indigo-500 animate-pulse" />
+                  <span className="absolute bottom-1 left-1/2 -translate-x-1/2 w-1.5 h-1.5 rounded-full bg-orange-500 animate-pulse" />
                 )}
               </TabsTrigger>
             );
@@ -313,7 +324,7 @@ export default function AssignmentsPage() {
                                 onClick={() => handlePageChange(page)}
                                 className={`min-w-[40px] transition-all duration-300 hover:scale-110 ${
                                   currentPage === page
-                                    ? "shadow-lg ring-2 ring-indigo-500/50"
+                                    ? "shadow-lg ring-2 ring-orange-500/50"
                                     : "hover:bg-gray-100"
                                 }`}
                               >
