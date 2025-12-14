@@ -4,6 +4,8 @@ import { v4 as uuidv4 } from 'uuid';
 
 export type SpeakingResponseDocument = SpeakingResponse & Document;
 
+export type SubmissionStatus = 'pending' | 'graded' | 'failed';
+
 @Schema()
 export class SpeakingResponse {
   @Prop({ required: true, default: uuidv4 })
@@ -32,6 +34,9 @@ export class SpeakingResponse {
 
   @Prop()
   feedback?: string;
+
+  @Prop({ default: 'pending', enum: ['pending', 'graded', 'failed'] })
+  status: SubmissionStatus;
 
   @Prop({ default: Date.now })
   created_at: Date;

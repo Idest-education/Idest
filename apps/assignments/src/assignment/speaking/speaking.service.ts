@@ -11,6 +11,7 @@ import { SupabaseService } from '../../supabase/supabase.service';
 import { concatenateAudioFiles, getExtensionFromMimetype } from '../utils/audio.util';
 import { v4 as uuidv4 } from 'uuid';
 import { PaginationDto, PaginatedResponse } from '../dto/pagination.dto';
+import { RabbitService } from '../../rabbit/rabbit.service';
 
 @Injectable()
 export class SpeakingService {
@@ -22,6 +23,7 @@ export class SpeakingService {
     @Inject(forwardRef(() => GradeService))
     private gradeService: GradeService,
     private supabaseService: SupabaseService,
+    private rabbitService: RabbitService,
   ) {}
 
   async createAssignment(dto: CreateSpeakingAssignmentDto) {
@@ -84,36 +86,14 @@ export class SpeakingService {
     if (!assignment) throw new BadRequestException('assignment_id must reference a speaking assignment');
     
     const submissionId = dto.id || uuidv4();
-    
-    let transcriptOne: string | undefined;
-    let transcriptTwo: string | undefined;
-    let transcriptThree: string | undefined;
-    let score: number | undefined;
-    let feedback: string | undefined;
+
     let audioUrl: string | undefined;
-    
+
     const audioFiles: Express.Multer.File[] = [];
     
-    if (files.audioOne?.[0]) {
-      console.log('Transcribing Part 1 audio...');
-      audioFiles.push(files.audioOne[0]);
-      transcriptOne = await this.gradeService.speechToText(files.audioOne[0]);
-      console.log('Part 1 transcript:', transcriptOne);
-    }
-    
-    if (files.audioTwo?.[0]) {
-      console.log('Transcribing Part 2 audio...');
-      audioFiles.push(files.audioTwo[0]);
-      transcriptTwo = await this.gradeService.speechToText(files.audioTwo[0]);
-      console.log('Part 2 transcript:', transcriptTwo);
-    }
-    
-    if (files.audioThree?.[0]) {
-      console.log('Transcribing Part 3 audio...');
-      audioFiles.push(files.audioThree[0]);
-      transcriptThree = await this.gradeService.speechToText(files.audioThree[0]);
-      console.log('Part 3 transcript:', transcriptThree);
-    }
+    if (files.audioOne?.[0]) audioFiles.push(files.audioOne[0]);
+    if (files.audioTwo?.[0]) audioFiles.push(files.audioTwo[0]);
+    if (files.audioThree?.[0]) audioFiles.push(files.audioThree[0]);
     
     if (audioFiles.length > 0) {
       console.log(`Concatenating ${audioFiles.length} audio files...`);
@@ -136,67 +116,83 @@ export class SpeakingService {
         audioUrl = '';
       }
     }
-    
-    if (transcriptOne || transcriptTwo || transcriptThree) {
-      let question = `Speaking Assignment: ${assignment.title}\n\n`;
-      let answer = '';
-      
-      assignment.parts.forEach(part => {
-        question += `Part ${part.part_number}: \n`;
-        part.questions.forEach(q => {
-          question += `Q${q.order_index}: ${q.prompt}\n`;
-        });
-        question += '\n';
-      });
-      
-      if (transcriptOne) {
-        answer += `Part 1:\n${transcriptOne}\n\n`;
-      }
-      if (transcriptTwo) {
-        answer += `Part 2:\n${transcriptTwo}\n\n`;
-      }
-      if (transcriptThree) {
-        answer += `Part 3:\n${transcriptThree}\n\n`;
-      }
-      
-      console.log('Grading speaking submission...');
-      const gradeResponseText = await this.gradeService.gradeSpeakingSubmission(question, answer.trim());
-      
-      try {
-        let jsonText = gradeResponseText.trim();
-        
-        const codeBlockMatch = jsonText.match(/```(?:json)?\s*(\{[\s\S]*?\})\s*```/);
-        if (codeBlockMatch) {
-          jsonText = codeBlockMatch[1];
-        } else {
-          const jsonMatch = jsonText.match(/\{[\s\S]*\}/);
-          if (jsonMatch) {
-            jsonText = jsonMatch[0];
-          }
-        }
-        
-        const gradeResponse = JSON.parse(jsonText);
-        score = gradeResponse.score;
-        feedback = gradeResponse.feedback;
-        console.log('Grading complete. Score:', score);
-      } catch (error) {
-        console.error('Failed to parse grade response:', error);
-        console.error('Raw response:', gradeResponseText);
-      }
-    }
-    
-    const payload = { 
+
+    const payload = {
       ...dto,
       id: submissionId,
       audio_url: audioUrl || '',
-      transcriptOne,
-      transcriptTwo,
-      transcriptThree,
-      score,
-      feedback,
+      transcriptOne: undefined,
+      transcriptTwo: undefined,
+      transcriptThree: undefined,
+      score: undefined,
+      feedback: undefined,
+      status: 'pending',
     } as any;
     const created = new this.speakingResponseModel(payload);
-    return created.save();
+    const saved = await created.save();
+
+    try {
+      await this.rabbitService.send('grade_queue', {
+        skill: 'speaking',
+        responseId: submissionId,
+        assignmentId: dto.assignment_id,
+        userId: dto.user_id,
+        audios: {
+          audioOne: files.audioOne?.[0]
+            ? {
+                data: files.audioOne[0].buffer.toString('base64'),
+                mimetype: files.audioOne[0].mimetype,
+                originalname: files.audioOne[0].originalname,
+              }
+            : undefined,
+          audioTwo: files.audioTwo?.[0]
+            ? {
+                data: files.audioTwo[0].buffer.toString('base64'),
+                mimetype: files.audioTwo[0].mimetype,
+                originalname: files.audioTwo[0].originalname,
+              }
+            : undefined,
+          audioThree: files.audioThree?.[0]
+            ? {
+                data: files.audioThree[0].buffer.toString('base64'),
+                mimetype: files.audioThree[0].mimetype,
+                originalname: files.audioThree[0].originalname,
+              }
+            : undefined,
+        },
+      });
+    } catch (error) {
+      await this.speakingResponseModel
+        .findOneAndUpdate({ id: submissionId }, { status: 'failed' }, { new: true })
+        .exec();
+      throw error;
+    }
+
+    return saved;
+  }
+
+  async updateResponseGrade(params: {
+    responseId: string;
+    transcriptOne?: string;
+    transcriptTwo?: string;
+    transcriptThree?: string;
+    score?: number;
+    feedback?: string;
+  }) {
+    const { responseId, ...update } = params;
+    return this.speakingResponseModel
+      .findOneAndUpdate(
+        { id: responseId },
+        { ...update, status: 'graded' },
+        { new: true },
+      )
+      .exec();
+  }
+
+  async markResponseFailed(responseId: string) {
+    return this.speakingResponseModel
+      .findOneAndUpdate({ id: responseId }, { status: 'failed' }, { new: true })
+      .exec();
   }
 
   async getResponse(id: string) {

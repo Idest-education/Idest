@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable, Inject, forwardRef } from '@nestjs/common';
+import { BadRequestException, Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { WritingAssignment, WritingAssignmentDocument } from '../schemas/writing-assignment.schema';
@@ -6,8 +6,8 @@ import { CreateWritingAssignmentDto } from './dto/create-writing-assignment.dto'
 import { UpdateWritingAssignmentDto } from './dto/update-writing-assignment.dto';
 import { WritingSubmission, WritingSubmissionDocument } from './schemas/writing-submission.schema';
 import { CreateWritingSubmissionDto } from './dto/create-writing-submission.dto';
-import { GradeService } from '../../grade/grade.service';
 import { PaginationDto, PaginatedResponse } from '../dto/pagination.dto';
+import { RabbitService } from '../../rabbit/rabbit.service';
 
 @Injectable()
 export class WritingService {
@@ -16,8 +16,7 @@ export class WritingService {
     private writingAssignmentModel: Model<WritingAssignmentDocument>,
     @InjectModel(WritingSubmission.name)
     private writingSubmissionModel: Model<WritingSubmissionDocument>,
-    @Inject(forwardRef(() => GradeService))
-    private gradeService: GradeService,
+    private rabbitService: RabbitService,
   ) {}
 
   async createAssignment(dto: CreateWritingAssignmentDto) {
@@ -71,46 +70,53 @@ export class WritingService {
   async submitEssay(dto: CreateWritingSubmissionDto) {
     const assignment = await this.writingAssignmentModel.findOne({ _id: dto.assignment_id }).exec();
     if (!assignment) throw new BadRequestException('assignment_id must reference a writing assignment');
-    
-    let question = `Task 1: ${assignment.taskone}\nTask 2: ${assignment.tasktwo}`;
-    if (assignment.imgDescription) {
-      question += `\n\nImage Description for task 1: ${assignment.imgDescription}`;
-    }
-    
-    const submission = `Task 1 Answer:\n${dto.contentOne}\n\nTask 2 Answer:\n${dto.contentTwo}`;
-    
-    const gradeResponseText = await this.gradeService.gradeWritingSubmission(submission, question);
-    
-    let score: number | undefined;
-    let feedback: string | undefined;
-    try {
-      let jsonText = gradeResponseText.trim();
-      
-      const codeBlockMatch = jsonText.match(/```(?:json)?\s*(\{[\s\S]*?\})\s*```/);
-      if (codeBlockMatch) {
-        jsonText = codeBlockMatch[1];
-      } else {
-        const jsonMatch = jsonText.match(/\{[\s\S]*\}/);
-        if (jsonMatch) {
-          jsonText = jsonMatch[0];
-        }
-      }
-      
-      const gradeResponse = JSON.parse(jsonText);
-      score = gradeResponse.score;
-      feedback = gradeResponse.feedback;
-    } catch (error) {
-      console.error('Failed to parse grade response:', error);
-      console.error('Raw response:', gradeResponseText);
-    }
-    
-    const payload = { 
+
+    const created = new this.writingSubmissionModel({
       ...dto,
-      score,
-      feedback,
-    } as any;
-    const created = new this.writingSubmissionModel(payload);
-    return created.save();
+      status: 'pending',
+      score: undefined,
+      feedback: undefined,
+    } as any);
+    const saved = await created.save();
+
+    try {
+      await this.rabbitService.send('grade_queue', {
+        skill: 'writing',
+        submissionId: saved.id,
+        assignmentId: dto.assignment_id,
+        userId: dto.user_id,
+        contentOne: dto.contentOne,
+        contentTwo: dto.contentTwo,
+      });
+    } catch (error) {
+      // Best-effort: keep the submission, but mark it failed if we can't queue grading.
+      await this.writingSubmissionModel
+        .findOneAndUpdate(
+          { id: saved.id },
+          { status: 'failed' },
+          { new: true },
+        )
+        .exec();
+      throw error;
+    }
+
+    return saved;
+  }
+
+  async updateSubmissionGrade(submissionId: string, score: number | undefined, feedback: string | undefined) {
+    return this.writingSubmissionModel
+      .findOneAndUpdate(
+        { id: submissionId },
+        { score, feedback, status: 'graded' },
+        { new: true },
+      )
+      .exec();
+  }
+
+  async markSubmissionFailed(submissionId: string) {
+    return this.writingSubmissionModel
+      .findOneAndUpdate({ id: submissionId }, { status: 'failed' }, { new: true })
+      .exec();
   }
 
   async getSubmission(id: string) {

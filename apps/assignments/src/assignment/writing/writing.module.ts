@@ -1,4 +1,4 @@
-import { Module, forwardRef } from '@nestjs/common';
+import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
 import { JwtModule } from '@nestjs/jwt';
 import { WritingService } from './writing.service';
@@ -6,7 +6,7 @@ import { WritingController } from './writing.controller';
 import { WritingAssignment, WritingAssignmentSchema } from '../schemas/writing-assignment.schema';
 import { WritingSubmission, WritingSubmissionSchema } from './schemas/writing-submission.schema';
 import { JwtAuthGuard } from '../../guards/jwt-auth.guard';
-import { GradeModule } from '../../grade/grade.module';
+import { RabbitModule } from '../../rabbit/rabbit.module';
 
 @Module({
   imports: [
@@ -18,7 +18,7 @@ import { GradeModule } from '../../grade/grade.module';
       secret: process.env.JWT_SECRET || 'default-secret-key',
       signOptions: { expiresIn: '1d' },
     }),
-    forwardRef(() => GradeModule),
+    RabbitModule,
   ],
   controllers: [WritingController],
   providers: [WritingService, JwtAuthGuard],

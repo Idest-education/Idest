@@ -89,61 +89,204 @@ export class GradeService implements OnModuleInit {
   }
 
   private async gradeWriting(message: any) {
-    this.logger.log(`Grading writing assignment: ${message.assignmentId}`);
-    
-    const submission = {
-      assignment_id: message.assignmentId,
-      user_id: message.userId,
-      contentOne: message.contentOne,
-      contentTwo: message.contentTwo,
-    };
-    
-    const result = await this.writingService.submitEssay(submission);
-    this.logger.log(`Writing graded successfully. Score: ${result.score}`);
+    const assignmentId = message.assignmentId;
+    const userId = message.userId;
+    const submissionId = message.submissionId;
+
+    this.logger.log(`Grading writing assignment: ${assignmentId} (submissionId: ${submissionId})`);
+
+    if (!assignmentId || !userId || !submissionId) {
+      this.logger.error('Missing required fields for writing grading', {
+        assignmentId,
+        userId,
+        submissionId,
+      });
+      return;
+    }
+
+    try {
+      const assignment: any = await this.writingService.findOne(assignmentId);
+      if (!assignment) {
+        this.logger.error(`Writing assignment not found: ${assignmentId}`);
+        await this.writingService.markSubmissionFailed(submissionId);
+        return;
+      }
+
+      let question = `Task 1: ${assignment.taskone}\nTask 2: ${assignment.tasktwo}`;
+      if (assignment.imgDescription) {
+        question += `\n\nImage Description for task 1: ${assignment.imgDescription}`;
+      }
+
+      const submissionText = `Task 1 Answer:\n${message.contentOne}\n\nTask 2 Answer:\n${message.contentTwo}`;
+
+      const gradeResponseText = await this.gradeWritingSubmission(
+        submissionText,
+        question,
+      );
+
+      const gradeResponse = this.safeParseJson(gradeResponseText) as
+        | { score?: number; feedback?: string }
+        | null;
+
+      if (!gradeResponse) {
+        await this.writingService.markSubmissionFailed(submissionId);
+        return;
+      }
+
+      const result = await this.writingService.updateSubmissionGrade(
+        submissionId,
+        gradeResponse.score,
+        gradeResponse.feedback,
+      );
+
+      this.logger.log(`Writing graded successfully. Score: ${result?.score}`);
+    } catch (error) {
+      this.logger.error('Writing grading failed', error);
+      await this.writingService.markSubmissionFailed(submissionId);
+    }
   }
 
   private async gradeSpeaking(message: any) {
-    this.logger.log(`Grading speaking assignment: ${message.assignmentId}`);
-    
-    const dto = {
-      assignment_id: message.assignmentId,
-      user_id: message.userId,
-      id: message.id,
-    };
-    
-    const files: {
-      audioOne?: Express.Multer.File[],
-      audioTwo?: Express.Multer.File[],
-      audioThree?: Express.Multer.File[],
-    } = {};
-    
-    if (message.audios?.audioOne) {
-      files.audioOne = [this.base64ToMulterFile(message.audios.audioOne, 'audioOne.webm')];
+    const assignmentId = message.assignmentId;
+    const userId = message.userId;
+    const responseId = message.responseId || message.id;
+
+    this.logger.log(`Grading speaking assignment: ${assignmentId} (responseId: ${responseId})`);
+
+    if (!assignmentId || !userId || !responseId) {
+      this.logger.error('Missing required fields for speaking grading', {
+        assignmentId,
+        userId,
+        responseId,
+      });
+      return;
     }
-    
-    if (message.audios?.audioTwo) {
-      files.audioTwo = [this.base64ToMulterFile(message.audios.audioTwo, 'audioTwo.webm')];
+
+    try {
+      const assignment: any = await this.speakingService.findOne(assignmentId);
+      if (!assignment) {
+        this.logger.error(`Speaking assignment not found: ${assignmentId}`);
+        await this.speakingService.markResponseFailed(responseId);
+        return;
+      }
+
+      const audioOne = this.base64ToMulterFile(message.audios?.audioOne, 'audioOne.webm');
+      const audioTwo = this.base64ToMulterFile(message.audios?.audioTwo, 'audioTwo.webm');
+      const audioThree = this.base64ToMulterFile(message.audios?.audioThree, 'audioThree.webm');
+
+      let transcriptOne: string | undefined;
+      let transcriptTwo: string | undefined;
+      let transcriptThree: string | undefined;
+
+      if (audioOne) transcriptOne = await this.speechToText(audioOne);
+      if (audioTwo) transcriptTwo = await this.speechToText(audioTwo);
+      if (audioThree) transcriptThree = await this.speechToText(audioThree);
+
+      let question = `Speaking Assignment: ${assignment.title}\n\n`;
+      let answer = '';
+
+      assignment.parts?.forEach((part: any) => {
+        question += `Part ${part.part_number}: \n`;
+        part.questions?.forEach((q: any) => {
+          question += `Q${q.order_index}: ${q.prompt}\n`;
+        });
+        question += '\n';
+      });
+
+      if (transcriptOne) answer += `Part 1:\n${transcriptOne}\n\n`;
+      if (transcriptTwo) answer += `Part 2:\n${transcriptTwo}\n\n`;
+      if (transcriptThree) answer += `Part 3:\n${transcriptThree}\n\n`;
+
+      const gradeResponseText = await this.gradeSpeakingSubmission(
+        question,
+        answer.trim(),
+      );
+
+      const gradeResponse = this.safeParseJson(gradeResponseText) as
+        | { score?: number; feedback?: string }
+        | null;
+
+      if (!gradeResponse) {
+        await this.speakingService.markResponseFailed(responseId);
+        return;
+      }
+
+      const result = await this.speakingService.updateResponseGrade({
+        responseId,
+        transcriptOne,
+        transcriptTwo,
+        transcriptThree,
+        score: gradeResponse.score,
+        feedback: gradeResponse.feedback,
+      });
+
+      this.logger.log(`Speaking graded successfully. Score: ${result?.score}`);
+    } catch (error) {
+      this.logger.error('Speaking grading failed', error);
+      await this.speakingService.markResponseFailed(responseId);
     }
-    
-    if (message.audios?.audioThree) {
-      files.audioThree = [this.base64ToMulterFile(message.audios.audioThree, 'audioThree.webm')];
-    }
-    
-    const result = await this.speakingService.submitResponse(dto, files);
-    this.logger.log(`Speaking graded successfully. Score: ${result.score}`);
   }
 
-  private base64ToMulterFile(base64: string, filename: string): Express.Multer.File {
+  private base64ToMulterFile(
+    payload: any,
+    fallbackFilename: string,
+  ): Express.Multer.File | undefined {
+    if (!payload) return undefined;
+
+    // Backward-compat: payload can be a base64 string.
+    if (typeof payload === 'string') {
+      const buffer = Buffer.from(payload, 'base64');
+      return {
+        fieldname: fallbackFilename.split('.')[0],
+        originalname: fallbackFilename,
+        encoding: '7bit',
+        mimetype: 'audio/webm',
+        buffer,
+        size: buffer.length,
+      } as Express.Multer.File;
+    }
+
+    // New format: { data: base64, mimetype, originalname }
+    const base64 = payload.data;
+    if (typeof base64 !== 'string') return undefined;
+
     const buffer = Buffer.from(base64, 'base64');
-    
+    const originalname =
+      typeof payload.originalname === 'string' ? payload.originalname : fallbackFilename;
+    const mimetype =
+      typeof payload.mimetype === 'string' ? payload.mimetype : 'audio/webm';
+
     return {
-      fieldname: filename.split('.')[0],
-      originalname: filename,
+      fieldname: fallbackFilename.split('.')[0],
+      originalname,
       encoding: '7bit',
-      mimetype: 'audio/webm',
-      buffer: buffer,
+      mimetype,
+      buffer,
       size: buffer.length,
     } as Express.Multer.File;
+  }
+
+  private safeParseJson(text: string): any | null {
+    try {
+      let jsonText = (text ?? '').trim();
+      const codeBlockMatch = jsonText.match(
+        /```(?:json)?\s*(\{[\s\S]*?\})\s*```/,
+      );
+      if (codeBlockMatch) {
+        jsonText = codeBlockMatch[1];
+      } else {
+        const jsonMatch = jsonText.match(/\{[\s\S]*\}/);
+        if (jsonMatch) {
+          jsonText = jsonMatch[0];
+        }
+      }
+      return JSON.parse(jsonText);
+    } catch (e) {
+      this.logger.error('Failed to parse JSON from model output', {
+        textPreview: (text ?? '').slice(0, 500),
+      });
+      return null;
+    }
   }
 
   async generateText(prompt: string) {
