@@ -1,21 +1,22 @@
 "use client";
 
-import { use, useEffect, useState } from "react";
+import { use, useEffect, useMemo, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import { getSpeakingAssignment, submitSpeaking } from "@/services/assignment.service";
 import { SpeakingAssignmentDetail } from "@/types/assignment";
 import SidebarSpeaking from "@/components/assignment/SidebarSpeaking";
 import LoadingScreen from "@/components/loading-screen";
+import { Mic } from "lucide-react";
 
 interface Props {
     params: Promise<{ id: string }>;
 }
 
-interface Props {
-    params: Promise<{ id: string }>;
-}
+type RecorderTarget = "part1" | "part2" | "part3";
 
 export default function SpeakingAssignmentPage(props: Props) {
     const { id } = use(props.params);
+    const router = useRouter();
 
     const [assignment, setAssignment] = useState<SpeakingAssignmentDetail | null>(null);
     const [loading, setLoading] = useState(true);
@@ -26,7 +27,18 @@ export default function SpeakingAssignmentPage(props: Props) {
     const [audio2, setAudio2] = useState<File | null>(null);
     const [audio3, setAudio3] = useState<File | null>(null);
 
+    const [isRecording, setIsRecording] = useState(false);
+    const [recordingTarget, setRecordingTarget] = useState<RecorderTarget | null>(null);
+    const [recordingError, setRecordingError] = useState<string | null>(null);
+    const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+    const mediaStreamRef = useRef<MediaStream | null>(null);
+    const chunksRef = useRef<BlobPart[]>([]);
+
     const [submitting, setSubmitting] = useState(false);
+
+    const canRecord = useMemo(() => {
+        return typeof window !== "undefined" && !!navigator.mediaDevices?.getUserMedia && typeof MediaRecorder !== "undefined";
+    }, []);
 
     useEffect(() => {
         async function load() {
@@ -37,9 +49,83 @@ export default function SpeakingAssignmentPage(props: Props) {
         load();
     }, [id]);
 
+    async function startRecording(target: RecorderTarget) {
+        setRecordingError(null);
+        if (!canRecord) {
+            setRecordingError("Trình duyệt của bạn không hỗ trợ ghi âm trực tiếp. Vui lòng tải lên file audio.");
+            return;
+        }
+        if (isRecording) return;
+
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            mediaStreamRef.current = stream;
+
+            // Prefer opus/webm if supported
+            const preferred = "audio/webm;codecs=opus";
+            const mimeType = MediaRecorder.isTypeSupported(preferred) ? preferred : undefined;
+
+            const recorder = new MediaRecorder(stream, mimeType ? { mimeType } : undefined);
+            mediaRecorderRef.current = recorder;
+            chunksRef.current = [];
+
+            recorder.ondataavailable = (e) => {
+                if (e.data && e.data.size > 0) chunksRef.current.push(e.data);
+            };
+
+            recorder.onstop = () => {
+                const blob = new Blob(chunksRef.current, { type: recorder.mimeType || "audio/webm" });
+                const ext = (recorder.mimeType || "").includes("ogg") ? "ogg" : "webm";
+                const filename = `${target}.${ext}`;
+                const file = new File([blob], filename, { type: blob.type });
+
+                if (target === "part1") setAudio1(file);
+                if (target === "part2") setAudio2(file);
+                if (target === "part3") setAudio3(file);
+
+                // Cleanup stream
+                mediaStreamRef.current?.getTracks().forEach((t) => t.stop());
+                mediaStreamRef.current = null;
+                mediaRecorderRef.current = null;
+                chunksRef.current = [];
+                setIsRecording(false);
+                setRecordingTarget(null);
+            };
+
+            setIsRecording(true);
+            setRecordingTarget(target);
+            recorder.start();
+        } catch (e) {
+            console.error(e);
+            setRecordingError("Không thể bắt đầu ghi âm. Vui lòng cho phép quyền micro hoặc tải lên file audio.");
+            setIsRecording(false);
+            setRecordingTarget(null);
+        }
+    }
+
+    function stopRecording() {
+        try {
+            mediaRecorderRef.current?.stop();
+        } catch (e) {
+            console.error(e);
+            // Ensure cleanup anyway
+            mediaStreamRef.current?.getTracks().forEach((t) => t.stop());
+            mediaStreamRef.current = null;
+            mediaRecorderRef.current = null;
+            chunksRef.current = [];
+            setIsRecording(false);
+            setRecordingTarget(null);
+        }
+    }
+
+    function previewUrl(file: File | null) {
+        if (!file) return null;
+        return URL.createObjectURL(file);
+    }
+
     async function handleSubmit() {
         if (!assignment || !audio1 || !audio2 || !audio3) {
-            alert("Vui lòng tải lên tất cả các bản ghi âm.");
+            alert("Vui lòng ghi âm hoặc tải lên đầy đủ 3 bản ghi âm (phần 1, 2, 3).");
             return;
         }
 
@@ -47,17 +133,18 @@ export default function SpeakingAssignmentPage(props: Props) {
 
         setSubmitting(true); // bật loading
 
-        const res = await submitSpeaking({
+        await submitSpeaking({
             assignment_id: assignment.id,
             user_id: userId!,
             audioOne: audio1,
             audioTwo: audio2,
             audioThree: audio3,
         });
-
-        const submissionId = res.data.id;
-
-        window.location.href = `/assignment/speaking/${assignment.id}/result/${submissionId}`;
+        // Mark that we should show the "queued for grading" popup after redirect
+        try {
+            sessionStorage.setItem("assignment_grading_queued", "1");
+        } catch {}
+        router.push("/assignment/submissions");
     }
 
     if (submitting) {
@@ -137,7 +224,13 @@ export default function SpeakingAssignmentPage(props: Props) {
 
                 {/* MIDDLE – UPLOAD RECORDINGS */}
                 <div className="w-[45%] flex flex-col border border-gray-300 bg-white/80 backdrop-blur-sm shadow-sm rounded-r-2xl transition-all duration-300 hover:rounded-r-3x">
-                    <h2 className="text-xl font-semibold p-4">Tải lên bản ghi âm nói của bạn</h2>
+                    <h2 className="text-xl font-semibold p-4">Ghi âm hoặc tải lên bản ghi âm nói của bạn</h2>
+
+                    {recordingError && (
+                        <div className="mx-6 mb-4 p-3 rounded-md border border-red-200 bg-red-50 text-red-700 text-sm">
+                            {recordingError}
+                        </div>
+                    )}
 
                     <div className="flex-1 px-6 overflow-y-auto">
                         <div className="space-y-6">
@@ -193,6 +286,26 @@ export default function SpeakingAssignmentPage(props: Props) {
                                             </button>
                                         </div>
                                     )}
+
+                                    <div className="mt-4 flex flex-wrap items-center gap-3">
+                                        <button
+                                            type="button"
+                                            disabled={isRecording && recordingTarget !== "part1"}
+                                            onClick={() => (isRecording && recordingTarget === "part1" ? stopRecording() : startRecording("part1"))}
+                                            className={`px-4 py-2 rounded-lg font-semibold border transition-all ${isRecording && recordingTarget === "part1"
+                                                ? "bg-red-600 text-white border-red-700 hover:bg-red-700"
+                                                : "bg-white text-indigo-700 border-indigo-300 hover:bg-indigo-50"
+                                                } ${isRecording && recordingTarget !== "part1" ? "opacity-50 cursor-not-allowed" : ""}`}
+                                        >
+                                            <span className="inline-flex items-center gap-2">
+                                                <Mic className="w-4 h-4" />
+                                                {isRecording && recordingTarget === "part1" ? "Dừng ghi âm" : "Ghi âm trực tiếp"}
+                                            </span>
+                                        </button>
+                                        {audio1 && (
+                                            <audio controls src={previewUrl(audio1) ?? undefined} className="w-full" />
+                                        )}
+                                    </div>
                                 </div>
                             )}
 
@@ -248,6 +361,26 @@ export default function SpeakingAssignmentPage(props: Props) {
                                                 </button>
                                             </div>
                                         )}
+
+                                        <div className="mt-4 flex flex-wrap items-center gap-3">
+                                            <button
+                                                type="button"
+                                                disabled={isRecording && recordingTarget !== "part2"}
+                                                onClick={() => (isRecording && recordingTarget === "part2" ? stopRecording() : startRecording("part2"))}
+                                                className={`px-4 py-2 rounded-lg font-semibold border transition-all ${isRecording && recordingTarget === "part2"
+                                                    ? "bg-red-600 text-white border-red-700 hover:bg-red-700"
+                                                    : "bg-white text-purple-700 border-purple-300 hover:bg-purple-50"
+                                                    } ${isRecording && recordingTarget !== "part2" ? "opacity-50 cursor-not-allowed" : ""}`}
+                                            >
+                                                <span className="inline-flex items-center gap-2">
+                                                    <Mic className="w-4 h-4" />
+                                                    {isRecording && recordingTarget === "part2" ? "Dừng ghi âm" : "Ghi âm trực tiếp"}
+                                                </span>
+                                            </button>
+                                            {audio2 && (
+                                                <audio controls src={previewUrl(audio2) ?? undefined} className="w-full" />
+                                            )}
+                                        </div>
                                     </div>
 
                                     <div className="bg-gradient-to-br from-teal-50 to-cyan-50 rounded-xl p-6 border-2 border-teal-200 transition-all hover:shadow-lg">
@@ -299,6 +432,26 @@ export default function SpeakingAssignmentPage(props: Props) {
                                                 </button>
                                             </div>
                                         )}
+
+                                        <div className="mt-4 flex flex-wrap items-center gap-3">
+                                            <button
+                                                type="button"
+                                                disabled={isRecording && recordingTarget !== "part3"}
+                                                onClick={() => (isRecording && recordingTarget === "part3" ? stopRecording() : startRecording("part3"))}
+                                                className={`px-4 py-2 rounded-lg font-semibold border transition-all ${isRecording && recordingTarget === "part3"
+                                                    ? "bg-red-600 text-white border-red-700 hover:bg-red-700"
+                                                    : "bg-white text-teal-700 border-teal-300 hover:bg-teal-50"
+                                                    } ${isRecording && recordingTarget !== "part3" ? "opacity-50 cursor-not-allowed" : ""}`}
+                                            >
+                                                <span className="inline-flex items-center gap-2">
+                                                    <Mic className="w-4 h-4" />
+                                                    {isRecording && recordingTarget === "part3" ? "Dừng ghi âm" : "Ghi âm trực tiếp"}
+                                                </span>
+                                            </button>
+                                            {audio3 && (
+                                                <audio controls src={previewUrl(audio3) ?? undefined} className="w-full" />
+                                            )}
+                                        </div>
                                     </div>
                                 </>
                             )}

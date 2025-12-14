@@ -1,33 +1,50 @@
 "use client";
 
 import { use, useEffect, useState } from "react";
-import { getWritingSubmissionResult } from "@/services/assignment.service";
+import Image from "next/image";
+import { getWritingAssignment, getWritingSubmissionResult } from "@/services/assignment.service";
 import LoadingScreen from "@/components/loading-screen";
-import type { WritingSubmissionResult } from "@/types/assignment";
+import type { WritingAssignmentDetail, WritingSubmissionResult } from "@/types/assignment";
 
 interface Props {
     params: Promise<{ id: string; submissionId: string }>;
 }
 
 export default function WritingResultPage(props: Props) {
-    const { submissionId } = use(props.params);
+    const { id, submissionId } = use(props.params);
     const [result, setResult] = useState<WritingSubmissionResult | null>(null);
+    const [assignment, setAssignment] = useState<WritingAssignmentDetail | null>(null);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
         async function load() {
             try {
-                const res = await getWritingSubmissionResult(submissionId);
-                setResult(res.data);
+                const [aRes, sRes] = await Promise.all([
+                    getWritingAssignment(id),
+                    getWritingSubmissionResult(submissionId),
+                ]);
+                setAssignment(aRes.data);
+                setResult(sRes.data);
             } finally {
                 setLoading(false);
             }
         }
         load();
-    }, [submissionId]);
+    }, [id, submissionId]);
 
     if (loading) {
         return <LoadingScreen />;
+    }
+
+    if (!result) {
+        return (
+            <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 flex items-center justify-center p-6">
+                <div className="bg-white rounded-lg shadow-xl p-8 max-w-md text-center">
+                    <div className="text-6xl mb-4">🔍</div>
+                    <p className="text-xl font-semibold text-gray-800">Không tìm thấy kết quả</p>
+                </div>
+            </div>
+        );
     }
 
     const getBandColor = (score: number) => {
@@ -38,7 +55,8 @@ export default function WritingResultPage(props: Props) {
         return { text: "text-orange-700", bg: "bg-orange-50", border: "border-orange-300", bar: "bg-orange-500" };
     };
 
-    const colors = getBandColor(result!.score);
+    const isPending = result.status === "pending" || typeof result.score !== "number";
+    const colors = getBandColor(typeof result.score === "number" ? result.score : 0);
 
     return (
         <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 py-6 px-4">
@@ -52,56 +70,129 @@ export default function WritingResultPage(props: Props) {
                     <p className="text-gray-600 text-lg">Đánh giá theo tiêu chuẩn IELTS Band Score</p>
                 </div>
 
-                {/* Band Score Card */}
-                <div className={`${colors.bg} border-2 ${colors.border} rounded-2xl p-5 shadow-xl`}>
-                    <div className="text-center space-y-6">
-                        <div className="space-y-2">
-                            <p className="text-gray-600 font-medium text-sm uppercase tracking-wider">Điểm tổng thể</p>
-                            <div className="flex items-baseline justify-center gap-2">
-                                <span className={`text-8xl font-bold ${colors.text}`}>
-                                    {result!.score}
-                                </span>
-                                <span className="text-5xl font-semibold text-gray-400">/9.0</span>
-                            </div>
+                {isPending ? (
+                    <div className="bg-white rounded-2xl shadow-xl overflow-hidden border-2 border-gray-100">
+                        <div className="bg-gradient-to-r from-indigo-600 via-blue-600 to-indigo-700 px-8 py-6">
+                            <h2 className="text-2xl font-bold text-white">Trạng thái</h2>
+                            <p className="text-indigo-100 text-sm mt-2">Bài viết của bạn đang được hệ thống chấm điểm.</p>
                         </div>
-
-                        {/* Progress Bar */}
-                        <div className="max-w-md mx-auto">
-                            <div className="w-full bg-gray-200 rounded-full h-4 overflow-hidden shadow-inner">
-                                <div
-                                    className={`h-full ${colors.bar} transition-all duration-1000 rounded-full`}
-                                    style={{ width: `${(result!.score / 9) * 100}%` }}
-                                ></div>
-                            </div>
-                            <div className="flex justify-between text-xs text-gray-500 mt-2 px-1">
-                                <span>0</span>
-                                <span>3</span>
-                                <span>5</span>
-                                <span>7</span>
-                                <span>9</span>
+                        <div className="px-8 py-8 bg-gradient-to-b from-white to-gray-50">
+                            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-amber-50 text-amber-800 border border-amber-200 font-semibold">
+                                Đang chấm điểm
                             </div>
                         </div>
                     </div>
-                </div>
+                ) : (
+                    <>
+                        {/* Band Score Card */}
+                        <div className={`${colors.bg} border-2 ${colors.border} rounded-2xl p-5 shadow-xl`}>
+                            <div className="text-center space-y-6">
+                                <div className="space-y-2">
+                                    <p className="text-gray-600 font-medium text-sm uppercase tracking-wider">Điểm tổng thể</p>
+                                    <div className="flex items-baseline justify-center gap-2">
+                                        <span className={`text-8xl font-bold ${colors.text}`}>
+                                            {result.score}
+                                        </span>
+                                        <span className="text-5xl font-semibold text-gray-400">/9.0</span>
+                                    </div>
+                                </div>
 
-                {/* Feedback Section */}
+                                {/* Progress Bar */}
+                                <div className="max-w-md mx-auto">
+                                    <div className="w-full bg-gray-200 rounded-full h-4 overflow-hidden shadow-inner">
+                                        <div
+                                            className={`h-full ${colors.bar} transition-all duration-1000 rounded-full`}
+                                            style={{ width: `${((result.score ?? 0) / 9) * 100}%` }}
+                                        ></div>
+                                    </div>
+                                    <div className="flex justify-between text-xs text-gray-500 mt-2 px-1">
+                                        <span>0</span>
+                                        <span>3</span>
+                                        <span>5</span>
+                                        <span>7</span>
+                                        <span>9</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Feedback Section */}
+                        <div className="bg-white rounded-2xl shadow-xl overflow-hidden border-2 border-gray-100">
+                            <div className="bg-gradient-to-r from-indigo-600 via-blue-600 to-indigo-700 px-8 py-6">
+                                <h2 className="text-2xl font-bold text-white flex items-center gap-3">
+                                    <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                    </svg>
+                                    Nhận xét của giám khảo
+                                </h2>
+                                <p className="text-indigo-100 text-sm mt-2">Nhận xét chi tiết từ hệ thống chấm bài</p>
+                            </div>
+                            <div className="px-8 py-8 bg-gradient-to-b from-white to-gray-50">
+                                <div className="space-y-4">
+                                    <div className="flex items-start gap-3">
+                                        <div className="w-1 h-full bg-indigo-500 rounded-full flex-shrink-0 mt-1"></div>
+                                        <p className="whitespace-pre-line text-gray-700 leading-relaxed text-base">
+                                            {result.feedback}
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </>
+                )}
+
+                {/* Question (always show if available) */}
+                {assignment && (
+                    <div className="bg-white rounded-2xl shadow-xl overflow-hidden border-2 border-gray-100">
+                        <div className="bg-gradient-to-r from-indigo-600 via-blue-600 to-indigo-700 px-8 py-6">
+                            <h2 className="text-2xl font-bold text-white">Đề bài</h2>
+                            <p className="text-indigo-100 text-sm mt-2">Nội dung Task 1 & Task 2</p>
+                        </div>
+                        <div className="px-8 py-8 space-y-6 bg-gradient-to-b from-white to-gray-50">
+                            <div>
+                                <h3 className="font-semibold text-gray-900 mb-2">Task 1</h3>
+                                <div className="rounded-xl border border-gray-200 bg-white p-4 whitespace-pre-wrap text-gray-800 leading-relaxed">
+                                    {assignment.taskone}
+                                </div>
+                                {assignment.img && (
+                                    <div className="mt-4">
+                                        <Image
+                                            src={assignment.img}
+                                            alt="Task 1 image"
+                                            width={1200}
+                                            height={800}
+                                            className="rounded-xl border border-gray-200 w-full h-auto"
+                                        />
+                                    </div>
+                                )}
+                            </div>
+                            <div>
+                                <h3 className="font-semibold text-gray-900 mb-2">Task 2</h3>
+                                <div className="rounded-xl border border-gray-200 bg-white p-4 whitespace-pre-wrap text-gray-800 leading-relaxed">
+                                    {assignment.tasktwo}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+                {/* My submission (always show) */}
                 <div className="bg-white rounded-2xl shadow-xl overflow-hidden border-2 border-gray-100">
-                    <div className="bg-gradient-to-r from-indigo-600 via-blue-600 to-indigo-700 px-8 py-6">
-                        <h2 className="text-2xl font-bold text-white flex items-center gap-3">
-                            <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                            </svg>
-                            Nhận xét của giám khảo
-                        </h2>
-                        <p className="text-indigo-100 text-sm mt-2">Nhận xét chi tiết từ hệ thống chấm bài</p>
+                    <div className="bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 px-8 py-6">
+                        <h2 className="text-2xl font-bold text-white">Bài bạn đã nộp</h2>
+                        <p className="text-slate-200 text-sm mt-2">Nội dung bài viết của bạn (Task 1 & Task 2)</p>
                     </div>
-                    <div className="px-8 py-8 bg-gradient-to-b from-white to-gray-50">
-                        <div className="space-y-4">
-                            <div className="flex items-start gap-3">
-                                <div className="w-1 h-full bg-indigo-500 rounded-full flex-shrink-0 mt-1"></div>
-                                <p className="whitespace-pre-line text-gray-700 leading-relaxed text-base">
-                                    {result!.feedback}
-                                </p>
+                    <div className="px-8 py-8 space-y-6">
+                        <div>
+                            <h3 className="font-semibold text-gray-900 mb-2">Task 1</h3>
+                            <div className="rounded-xl border border-gray-200 bg-gray-50 p-4 whitespace-pre-wrap text-gray-800 leading-relaxed">
+                                {result.contentOne}
+                            </div>
+                        </div>
+                        <div>
+                            <h3 className="font-semibold text-gray-900 mb-2">Task 2</h3>
+                            <div className="rounded-xl border border-gray-200 bg-gray-50 p-4 whitespace-pre-wrap text-gray-800 leading-relaxed">
+                                {result.contentTwo}
                             </div>
                         </div>
                     </div>

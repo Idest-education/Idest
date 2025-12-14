@@ -2,6 +2,14 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -20,12 +28,24 @@ export default function MySubmissionsPage() {
   const [error, setError] = useState<string | null>(null);
   const [items, setItems] = useState<SubmissionListItem[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
+  const [queuedDialogOpen, setQueuedDialogOpen] = useState(false);
   const [pagination, setPagination] = useState<{
     total: number;
     totalPages: number;
     hasNext: boolean;
     hasPrev: boolean;
   } | null>(null);
+
+  useEffect(() => {
+    // Show "queued for grading" popup once after redirect from submit
+    try {
+      const flag = sessionStorage.getItem("assignment_grading_queued");
+      if (flag === "1") {
+        sessionStorage.removeItem("assignment_grading_queued");
+        setQueuedDialogOpen(true);
+      }
+    } catch {}
+  }, []);
 
   useEffect(() => {
     async function load() {
@@ -105,6 +125,20 @@ export default function MySubmissionsPage() {
 
   return (
     <div className="max-w-7xl mx-auto px-6 py-10">
+      <Dialog open={queuedDialogOpen} onOpenChange={setQueuedDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Đang chấm điểm</DialogTitle>
+            <DialogDescription>
+              Bài tập của bạn đang được hệ thống thông minh chấm điểm, bạn quay lại sau nhé
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button onClick={() => setQueuedDialogOpen(false)}>OK</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       <div className="flex items-center justify-between gap-4 mb-8">
         <div>
           <h1 className="text-4xl font-bold text-gray-900 tracking-tight mb-2 bg-gradient-to-r from-gray-900 via-orange-900 to-orange-800 bg-clip-text text-transparent">
@@ -196,7 +230,21 @@ export default function MySubmissionsPage() {
                         </div>
 
                         {/* Score Display */}
-                        {typeof it.score === "number" && (
+                        {it.status === "pending" ? (
+                          <div className="mb-4 flex items-center gap-2">
+                            <div className={`p-2 rounded-lg ${skillConfig.bgColor} ${skillConfig.textColor} group-hover:bg-white/20 group-hover:text-white transition-all duration-500`}>
+                              <Trophy className="w-4 h-4" />
+                            </div>
+                            <div className="flex-1">
+                              <div className="text-sm text-gray-500 group-hover:text-white/80 transition-all duration-500">
+                                Trạng thái
+                              </div>
+                              <div className="text-lg font-bold text-gray-900 group-hover:text-white transition-all duration-500">
+                                Đang chấm điểm
+                              </div>
+                            </div>
+                          </div>
+                        ) : typeof it.score === "number" ? (
                           <div className="mb-4 flex items-center gap-2">
                             <div className={`p-2 rounded-lg ${skillConfig.bgColor} ${skillConfig.textColor} group-hover:bg-white/20 group-hover:text-white transition-all duration-500`}>
                               <Trophy className="w-4 h-4" />
@@ -208,7 +256,7 @@ export default function MySubmissionsPage() {
                               </div>
                             </div>
                           </div>
-                        )}
+                        ) : null}
 
                         {/* Footer */}
                         <div className="flex items-center justify-between pt-4 border-t border-gray-200 group-hover:border-white/20 transition-all duration-500 mt-auto">
@@ -220,17 +268,31 @@ export default function MySubmissionsPage() {
 
                         {/* Action Buttons */}
                         <div className="flex items-center gap-2 mt-4 pt-4 border-t border-gray-200 group-hover:border-white/20 transition-all duration-500">
-                          <Button
-                            asChild
-                            variant="ghost"
-                            size="sm"
-                            className="flex-1 group-hover:bg-white/20 group-hover:text-white group-hover:backdrop-blur-sm text-gray-700 hover:text-gray-900 transition-all duration-500"
-                          >
-                            <Link href={viewHref(it)}>
-                              Xem kết quả
-                              <ArrowRight className="w-3 h-3 ml-1 group-hover:translate-x-2 transition-transform duration-500" />
-                            </Link>
-                          </Button>
+                          {it.status === "pending" ? (
+                            <Button
+                              asChild
+                              variant="ghost"
+                              size="sm"
+                              className="flex-1 group-hover:bg-white/20 group-hover:text-white group-hover:backdrop-blur-sm text-gray-700 hover:text-gray-900 transition-all duration-500"
+                            >
+                              <Link href={viewHref(it)}>
+                                Xem bài nộp
+                                <ArrowRight className="w-3 h-3 ml-1 group-hover:translate-x-2 transition-transform duration-500" />
+                              </Link>
+                            </Button>
+                          ) : (
+                            <Button
+                              asChild
+                              variant="ghost"
+                              size="sm"
+                              className="flex-1 group-hover:bg-white/20 group-hover:text-white group-hover:backdrop-blur-sm text-gray-700 hover:text-gray-900 transition-all duration-500"
+                            >
+                              <Link href={viewHref(it)}>
+                                Xem kết quả
+                                <ArrowRight className="w-3 h-3 ml-1 group-hover:translate-x-2 transition-transform duration-500" />
+                              </Link>
+                            </Button>
+                          )}
                           <Button
                             asChild
                             variant="outline"

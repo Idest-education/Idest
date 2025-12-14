@@ -158,8 +158,12 @@ export interface WritingSubmissionResult {
   user_id: string;
   skill: "writing";
 
-  score: number;            // Overall writing score
-  feedback: string;         // Task 1 + Task 2 feedback (plain text)
+  contentOne: string;
+  contentTwo: string;
+
+  status?: "pending" | "graded" | "failed";
+  score?: number;            // Overall writing score (when graded)
+  feedback?: string;         // Feedback (when graded)
 
   created_at: string;
 }
@@ -201,12 +205,13 @@ export interface SpeakingSubmissionResult {
 
   audio_url: string;
 
-  transcriptOne: string;
-  transcriptTwo: string;
-  transcriptThree: string;
+  transcriptOne?: string;
+  transcriptTwo?: string;
+  transcriptThree?: string;
 
-  score: number;
-  feedback: string;
+  status?: "pending" | "graded" | "failed";
+  score?: number;
+  feedback?: string;
 }
 
 
@@ -352,6 +357,7 @@ export interface SubmissionListItem {
   createdAt: string; // ISO string
   score?: number;
   assignmentTitle?: string;
+  status?: "pending" | "graded" | "failed";
 }
 
 export interface MySubmissionsResponse {

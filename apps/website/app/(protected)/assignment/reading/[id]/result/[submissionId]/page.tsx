@@ -60,6 +60,12 @@ export default function ReadingResultPage(props: PageProps) {
     const section = assignment.sections[activePassage];
     const sectionResult = result.details[activePassage];
 
+    // Convert raw correct answers to an IELTS-like band score (0.0–9.0)
+    // Using proportional scaling to 9 and rounding to nearest 0.5.
+    const totalQ = result.total_questions || 1;
+    const rawBand = (result.correct_answers / totalQ) * 9;
+    const bandScore = Math.max(0, Math.min(9, Math.round(rawBand * 2) / 2));
+
     return (
         <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 py-1 px-1">
             <div className="flex h-screen border border-gray-300 mx-2 mt-9 mb-19">
@@ -87,8 +93,8 @@ export default function ReadingResultPage(props: PageProps) {
                                 <div>
                                     <p className="text-sm opacity-90 mb-1">Tổng điểm</p>
                                     <p className="text-4xl font-bold">
-                                        {result.score}
-                                        <span className="text-sm opacity-80">/{result.total_questions}</span>
+                                        {bandScore.toFixed(1)}
+                                        <span className="text-sm opacity-80">/9.0</span>
                                     </p>
                                 </div>
                                 <div className="w-20 h-20 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center">

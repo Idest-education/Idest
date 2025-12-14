@@ -28,7 +28,7 @@ export function groupMessages(messages: MessageDto[]): GroupedMessage[] {
     // Check if we need a date separator
     const showDateSeparator =
       isFirst ||
-      (prevMessage && !isSameDay(prevMessage.sentAt, message.sentAt));
+      (!!prevMessage && !isSameDay(prevMessage.sentAt, message.sentAt));
 
     // Check if this message starts a new group
     const isNewGroup =

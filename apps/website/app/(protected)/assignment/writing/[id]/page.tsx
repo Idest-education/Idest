@@ -1,6 +1,7 @@
 "use client";
 
 import { use, useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { getWritingAssignment, submitWriting } from "@/services/assignment.service";
 import { WritingAssignmentDetail } from "@/types/assignment";
 import SidebarWriting from "@/components/assignment/SidebarWriting";
@@ -12,6 +13,7 @@ interface PageProps {
 
 export default function WritingAssignmentPage(props: PageProps) {
     const { id } = use(props.params);
+    const router = useRouter();
 
     const [assignment, setAssignment] = useState<WritingAssignmentDetail | null>(null);
     const [loading, setLoading] = useState(true);
@@ -57,8 +59,11 @@ export default function WritingAssignmentPage(props: PageProps) {
         };
 
         const res = await submitWriting(payload);
-
-        window.location.href = `/assignment/writing/${assignment.id}/result/${res.data.id}`;
+        // Mark that we should show the "queued for grading" popup after redirect
+        try {
+            sessionStorage.setItem("assignment_grading_queued", "1");
+        } catch {}
+        router.push("/assignment/submissions");
     }
 
     if (submitting) {
