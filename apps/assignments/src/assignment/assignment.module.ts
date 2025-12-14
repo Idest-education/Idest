@@ -3,6 +3,8 @@ import { MongooseModule } from '@nestjs/mongoose';
 import { JwtModule } from '@nestjs/jwt';
 import { Assignment, AssignmentSchema } from './schemas/assignment.schema';
 import { Submission, SubmissionSchema } from './schemas/submission.schema';
+import { WritingAssignment, WritingAssignmentSchema } from './schemas/writing-assignment.schema';
+import { SpeakingAssignment, SpeakingAssignmentSchema } from './schemas/speaking-assignment.schema';
 import { WritingSubmission, WritingSubmissionSchema } from './writing/schemas/writing-submission.schema';
 import { SpeakingResponse, SpeakingResponseSchema } from './speaking/schemas/speaking-response.schema';
 import { JwtAuthGuard } from '../guards/jwt-auth.guard';
@@ -18,6 +20,8 @@ import { SpeakingModule } from './speaking/speaking.module';
     MongooseModule.forFeature([
       { name: Assignment.name, schema: AssignmentSchema },
       { name: Submission.name, schema: SubmissionSchema },
+      { name: WritingAssignment.name, schema: WritingAssignmentSchema },
+      { name: SpeakingAssignment.name, schema: SpeakingAssignmentSchema },
       { name: WritingSubmission.name, schema: WritingSubmissionSchema },
       { name: SpeakingResponse.name, schema: SpeakingResponseSchema },
     ]),

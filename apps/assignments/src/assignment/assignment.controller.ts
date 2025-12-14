@@ -1,4 +1,4 @@
-import { Controller, Get, Delete, Param, UseGuards, Query } from '@nestjs/common';
+import { Controller, Get, Delete, Param, UseGuards, Query, Req } from '@nestjs/common';
 import { AssignmentService } from './assignment.service';
 import { JwtAuthGuard } from '../guards/jwt-auth.guard';
 import { ApiBearerAuth, ApiOperation, ApiQuery } from '@nestjs/swagger';
@@ -15,6 +15,25 @@ export class AssignmentController {
   @ApiQuery({ name: 'limit', required: false, type: Number, description: 'Items per page for each skill' })
   findAll(@Query() pagination?: PaginationDto) {
     return this.assignmentService.findAll(pagination);
+  }
+
+  @Get('submissions/me')
+  @ApiOperation({ summary: 'Get my submissions (paginated) across skills' })
+  @ApiQuery({ name: 'page', required: false, type: Number, description: 'Page number (1-based)' })
+  @ApiQuery({ name: 'limit', required: false, type: Number, description: 'Items per page' })
+  @ApiQuery({
+    name: 'skill',
+    required: false,
+    description: 'Optional skill filter',
+    enum: ['reading', 'listening', 'writing', 'speaking'],
+  })
+  async getMySubmissions(
+    @Req() req: any,
+    @Query() pagination: PaginationDto,
+    @Query('skill') skill?: 'reading' | 'listening' | 'writing' | 'speaking',
+  ) {
+    const userId = req.user?.sub || req.user?.userId;
+    return this.assignmentService.getMySubmissions(userId, pagination, skill);
   }
 
   @Get('submissions')
