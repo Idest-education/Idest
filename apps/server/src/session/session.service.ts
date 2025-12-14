@@ -7,6 +7,7 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { userPayload } from 'src/common/types/userPayload.interface';
+import { Role } from 'src/common/enum/role.enum';
 import { ResponseDto } from 'src/common/dto/response.dto';
 import { CreateSessionDto } from './dto/create-session.dto';
 import { UpdateSessionDto } from './dto/update-session.dto';
@@ -33,6 +34,7 @@ export class SessionService {
       const hasPermission = await this.checkClassPermission(
         dto.class_id,
         user.id,
+        user.role,
       );
       if (!hasPermission) {
         throw new ForbiddenException(
@@ -594,6 +596,7 @@ export class SessionService {
   private async checkClassPermission(
     classId: string,
     userId: string,
+    userRole?: Role,
   ): Promise<boolean> {
     const classData = await this.prisma.class.findUnique({
       where: { id: classId },
@@ -606,6 +609,9 @@ export class SessionService {
 
     // Check if user is the class creator
     if (classData.created_by === userId) return true;
+
+    // Admins can create sessions in any class
+    if (userRole === Role.ADMIN) return true;
 
     // Check if user is a teacher in the class
     const isTeacher = await this.prisma.classTeacher.findFirst({
