@@ -8,6 +8,7 @@ import { SpeakingResponse, SpeakingResponseSchema } from './schemas/speaking-res
 import { JwtAuthGuard } from '../../guards/jwt-auth.guard';
 import { GradeModule } from '../../grade/grade.module';
 import { SupabaseModule } from '../../supabase/supabase.module';
+import { RabbitModule } from '../../rabbit/rabbit.module';
 
 @Module({
   imports: [
@@ -21,6 +22,7 @@ import { SupabaseModule } from '../../supabase/supabase.module';
     }),
     forwardRef(() => GradeModule),
     SupabaseModule,
+    RabbitModule,
   ],
   controllers: [SpeakingController],
   providers: [SpeakingService, JwtAuthGuard],
