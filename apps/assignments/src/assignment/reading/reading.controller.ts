@@ -74,10 +74,10 @@ export class ReadingController {
     description: 'Submit answers for a reading assignment and receive immediate grading with a score from 0-9 (rounded to .0 or .5)'
   })
   @ApiResponse({ status: HttpStatus.OK, description: 'Assignment graded and saved successfully' })
-  async submit(@Body() dto: SubmitAssignmentDto) {
+  async submit(@Body() dto: SubmitAssignmentDto, @Req() req: any) {
     const data = await this.readingService.gradeSubmission({
       ...dto,
-      submitted_by: dto.submitted_by
+      submitted_by: dto.submitted_by || req.user?.sub || req.user?.userId,
     });
     return { status: true, message: 'Graded', data, statusCode: HttpStatus.OK };
   }

@@ -152,8 +152,8 @@ export class AssignmentService {
     pagination?: PaginationDto,
     skill?: Skill,
   ): Promise<Paginated<MySubmissionListItem>> {
-    const page = pagination?.page ?? 1;
-    const limit = pagination?.limit ?? 6;
+    const page = typeof pagination?.page === 'number' ? pagination.page : Number(pagination?.page) || 1;
+    const limit = typeof pagination?.limit === 'number' ? pagination.limit : Number(pagination?.limit) || 6;
 
     if (!userId) {
       throw new BadRequestException('Missing user id');
@@ -294,10 +294,10 @@ export class AssignmentService {
     return {
       data: enriched,
       pagination: {
-        page,
-        limit,
-        total,
-        totalPages,
+        page: Number(page),
+        limit: Number(limit),
+        total: Number(total),
+        totalPages: Number(totalPages),
         hasNext: page < totalPages,
         hasPrev: page > 1,
       },
