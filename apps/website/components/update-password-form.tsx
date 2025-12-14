@@ -83,7 +83,7 @@ export function UpdatePasswordForm({
               Idest
             </span>
             <span className="text-sm text-gray-500 font-medium">
-              Learn • Practice • Excel
+              Học tập • Thực hành • Xuất sắc
             </span>
           </div>
         </div>

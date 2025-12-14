@@ -26,7 +26,7 @@ export default function QuestionsPanel({ section, answers, setAnswers, currentQu
 
     return (
         <div>
-            <h2 className="text-xl font-semibold mb-4">Questions</h2>
+            <h2 className="text-xl font-semibold mb-4">Câu hỏi</h2>
 
             {section.questions.map((q, qIndex) => (
                 <div
@@ -56,7 +56,7 @@ export default function QuestionsPanel({ section, answers, setAnswers, currentQu
                                 {isFillBlank ? (
                                     <input
                                         className="text-sm border p-2 rounded w-full"
-                                        placeholder="Your answer"
+                                        placeholder="Câu trả lời của bạn"
                                         value={value}
                                         onChange={(e) =>
                                             setAnswers({ ...answers, [key]: e.target.value })

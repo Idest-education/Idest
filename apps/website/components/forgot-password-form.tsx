@@ -3,17 +3,21 @@
 import { cn } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import Link from "next/link";
-import { useState } from "react";
+import { useState, useMemo } from "react";
+import Image from "next/image";
+
+// Import all carousel images
+import Carousel1 from "@/assets/carousel/1.png";
+import Carousel2 from "@/assets/carousel/2.png";
+import Carousel3 from "@/assets/carousel/3.png";
+import Carousel4 from "@/assets/carousel/4.png";
+import Carousel5 from "@/assets/carousel/5.png";
+import Carousel6 from "@/assets/carousel/6.png";
+
+const carouselImages = [Carousel1, Carousel2, Carousel3, Carousel4, Carousel5, Carousel6];
 
 export function ForgotPasswordForm({
   className,
@@ -23,6 +27,12 @@ export function ForgotPasswordForm({
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  
+  // Randomly select an image on component mount
+  const selectedImage = useMemo(() => {
+    const randomIndex = Math.floor(Math.random() * carouselImages.length);
+    return carouselImages[randomIndex];
+  }, []);
 
   const handleForgotPassword = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -45,170 +55,140 @@ export function ForgotPasswordForm({
   };
 
   return (
-    <div className={cn("flex flex-col gap-6", className)} {...props}>
-      {/* Background decoration */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-20 left-10 w-20 h-20 bg-purple-200 rounded-full opacity-20 animate-pulse"></div>
-        <div className="absolute top-40 right-20 w-16 h-16 bg-indigo-200 rounded-full opacity-20 animate-pulse" style={{animationDelay: '1s'}}></div>
-        <div className="absolute bottom-40 left-20 w-24 h-24 bg-blue-200 rounded-full opacity-20 animate-pulse" style={{animationDelay: '2s'}}></div>
-        <div className="absolute bottom-20 right-40 w-18 h-18 bg-purple-200 rounded-full opacity-20 animate-pulse" style={{animationDelay: '3s'}}></div>
-      </div>
-
-      {/* Header Logo */}
-      <div className="mb-8 text-center relative z-10">
-        <div className="flex items-center justify-center gap-3 mb-4">
-          <div className="w-16 h-16 bg-gradient-to-r from-indigo-600 to-purple-600 rounded-2xl flex items-center justify-center text-white text-2xl font-bold shadow-2xl">
-            🔑
+    <div className={cn("flex min-h-screen flex-col", className)} {...props}>
+      <div className="container relative grid min-h-screen flex-col items-center justify-center lg:max-w-none lg:grid-cols-2 lg:px-0">
+        <div className="relative hidden h-full flex-col bg-muted p-10 text-white lg:flex dark:border-r">
+          <div className="absolute inset-0 bg-gray-900">
+            <Image
+              src={selectedImage}
+              alt="Quên mật khẩu"
+              fill
+              className="object-cover opacity-60"
+              priority
+            />
           </div>
-          <div className="flex flex-col">
-            <span className="text-3xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
-              Idest
-            </span>
-            <span className="text-sm text-gray-500 font-medium">
-              Learn • Practice • Excel
-            </span>
+          <div className="relative z-20 flex items-center text-lg font-medium">
+            <Link href="/" className="flex items-center gap-2">
+              <span className="text-2xl font-semibold">Idest</span>
+            </Link>
+          </div>
+          <div className="relative z-20 mt-auto">
+            <blockquote className="space-y-2">
+              <p className="text-lg">
+                &ldquo;Đặt lại mật khẩu một cách an toàn. Chúng tôi sẽ giúp bạn quay lại học tập ngay lập tức.&rdquo;
+              </p>
+            </blockquote>
           </div>
         </div>
-        <p className="text-gray-600 text-lg">
-          {success ? "Kiểm tra email của bạn! 📧" : "Khôi phục mật khẩu 🔐"}
-        </p>
-      </div>
-
-      {/* Form Card */}
-      <Card className="w-full max-w-md bg-white/80 backdrop-blur-sm border-indigo-100 shadow-2xl relative z-10">
-        {success ? (
-          <>
-            <CardHeader className="text-center pb-4">
-              <div className="w-20 h-20 bg-gradient-to-r from-green-500 to-emerald-600 rounded-full flex items-center justify-center text-white text-3xl font-bold shadow-2xl mx-auto mb-4">
-                ✉️
-              </div>
-              <CardTitle className="text-2xl font-bold bg-gradient-to-r from-green-600 to-emerald-600 bg-clip-text text-transparent">
-                Kiểm tra email
-              </CardTitle>
-              <CardDescription className="text-gray-600">
-                Hướng dẫn đặt lại mật khẩu đã được gửi
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="text-center space-y-6">
-              <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
-                <p className="text-sm text-green-700 flex items-center gap-2 justify-center">
-                  <span>✅</span>
-                  Nếu bạn đã đăng ký bằng email và mật khẩu, bạn sẽ nhận được email khôi phục mật khẩu.
-                </p>
-              </div>
-              
-              <div className="space-y-3">
-                <h4 className="font-semibold text-gray-800">Bước tiếp theo:</h4>
-                <div className="space-y-2 text-sm text-gray-600">
-                  <div className="flex items-start gap-2">
-                    <span className="text-indigo-600 font-bold">1.</span>
-                    <span>Mở email từ Idest</span>
-                  </div>
-                  <div className="flex items-start gap-2">
-                    <span className="text-indigo-600 font-bold">2.</span>
-                    <span>Nhấp vào liên kết trong email</span>
-                  </div>
-                  <div className="flex items-start gap-2">
-                    <span className="text-indigo-600 font-bold">3.</span>
-                    <span>Tạo mật khẩu mới</span>
-                  </div>
-                </div>
-              </div>
-
-              <div className="pt-4">
-                <Link
-                  href="/auth/login"
-                  className="inline-flex items-center gap-2 text-indigo-600 hover:text-purple-600 hover:underline underline-offset-4 transition-colors duration-200 font-medium"
-                >
-                  <span>🔙</span>
-                  <span>Quay lại trang đăng nhập</span>
-                </Link>
-              </div>
-            </CardContent>
-          </>
-        ) : (
-          <>
-            <CardHeader className="text-center pb-4">
-              <CardTitle className="text-2xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
-                Đặt lại mật khẩu
-              </CardTitle>
-              <CardDescription className="text-gray-600">
-                Nhập email của bạn và chúng tôi sẽ gửi liên kết khôi phục mật khẩu
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <form onSubmit={handleForgotPassword}>
-                <div className="flex flex-col gap-6">
-                  <div className="grid gap-3">
-                    <Label htmlFor="email" className="text-gray-700 font-medium">
-                      📧 Email đã đăng ký
-                    </Label>
-                    <Input
-                      id="email"
-                      type="email"
-                      placeholder="your-email@example.com"
-                      required
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      className="h-12 text-gray-700 border-indigo-200 focus:border-indigo-500 focus:ring-indigo-500 bg-white/50 backdrop-blur-sm transition-all duration-200"
-                    />
-                    <p className="text-xs text-gray-500 flex items-center gap-1">
-                      <span>💡</span>
-                      Nhập email bạn đã sử dụng để đăng ký tài khoản
-                    </p>
-                  </div>
-
-                  {error && (
-                    <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
-                      <p className="text-sm text-red-600 flex items-center gap-2">
-                        <span>⚠️</span>
-                        {error}
-                      </p>
-                    </div>
-                  )}
-
-                  <Button 
-                    type="submit" 
-                    className="w-full h-12 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white font-semibold rounded-lg shadow-lg hover:shadow-xl transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed" 
-                    disabled={isLoading}
-                  >
-                    {isLoading ? (
-                      <div className="flex items-center gap-2">
-                        <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                        <span>Đang gửi...</span>
-                      </div>
-                    ) : (
-                      <div className="flex items-center gap-2">
-                        <span>📤</span>
-                        <span>Gửi email khôi phục</span>
-                      </div>
-                    )}
-                  </Button>
-                </div>
-
-                <div className="mt-6 text-center">
-                  <p className="text-gray-600">
-                    Nhớ lại mật khẩu?{" "}
-                    <Link
-                      href="/auth/login"
-                      className="font-semibold text-indigo-600 hover:text-purple-600 hover:underline underline-offset-4 transition-colors duration-200"
-                    >
-                      Đăng nhập ngay
-                    </Link>
+        <div className="lg:p-8">
+          <div className="mx-auto flex w-full flex-col justify-center space-y-6 sm:w-[350px]">
+            {success ? (
+              <>
+                <div className="flex flex-col space-y-2 text-center">
+                  <h1 className="text-2xl font-semibold tracking-tight">
+                    Kiểm tra email của bạn
+                  </h1>
+                  <p className="text-sm text-muted-foreground">
+                    Chúng tôi đã gửi hướng dẫn đặt lại mật khẩu đến email của bạn
                   </p>
                 </div>
-              </form>
-            </CardContent>
-          </>
-        )}
-      </Card>
-
-      {/* Floating elements */}
-      <div className="absolute top-10 right-10 opacity-30 animate-bounce" style={{animationDelay: '0.5s'}}>
-        <div className="text-4xl">🔐</div>
-      </div>
-      <div className="absolute bottom-10 left-10 opacity-30 animate-bounce" style={{animationDelay: '1.5s'}}>
-        <div className="text-4xl">🔑</div>
+                <div className="rounded-md bg-green-50 border border-green-200 p-4">
+                  <p className="text-sm text-green-700">
+                    Nếu tài khoản tồn tại với email đó, bạn sẽ nhận được hướng dẫn đặt lại mật khẩu.
+                  </p>
+                </div>
+                <div className="space-y-3">
+                  <h4 className="font-semibold text-sm">Các bước tiếp theo:</h4>
+                  <div className="space-y-2 text-sm text-muted-foreground">
+                    <div className="flex items-start gap-2">
+                      <span className="font-medium">1.</span>
+                      <span>Mở email từ Idest</span>
+                    </div>
+                    <div className="flex items-start gap-2">
+                      <span className="font-medium">2.</span>
+                      <span>Nhấp vào liên kết trong email</span>
+                    </div>
+                    <div className="flex items-start gap-2">
+                      <span className="font-medium">3.</span>
+                      <span>Tạo mật khẩu mới của bạn</span>
+                    </div>
+                  </div>
+                </div>
+                <Link
+                  href="/auth/login"
+                  className="text-center text-sm text-muted-foreground underline underline-offset-4 hover:text-primary"
+                >
+                  Quay lại đăng nhập
+                </Link>
+              </>
+            ) : (
+              <>
+                <div className="flex flex-col space-y-2 text-center">
+                  <h1 className="text-2xl font-semibold tracking-tight">
+                    Quên mật khẩu
+                  </h1>
+                  <p className="text-sm text-muted-foreground">
+                    Nhập email của bạn và chúng tôi sẽ gửi liên kết đặt lại mật khẩu
+                  </p>
+                </div>
+                <div className="grid gap-6">
+                  <form onSubmit={handleForgotPassword}>
+                    <div className="grid gap-4">
+                      <div className="grid gap-2">
+                        <Label htmlFor="email">Email</Label>
+                        <Input
+                          id="email"
+                          placeholder="name@example.com"
+                          type="email"
+                          autoCapitalize="none"
+                          autoComplete="email"
+                          autoCorrect="off"
+                          disabled={isLoading}
+                          value={email}
+                          onChange={(e) => setEmail(e.target.value)}
+                          required
+                        />
+                      </div>
+                      {error && (
+                        <div className="rounded-md bg-destructive/15 p-3 text-sm text-destructive">
+                          {error}
+                        </div>
+                      )}
+                      <Button disabled={isLoading} type="submit" className="w-full">
+                        {isLoading && (
+                          <div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-background border-t-transparent" />
+                        )}
+                        Gửi liên kết đặt lại
+                      </Button>
+                    </div>
+                  </form>
+                  <div className="relative">
+                    <div className="absolute inset-0 flex items-center">
+                      <span className="w-full border-t" />
+                    </div>
+                    <div className="relative flex justify-center text-xs uppercase">
+                  <span className="bg-background px-2 text-muted-foreground">
+                    Hoặc tiếp tục với
+                  </span>
+                    </div>
+                  </div>
+                  <Button variant="outline" type="button" disabled={isLoading}>
+                    Google (Sắp ra mắt)
+                  </Button>
+                </div>
+                <p className="px-8 text-center text-sm text-muted-foreground">
+                  Nhớ mật khẩu?{" "}
+                  <Link
+                    href="/auth/login"
+                    className="underline underline-offset-4 hover:text-primary"
+                  >
+                    Đăng nhập
+                  </Link>
+                </p>
+              </>
+            )}
+          </div>
+        </div>
       </div>
     </div>
   );

@@ -24,26 +24,25 @@ function CheckoutCancelContent() {
             </div>
           </div>
           <CardTitle className="text-2xl text-gray-900">
-            Payment Cancelled
+            Thanh toán đã hủy
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-6">
           <div className="bg-orange-50 border border-orange-200 rounded-lg p-4">
             <p className="text-orange-800 text-center">
-              Your payment was cancelled. No charges were made.
+              Thanh toán của bạn đã bị hủy. Không có khoản phí nào được tính.
             </p>
           </div>
 
           {className && (
             <div className="space-y-2">
-              <p className="text-sm text-gray-600">Class Name</p>
+              <p className="text-sm text-gray-600">Tên lớp học</p>
               <p className="font-semibold text-gray-900">{className}</p>
             </div>
           )}
 
           <p className="text-gray-600 text-center text-sm">
-            You can complete your purchase anytime by returning to the class
-            page.
+            Bạn có thể hoàn tất việc mua bất cứ lúc nào bằng cách quay lại trang lớp học.
           </p>
 
           <div className="flex gap-3 pt-4">
@@ -53,11 +52,11 @@ function CheckoutCancelContent() {
               className="flex-1"
             >
               <ArrowLeft className="w-4 h-4 mr-2" />
-              Go Home
+              Về trang chủ
             </Button>
             {classId && (
               <Link href={`/classes/${classId}`} className="flex-1">
-                <Button className="w-full">Try Again</Button>
+                <Button className="w-full">Thử lại</Button>
               </Link>
             )}
           </div>
@@ -76,7 +75,7 @@ export default function CheckoutCancelPage() {
             <CardContent className="pt-6">
               <div className="flex flex-col items-center gap-4">
                 <Loader2 className="w-8 h-8 animate-spin text-gray-600" />
-                <p className="text-gray-600">Loading...</p>
+                <p className="text-gray-600">Đang tải...</p>
               </div>
             </CardContent>
           </Card>
@@ -87,3 +86,5 @@ export default function CheckoutCancelPage() {
     </Suspense>
   );
 }
+
+

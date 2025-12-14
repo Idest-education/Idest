@@ -41,7 +41,7 @@ export default function WritingAssignmentPage(props: PageProps) {
 
         // VALIDATION
         if (contentOne.trim().length === 0 || contentTwo.trim().length === 0) {
-            alert("Bạn phải hoàn thành cả Task 1 và Task 2 trước khi nộp bài.");
+            alert("Bạn phải hoàn thành cả Nhiệm vụ 1 và Nhiệm vụ 2 trước khi nộp bài.");
             return;
         }
 
@@ -69,7 +69,7 @@ export default function WritingAssignmentPage(props: PageProps) {
         return <LoadingScreen />;
     }
 
-    if (!assignment) return <p className="p-4">Not found</p>;
+    if (!assignment) return <p className="p-4">Không tìm thấy</p>;
 
     return (
         <div className="flex w-full h-[900px] overflow-hidden bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 border border-gray-300 rounded-lg shadow-md">
@@ -82,13 +82,13 @@ export default function WritingAssignmentPage(props: PageProps) {
                             className={`px-4 py-2 rounded-full border ${activeTask === 1 ? "bg-blue-600 text-white" : "bg-gray-200"}`}
                             onClick={() => setActiveTask(1)}
                         >
-                            Task 1
+                            Nhiệm vụ 1
                         </button>
                         <button
                             className={`px-4 py-2 rounded-full border ${activeTask === 2 ? "bg-blue-600 text-white" : "bg-gray-200"}`}
                             onClick={() => setActiveTask(2)}
                         >
-                            Task 2
+                            Nhiệm vụ 2
                         </button>
                     </div>
 
@@ -116,7 +116,7 @@ export default function WritingAssignmentPage(props: PageProps) {
                     <div className="bg-white/80 backdrop-blur-md shadow-sm flex-1 p-10 h-[600px]">
                         <textarea
                             className="w-full h-[70vh] p-4 border rounded resize-none focus:ring-2 focus:ring-blue-400"
-                            placeholder="Write your essay here..."
+                            placeholder="Viết bài luận của bạn ở đây..."
                             value={activeTask === 1 ? contentOne : contentTwo}
                             onChange={(e) =>
                                 activeTask === 1 ? setContentOne(e.target.value) : setContentTwo(e.target.value)
@@ -125,7 +125,7 @@ export default function WritingAssignmentPage(props: PageProps) {
 
                         {/* WORD COUNT */}
                         <div className="mt-3 text-right text-sm text-slate-600">
-                            Word count:{" "}
+                            Số từ:{" "}
                             <span className="font-semibold text-slate-800">
                                 {countWords(activeTask === 1 ? contentOne : contentTwo)}
                             </span>

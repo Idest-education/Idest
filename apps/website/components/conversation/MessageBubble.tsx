@@ -37,12 +37,12 @@ export default function MessageBubble({ message, onEdit, onDelete }: MessageBubb
                     }`}
                 >
                     {isDeleted ? (
-                        <p className="text-gray-400 italic">Message deleted</p>
+                        <p className="text-gray-400 italic">Tin nhắn đã bị xóa</p>
                     ) : (
                         <>
                             <p>{message.content}</p>
                             {message.editedAt && (
-                                <span className="text-xs opacity-70 ml-2">(edited)</span>
+                                <span className="text-xs opacity-70 ml-2">(đã chỉnh sửa)</span>
                             )}
                         </>
                     )}
@@ -56,7 +56,7 @@ export default function MessageBubble({ message, onEdit, onDelete }: MessageBubb
                                 onClick={() => onEdit(message)}
                                 className="text-xs text-blue-600 hover:text-blue-800 px-2 py-1 rounded hover:bg-blue-50"
                             >
-                                Edit
+                                Chỉnh sửa
                             </button>
                         )}
                         {onDelete && (
@@ -64,7 +64,7 @@ export default function MessageBubble({ message, onEdit, onDelete }: MessageBubb
                                 onClick={() => onDelete(message.id)}
                                 className="text-xs text-red-600 hover:text-red-800 px-2 py-1 rounded hover:bg-red-50"
                             >
-                                Delete
+                                Xóa
                             </button>
                         )}
                     </div>
@@ -74,7 +74,7 @@ export default function MessageBubble({ message, onEdit, onDelete }: MessageBubb
                 {isMine && message.readBy && message.readBy.length > 0 && (
                     <div className="flex justify-end">
                         <span className="text-xs text-gray-500">
-                            ✓✓ Read by {message.readBy.length}
+                            ✓✓ Đã đọc bởi {message.readBy.length}
                         </span>
                     </div>
                 )}

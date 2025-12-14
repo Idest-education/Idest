@@ -314,7 +314,7 @@ export function useMeetClient({ sessionId, autoJoin = true }: UseMeetClientOptio
       });
 
       socket.on("kicked-from-session", () => {
-        toast.error("You have been kicked from the session.");
+        toast.error("Bạn đã bị loại khỏi buổi học.");
         leaveSession(false); // Don't emit leave event since we're already kicked
         router.push("/");
       });
@@ -329,23 +329,23 @@ export function useMeetClient({ sessionId, autoJoin = true }: UseMeetClientOptio
         if (payload.targetUserId === state.localUserId) {
           if (payload.mediaType === 'audio' || payload.mediaType === 'both') {
             setAudioEnabled(false);
-            toast.warning(`Your audio was muted by ${payload.stoppedByUserName}`);
+            toast.warning(`Âm thanh của bạn đã bị tắt bởi ${payload.stoppedByUserName}`);
           }
           if (payload.mediaType === 'video' || payload.mediaType === 'both') {
             setVideoEnabled(false);
-            toast.warning(`Your video was stopped by ${payload.stoppedByUserName}`);
+            toast.warning(`Video của bạn đã bị dừng bởi ${payload.stoppedByUserName}`);
           }
         }
       });
 
       socket.on("recording-started", (payload: RecordingStartedEvent) => {
         setRecording(true);
-        toast.info(`Recording started by ${payload.startedByUserName}`);
+        toast.info(`Ghi hình đã được bắt đầu bởi ${payload.startedByUserName}`);
       });
 
       socket.on("recording-stopped", (payload: RecordingStoppedEvent) => {
         setRecording(false);
-        toast.info(`Recording stopped by ${payload.stoppedByUserName}`);
+        toast.info(`Ghi hình đã được dừng bởi ${payload.stoppedByUserName}`);
       });
 
       // Error handlers for new actions
@@ -399,7 +399,7 @@ export function useMeetClient({ sessionId, autoJoin = true }: UseMeetClientOptio
           (await supabase.auth.getSession()).data.session?.access_token ||
           null;
         if (!supabaseToken) {
-          throw new Error("Unable to identify user session.");
+          throw new Error("Không thể xác định phiên người dùng.");
         }
 
         cleanupSocket();
@@ -414,7 +414,7 @@ export function useMeetClient({ sessionId, autoJoin = true }: UseMeetClientOptio
           setLivekitCredentials(livekitResponse.livekit);
         }
       } catch (error: unknown) {
-        const message = error instanceof Error ? error.message : "Failed to join session.";
+        const message = error instanceof Error ? error.message : "Không thể tham gia buổi học.";
         setJoining(false);
         setError(message);
         cleanupSocket();

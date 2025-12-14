@@ -18,7 +18,7 @@ export function MeetStatusBanner() {
       }`}
     >
       {error ? <AlertTriangle className="h-4 w-4" /> : null}
-      <span>{error || "Connecting to meeting..."}</span>
+      <span>{error || "Đang kết nối với buổi học..."}</span>
     </div>
   );
 }

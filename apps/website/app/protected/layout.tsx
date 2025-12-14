@@ -13,7 +13,7 @@ export default function DevInfoLayout({
             Idest
           </Link>
           <div className="text-sm text-gray-600">
-            Developer Information
+            Thông tin nhà phát triển
           </div>
         </div>
       </nav>

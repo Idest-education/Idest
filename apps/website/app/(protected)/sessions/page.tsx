@@ -63,7 +63,7 @@ export default function SessionsPage() {
 
       setSessions(sessionList);
     } catch (err: any) {
-      setError(err.message || "Failed to load sessions");
+      setError(err.message || "Không thể tải buổi học");
     } finally {
       setLoading(false);
     }
@@ -87,8 +87,8 @@ export default function SessionsPage() {
     <div className="min-h-screen bg-white">
       <div className="max-w-7xl mx-auto p-6 md:p-8 space-y-8">
         <div className="border-b border-gray-200 pb-6">
-          <h1 className="text-3xl font-semibold text-gray-900 mb-2">My Sessions</h1>
-          <p className="text-gray-600">View and manage your upcoming and past learning sessions.</p>
+          <h1 className="text-3xl font-semibold text-gray-900 mb-2">Buổi học của tôi</h1>
+          <p className="text-gray-600">Xem và quản lý các buổi học sắp tới và đã qua của bạn.</p>
         </div>
 
         <div className="flex gap-2">
@@ -96,13 +96,13 @@ export default function SessionsPage() {
             variant={filter === "upcoming" ? "default" : "outline"}
             onClick={() => setFilter("upcoming")}
           >
-            Upcoming
+            Sắp tới
           </Button>
           <Button
             variant={filter === "past" ? "default" : "outline"}
             onClick={() => setFilter("past")}
           >
-            Past
+            Đã qua
           </Button>
         </div>
 
@@ -116,7 +116,7 @@ export default function SessionsPage() {
           </div>
         ) : filteredSessions.length === 0 ? (
           <div className="text-center py-12 text-gray-500">
-            No {filter} sessions found.
+            Không tìm thấy buổi học {filter === "upcoming" ? "sắp tới" : "đã qua"}.
           </div>
         ) : (
           <div className="grid gap-4">

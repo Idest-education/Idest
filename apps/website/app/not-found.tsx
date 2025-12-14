@@ -16,7 +16,7 @@ export default function NotFound() {
         <div className="relative w-full max-w-[200px] md:max-w-[280px] mx-auto aspect-square">
           <Image
             src={notFoundImage}
-            alt="404 - Cat peeking from behind a door"
+            alt="404 - Mèo đang nhìn từ sau cánh cửa"
             fill
             className="object-contain animate-in zoom-in-95 duration-700"
             priority
@@ -30,10 +30,10 @@ export default function NotFound() {
             404
           </h1>
           <h2 className="text-xl md:text-2xl font-semibold text-orange-700 animate-in fade-in slide-in-from-top-4 duration-700" style={{ animationDelay: "100ms" }}>
-            Uh oh :( The page you&apos;re looking for is not here!
+            Ồ không :( Trang bạn đang tìm không có ở đây!
           </h2>
           <p className="text-sm md:text-base text-orange-600 max-w-md mx-auto px-4 animate-in fade-in slide-in-from-top-4 duration-700" style={{ animationDelay: "200ms" }}>
-            Looks like our curious cat found a door, but the page is elsewhere. Don&apos;t worry, we&apos;ll help you return home!
+            Có vẻ như chú mèo tò mò của chúng tôi đã tìm thấy một cánh cửa, nhưng trang lại ở nơi khác. Đừng lo, chúng tôi sẽ giúp bạn trở về trang chủ!
           </p>
         </div>
 
@@ -46,7 +46,7 @@ export default function NotFound() {
           >
             <Link href="/" className="flex items-center gap-2">
               <Home className="w-4 h-4 md:w-5 md:h-5" />
-              Return Home
+              Về trang chủ
             </Link>
           </Button>
           <Button
@@ -56,7 +56,7 @@ export default function NotFound() {
             className="border-2 border-orange-400 text-orange-600 hover:border-orange-500 hover:bg-orange-50 transition-all duration-300 hover:scale-105 px-6 py-5 md:px-8 md:py-6 text-base md:text-lg font-semibold"
           >
             <ArrowLeft className="w-4 h-4 md:w-5 md:h-5" />
-            Go Back
+            Quay lại
           </Button>
         </div>
       </div>

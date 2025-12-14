@@ -18,10 +18,10 @@ import speakingImage from "@/assets/assignment-speaking.png";
 type Skill = "reading" | "listening" | "writing" | "speaking";
 
 const SKILLS: { value: Skill; label: string; icon: string }[] = [
-  { value: "reading", label: "Reading", icon: "📖" },
-  { value: "listening", label: "Listening", icon: "🎧" },
-  { value: "writing", label: "Writing", icon: "✍️" },
-  { value: "speaking", label: "Speaking", icon: "🎤" },
+  { value: "reading", label: "Đọc", icon: "📖" },
+  { value: "listening", label: "Nghe", icon: "🎧" },
+  { value: "writing", label: "Viết", icon: "✍️" },
+  { value: "speaking", label: "Nói", icon: "🎤" },
 ];
 
 const SKILL_IMAGES: Record<Skill, StaticImageData> = {
@@ -127,13 +127,13 @@ export default function AssignmentsPage() {
           <div>
             <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-gradient-to-r from-amber-100 via-pink-100 to-indigo-100 text-xs font-medium text-gray-800 shadow-sm mb-4 hover:shadow-md transition-shadow duration-300">
               <BookOpen className="w-4 h-4 text-indigo-500 animate-pulse" />
-              Practice makes perfect
+              Luyện tập tạo nên sự hoàn hảo
             </div>
             <h1 className="text-4xl font-bold text-gray-900 tracking-tight mb-3 bg-gradient-to-r from-gray-900 via-indigo-900 to-purple-900 bg-clip-text text-transparent">
-              Assignments
+              Bài tập
             </h1>
             <p className="text-gray-600 max-w-2xl">
-              Explore and practice with our curated collection of IELTS assignments across all skills.
+              Khám phá và luyện tập với bộ sưu tập bài tập IELTS được tuyển chọn qua tất cả các kỹ năng.
             </p>
           </div>
 
@@ -161,7 +161,7 @@ export default function AssignmentsPage() {
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5 group-focus-within:text-indigo-500 transition-colors duration-300" />
           <Input
             type="text"
-            placeholder="Search assignments by title or description..."
+            placeholder="Tìm kiếm bài tập theo tiêu đề hoặc mô tả..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="pl-10 pr-10 w-full transition-all duration-300 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 hover:border-gray-400"
@@ -177,7 +177,7 @@ export default function AssignmentsPage() {
         </div>
         {searchQuery && (
           <p className="mt-2 text-sm text-gray-600 animate-in fade-in slide-in-from-top-2">
-            Found {filteredAssignments.length} assignment{filteredAssignments.length !== 1 ? "s" : ""} in {SKILLS.find(s => s.value === activeSkill)?.label}
+            Tìm thấy {filteredAssignments.length} bài tập trong {SKILLS.find(s => s.value === activeSkill)?.label}
           </p>
         )}
       </div>
@@ -242,7 +242,7 @@ export default function AssignmentsPage() {
               <div className="py-24 flex justify-center">
                 <div className="flex flex-col items-center gap-3">
                   <div className="w-10 h-10 rounded-full border-2 border-gray-900 border-t-transparent animate-spin" />
-                  <p className="text-gray-600 text-sm">Loading assignments...</p>
+                  <p className="text-gray-600 text-sm">Đang tải bài tập...</p>
                 </div>
               </div>
             ) : filteredAssignments.length === 0 ? (
@@ -250,12 +250,12 @@ export default function AssignmentsPage() {
                 <div className="max-w-md mx-auto space-y-4">
                   <BookOpen className="w-10 h-10 mx-auto text-gray-400" />
                   <h3 className="text-2xl font-semibold text-gray-900">
-                    {searchQuery ? "No assignments found" : "No assignments available"}
+                    {searchQuery ? "Không tìm thấy bài tập" : "Chưa có bài tập nào"}
                   </h3>
                   <p className="text-gray-600">
                     {searchQuery
-                      ? "Try adjusting your search query to find assignments."
-                      : `No ${skill.label.toLowerCase()} assignments available yet. Check back soon!`}
+                      ? "Thử điều chỉnh truy vấn tìm kiếm để tìm bài tập."
+                      : `Chưa có bài tập ${skill.label.toLowerCase()} nào. Hãy quay lại sau!`}
                   </p>
                   {searchQuery && (
                     <Button
@@ -263,7 +263,7 @@ export default function AssignmentsPage() {
                       onClick={clearSearch}
                       className="mt-4"
                     >
-                      Clear search
+                      Xóa tìm kiếm
                     </Button>
                   )}
                 </div>
@@ -294,7 +294,7 @@ export default function AssignmentsPage() {
                         className="transition-all duration-300 hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed"
                       >
                         <ChevronLeft className="w-4 h-4 transition-transform duration-300 group-hover:-translate-x-1" />
-                        Previous
+                        Trước
                       </Button>
 
                       <div className="flex items-center gap-1">
@@ -341,14 +341,14 @@ export default function AssignmentsPage() {
                         disabled={!pagination?.hasNext || currentPage === totalPages}
                         className="transition-all duration-300 hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed"
                       >
-                        Next
+                        Sau
                         <ChevronRight className="w-4 h-4 transition-transform duration-300 group-hover:translate-x-1" />
                       </Button>
                     </div>
 
                     {/* Page Info */}
                     <div className="text-center text-sm text-gray-600 animate-in fade-in">
-                      Showing {showingFrom} to {showingTo} of {totalItems} assignments
+                      Hiển thị {showingFrom} đến {showingTo} trong {totalItems} bài tập
                     </div>
                   </>
                 )}

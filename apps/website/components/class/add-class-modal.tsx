@@ -15,7 +15,7 @@ import { Switch } from "@/components/ui/switch";
 import { cn } from "@/lib/utils";
 import { createClass } from "@/services/class.service";
 import type { CreateClassPayload, ScheduleData } from "@/types/class";
-import { BookOpen, Users, Clock, Calendar, Globe } from "lucide-react";
+import { BookOpen, Users, Clock, Calendar } from "lucide-react";
 import { toast } from "sonner";
 import { DialogClose } from "@/components/ui/dialog";
 import { X } from "lucide-react";
@@ -42,19 +42,17 @@ export default function AddClassModal({
       days: [],
       time: "",
       duration: 90,
-      timezone: "UTC",
-      recurring: true,
     },
   });
 
   const weekdays = [
-    { key: "monday", label: "Mon" },
-    { key: "tuesday", label: "Tue" },
-    { key: "wednesday", label: "Wed" },
-    { key: "thursday", label: "Thu" },
-    { key: "friday", label: "Fri" },
-    { key: "saturday", label: "Sat" },
-    { key: "sunday", label: "Sun" },
+    { key: "monday", label: "T2" },
+    { key: "tuesday", label: "T3" },
+    { key: "wednesday", label: "T4" },
+    { key: "thursday", label: "T5" },
+    { key: "friday", label: "T6" },
+    { key: "saturday", label: "T7" },
+    { key: "sunday", label: "CN" },
   ];
 
   const handleChange = (
@@ -107,60 +105,60 @@ export default function AddClassModal({
     setLoading(false);
 
     if (res.status) {
-      toast.success(res.message || "Class created successfully 🎉", {
-        description: `Your class "${form.name}" has been created.`,
+      toast.success(res.message || "Tạo lớp học thành công 🎉", {
+        description: `Lớp học "${form.name}" của bạn đã được tạo.`,
       });
       onCreated?.();
       onClose();
     } else {
-      toast.error(res.message || "Failed to create class");
+      toast.error(res.message || "Không thể tạo lớp học");
     }
   };
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="max-w-7xl w-[95vw] bg-gradient-to-br from-blue-50 via-white to-indigo-50 [&>button:last-child]:hidden">
+      <DialogContent className="max-w-4xl max-h-[90vh] bg-gradient-to-br from-blue-50 via-white to-indigo-50 [&>button:last-child]:hidden overflow-hidden flex flex-col">
         <DialogClose asChild>
-          <button className="absolute right-4 top-4 rounded-full p-2 text-gray-600 hover:text-white hover:bg-indigo-600 transition-colors">
+          <button className="absolute right-4 top-4 rounded-full p-2 text-gray-600 hover:text-white hover:bg-indigo-600 transition-colors z-10">
             <X className="w-5 h-5" />
           </button>
         </DialogClose>
-        <DialogHeader className="space-y-3 pb-4 border-b border-blue-100">
+        <DialogHeader className="space-y-3 pb-4 border-b border-blue-100 flex-shrink-0">
           <div className="flex items-center gap-3">
             <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-indigo-600 to-purple-600 flex items-center justify-center shadow-lg">
               <BookOpen className="w-6 h-6 text-white" />
             </div>
             <div>
               <DialogTitle className="text-2xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
-                Create New Class
+                Tạo lớp học mới
               </DialogTitle>
               <p className="text-sm text-gray-500 mt-1">
-                Set up your English learning class
+                Thiết lập lớp học tiếng Anh của bạn
               </p>
             </div>
           </div>
         </DialogHeader>
 
-        <div className="grid grid-cols-2 gap-6 mt-4">
+        <div className="grid grid-cols-2 gap-6 mt-4 overflow-y-auto flex-1 pr-2">
           {/* Left Column */}
           <div className="space-y-6">
             {/* Basic Information Section */}
             <div className="bg-white rounded-xl p-5 shadow-sm border border-blue-100 space-y-4">
               <h3 className="text-sm font-semibold text-gray-700 uppercase tracking-wide flex items-center gap-2">
                 <div className="w-1 h-4 bg-indigo-600 rounded-full"></div>
-                Basic Information
+                Thông tin cơ bản
               </h3>
 
               {/* Name */}
               <div className="space-y-2">
                 <Label htmlFor="name" className="text-sm font-medium text-gray-700">
-                  Class Name *
+                  Tên lớp học *
                 </Label>
                 <Input
                   id="name"
                   name="name"
                   required
-                  placeholder="e.g., IELTS Preparation - Advanced Level"
+                  placeholder="ví dụ: Luyện thi IELTS - Trình độ nâng cao"
                   value={form.name}
                   onChange={handleChange}
                   className="border-gray-200 focus:border-blue-400 focus:ring-blue-400 text-gray-900"
@@ -170,12 +168,12 @@ export default function AddClassModal({
               {/* Description */}
               <div className="space-y-2">
                 <Label htmlFor="description" className="text-sm font-medium text-gray-700">
-                  Description
+                  Mô tả
                 </Label>
                 <textarea
                   id="description"
                   name="description"
-                  placeholder="Describe the objectives, level, and what students will learn..."
+                  placeholder="Mô tả mục tiêu, trình độ và những gì học sinh sẽ học..."
                   value={form.description}
                   onChange={handleChange}
                   rows={3}
@@ -188,7 +186,7 @@ export default function AddClassModal({
             <div className="bg-white rounded-xl p-5 shadow-sm border border-blue-100 space-y-4">
               <h3 className="text-sm font-semibold text-gray-700 uppercase tracking-wide flex items-center gap-2">
                 <div className="w-1 h-4 bg-indigo-600 rounded-full"></div>
-                Class Settings
+                Cài đặt lớp học
               </h3>
 
               {/* Group toggle */}
@@ -197,9 +195,9 @@ export default function AddClassModal({
                   <Users className="w-5 h-5 text-blue-600" />
                   <div>
                     <Label htmlFor="is_group" className="text-sm font-medium text-gray-800 cursor-pointer">
-                      Group Class
+                      Lớp nhóm
                     </Label>
-                    <p className="text-xs text-gray-500">Enable for multiple students</p>
+                    <p className="text-xs text-gray-500">Bật cho nhiều học sinh</p>
                   </div>
                 </div>
                 <Switch
@@ -214,18 +212,18 @@ export default function AddClassModal({
               {/* Invite code */}
               <div className="space-y-2">
                 <Label htmlFor="invite_code" className="text-sm font-medium text-gray-700">
-                  Invite Code (Optional)
+                  Mã mời (Tùy chọn)
                 </Label>
                 <Input
                   id="invite_code"
                   name="invite_code"
-                  placeholder="e.g., IELTS2025"
+                  placeholder="ví dụ: IELTS2025"
                   value={form.invite_code}
                   onChange={handleChange}
                   className="border-gray-200 focus:border-blue-400 focus:ring-blue-400 font-mono text-gray-900"
                 />
                 <p className="text-xs text-gray-500">
-                  Students can join using this code
+                  Học sinh có thể tham gia bằng mã này
                 </p>
               </div>
             </div>
@@ -235,13 +233,13 @@ export default function AddClassModal({
           <div className="bg-white rounded-xl p-5 shadow-sm border border-blue-100 space-y-4">
             <h3 className="text-sm font-semibold text-gray-700 uppercase tracking-wide flex items-center gap-2">
               <Calendar className="w-4 h-4 text-purple-500" />
-              Class Schedule
+              Lịch học
             </h3>
 
             {/* Days */}
             <div className="space-y-2">
               <Label className="text-sm font-medium text-gray-700">
-                Class Days
+                Ngày học
               </Label>
               <div className="flex flex-wrap gap-2">
                 {weekdays.map((day) => (
@@ -267,7 +265,7 @@ export default function AddClassModal({
               <div className="space-y-3">
                 <Label htmlFor="time" className="text-sm font-medium text-gray-700 flex items-center gap-2">
                   <Clock className="w-4 h-4 text-blue-500" />
-                  Start Time
+                  Giờ bắt đầu
                 </Label>
                 <Input
                   id="time"
@@ -282,7 +280,7 @@ export default function AddClassModal({
 
               <div className="space-y-2">
                 <Label htmlFor="duration" className="text-sm font-medium text-gray-700">
-                  Duration (minutes)
+                  Thời lượng (phút)
                 </Label>
                 <Input
                   id="duration"
@@ -297,51 +295,17 @@ export default function AddClassModal({
                 />
               </div>
             </div>
-
-            {/* Timezone & Recurring */}
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="timezone" className="text-sm font-medium text-gray-700 flex items-center gap-2">
-                  <Globe className="w-4 h-4 text-blue-500" />
-                  Timezone
-                </Label>
-                <Input
-                  id="timezone"
-                  placeholder="e.g., UTC, Asia/Ho_Chi_Minh"
-                  value={form.schedule?.timezone || ""}
-                  onChange={(e) =>
-                    handleScheduleChange("timezone", e.target.value)
-                  }
-                  className="border-gray-200 focus:border-blue-400 focus:ring-blue-400 text-gray-900"
-                />
-              </div>
-
-              <div className="flex items-end">
-                <div className="w-full flex items-center justify-between bg-gradient-to-r from-purple-50 to-pink-50 rounded-lg px-4 py-2.5 border border-purple-100">
-                  <Label htmlFor="recurring" className="text-sm font-medium text-gray-800 cursor-pointer">
-                    Recurring
-                  </Label>
-                  <Switch
-                    id="recurring"
-                    checked={form.schedule?.recurring || false}
-                    onCheckedChange={(checked: boolean) =>
-                      handleScheduleChange("recurring", checked)
-                    }
-                  />
-                </div>
-              </div>
-            </div>
           </div>
         </div>
         {/* Footer */}
-        <DialogFooter className="gap-2 pt-4 border-t border-blue-100">
+        <DialogFooter className="gap-2 pt-4 border-t border-blue-100 flex-shrink-0 mt-4">
           <Button
             type="button"
             onClick={onClose}
             disabled={loading}
             className="border-gray-300 hover:bg-gray-50"
           >
-            Cancel
+            Hủy
           </Button>
           <Button
             type="button"
@@ -352,10 +316,10 @@ export default function AddClassModal({
             {loading ? (
               <span className="flex items-center gap-2">
                 <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
-                Creating...
+                Đang tạo...
               </span>
             ) : (
-              "Create Class"
+              "Tạo lớp học"
             )}
           </Button>
         </DialogFooter>

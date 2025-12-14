@@ -12,7 +12,7 @@ const defaultUrl = process.env.VERCEL_URL
 export const metadata: Metadata = {
   metadataBase: new URL(defaultUrl),
   title: "Idest",
-  description: "AI-powered English learning platform",
+  description: "Nền tảng học tiếng Anh được hỗ trợ bởi AI",
   icons: {
     icon: logoIcon.src,
   },
@@ -30,7 +30,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html lang="vi" suppressHydrationWarning>
       <body className={`${nunito.className} antialiased`}>
         <ThemeProvider
           attribute="class"

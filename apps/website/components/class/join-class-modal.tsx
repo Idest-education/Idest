@@ -23,7 +23,7 @@ export default function JoinClassModal({ open, onClose, onJoined }: JoinClassMod
 
   const handleJoin = async () => {
     if (!inviteCode.trim()) {
-      toast.error("Please enter an invite code.");
+      toast.error("Vui lòng nhập mã mời.");
       return;
     }
     setLoading(true);
@@ -36,7 +36,7 @@ export default function JoinClassModal({ open, onClose, onJoined }: JoinClassMod
       onClose();
       setInviteCode("");
     } else {
-      toast.error(res.message || "Failed to join class");
+      toast.error(res.message || "Không thể tham gia lớp học");
     }
   };
 
@@ -55,10 +55,10 @@ export default function JoinClassModal({ open, onClose, onJoined }: JoinClassMod
             </div>
             <div>
               <DialogTitle className="text-2xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
-                Join a Class
+                Tham gia lớp học
               </DialogTitle>
               <p className="text-sm text-gray-500 mt-1">
-                Enter the invite code to join
+                Nhập mã mời để tham gia
               </p>
             </div>
           </div>
@@ -72,11 +72,11 @@ export default function JoinClassModal({ open, onClose, onJoined }: JoinClassMod
             <div className="space-y-2">
               <Label htmlFor="invite-code" className="text-sm font-medium text-gray-700 flex items-center gap-2">
                 <Key className="w-4 h-4 text-blue-500" />
-                Invite Code
+                Mã mời
               </Label>
               <Input
                 id="invite-code"
-                placeholder="Enter your invite code (e.g., IELTS2025)"
+                placeholder="Nhập mã mời của bạn (ví dụ: IELTS2025)"
                 value={inviteCode}
                 onChange={(e) => setInviteCode(e.target.value)}
                 onKeyDown={(e) => {
@@ -86,7 +86,7 @@ export default function JoinClassModal({ open, onClose, onJoined }: JoinClassMod
                 autoFocus
               />
               <p className="text-xs text-gray-500 flex items-center gap-1">
-                💡 Get the code from your teacher or class administrator
+                💡 Lấy mã từ giáo viên hoặc quản trị viên lớp học
               </p>
             </div>
 
@@ -98,12 +98,12 @@ export default function JoinClassModal({ open, onClose, onJoined }: JoinClassMod
               {loading ? (
                 <span className="flex items-center gap-2">
                   <span className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
-                  Joining...
+                  Đang tham gia...
                 </span>
               ) : (
                 <span className="flex items-center gap-2">
                   <LogIn className="w-5 h-5" />
-                  Join Class
+                  Tham gia lớp học
                 </span>
               )}
             </Button>

@@ -10,8 +10,8 @@ export default function LoadingScreen() {
           <div className="animate-spin rounded-full h-16 w-16 border-4 border-gray-300 border-t-purple-600 mx-auto mb-4"></div>
           <BookOpen className="w-6 h-6 text-purple-600 absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2" />
         </div>
-        <p className="text-black font-semibold text-lg">Loading ...</p>
-        <p className="text-gray-600 text-sm mt-1">Please wait a moment</p>
+        <p className="text-black font-semibold text-lg">Đang tải ...</p>
+        <p className="text-gray-600 text-sm mt-1">Vui lòng đợi một chút</p>
       </div>
     </div>
   );

@@ -25,7 +25,7 @@ export default function ConversationList({ onSelect }: ConversationListProps) {
 
     const handleDeleteConversation = async (conversationId: string, e: React.MouseEvent) => {
         e.stopPropagation(); // Prevent triggering onSelect
-        if (!confirm("Delete this conversation? This action cannot be undone.")) return;
+        if (!confirm("Xóa cuộc hội thoại này? Hành động này không thể hoàn tác.")) return;
         
         try {
             await conversationService.deleteConversation(conversationId);
@@ -33,7 +33,7 @@ export default function ConversationList({ onSelect }: ConversationListProps) {
             setConversations((prev) => prev.filter((c) => c.id !== conversationId));
         } catch (error) {
             console.error("Delete conversation failed:", error);
-            alert("Failed to delete conversation");
+            alert("Không thể xóa cuộc hội thoại");
         }
     };
 
@@ -45,11 +45,11 @@ export default function ConversationList({ onSelect }: ConversationListProps) {
         );
 
     if (!conversations || conversations.length === 0) {
-        return <p>No conversations yet.</p>;
+        return <p>Chưa có cuộc hội thoại nào.</p>;
     }
 
     if (conversations.length === 0)
-        return <p className="text-gray-400 italic">No conversations yet.</p>;
+        return <p className="text-gray-400 italic">Chưa có cuộc hội thoại nào.</p>;
 
     return (
         <div className="space-y-2">
@@ -62,15 +62,15 @@ export default function ConversationList({ onSelect }: ConversationListProps) {
                         onClick={() => onSelect(c.id)}
                         className="w-full text-left p-4"
                     >
-                        <p className="font-semibold text-gray-800">{c.title || "Untitled"}</p>
-                        <p className="text-sm text-gray-500">{c.participants.length} participants</p>
+                        <p className="font-semibold text-gray-800">{c.title || "Chưa có tiêu đề"}</p>
+                        <p className="text-sm text-gray-500">{c.participants.length} người tham gia</p>
                     </button>
                     <button
                         onClick={(e) => handleDeleteConversation(c.id, e)}
                         className="absolute right-2 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity bg-red-500 text-white px-3 py-1 rounded-lg hover:bg-red-600 text-xs"
-                        title="Delete conversation"
+                        title="Xóa cuộc hội thoại"
                     >
-                        Delete
+                        Xóa
                     </button>
                 </div>
             ))}

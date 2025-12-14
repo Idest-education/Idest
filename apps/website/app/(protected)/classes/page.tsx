@@ -81,9 +81,9 @@ export default function ClassesPage() {
         <div className="border-b border-gray-200 pb-6">
           <div className="flex items-center justify-between mb-6">
             <div>
-              <h1 className="text-3xl font-semibold text-gray-900 mb-2">Classes</h1>
+              <h1 className="text-3xl font-semibold text-gray-900 mb-2">Lớp học</h1>
               <p className="text-gray-600">
-                Manage your classes and learning journey
+                Quản lý lớp học và hành trình học tập của bạn
               </p>
             </div>
 
@@ -95,7 +95,7 @@ export default function ClassesPage() {
                   className="bg-gray-900 text-white hover:bg-gray-800 font-medium flex items-center gap-2"
                 >
                   <PlusCircle className="w-4 h-4" />
-                  Create Class
+                  Tạo lớp học
                 </Button>
               )}
               <Button
@@ -104,7 +104,7 @@ export default function ClassesPage() {
                 className="border-gray-300 text-gray-700 hover:bg-gray-50 font-medium flex items-center gap-2"
               >
                 <Users className="w-4 h-4" />
-                Join Class
+                Tham gia lớp học
               </Button>
             </div>
           </div>
@@ -115,7 +115,7 @@ export default function ClassesPage() {
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
               <input
                 type="text"
-                placeholder="Search classes..."
+                placeholder="Tìm kiếm lớp học..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent text-sm"
@@ -128,19 +128,19 @@ export default function ClassesPage() {
                 {classes.created.length > 0 && (
                   <div className="flex items-center gap-2 px-3 py-1.5 bg-gray-100 rounded-md text-sm text-gray-700">
                     <span className="font-medium">{classes.created.length}</span>
-                    <span className="text-gray-500">Created</span>
+                    <span className="text-gray-500">Đã tạo</span>
                   </div>
                 )}
                 {classes.teaching.length > 0 && (
                   <div className="flex items-center gap-2 px-3 py-1.5 bg-gray-100 rounded-md text-sm text-gray-700">
                     <span className="font-medium">{classes.teaching.length}</span>
-                    <span className="text-gray-500">Teaching</span>
+                    <span className="text-gray-500">Đang giảng dạy</span>
                   </div>
                 )}
                 {classes.enrolled.length > 0 && (
                   <div className="flex items-center gap-2 px-3 py-1.5 bg-gray-100 rounded-md text-sm text-gray-700">
                     <span className="font-medium">{classes.enrolled.length}</span>
-                    <span className="text-gray-500">Enrolled</span>
+                    <span className="text-gray-500">Đã ghi danh</span>
                   </div>
                 )}
               </div>
@@ -153,14 +153,14 @@ export default function ClassesPage() {
           <div className="border border-gray-200 rounded-lg p-6">
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-xl font-semibold text-gray-900">
-                Search Results
+                Kết quả tìm kiếm
               </h2>
               {searching && (
-                <span className="text-gray-500 text-sm">Searching...</span>
+                <span className="text-gray-500 text-sm">Đang tìm kiếm...</span>
               )}
               {!searching && (
                 <span className="text-sm text-gray-600">
-                  {searchResults.length} {searchResults.length === 1 ? 'result' : 'results'}
+                  {searchResults.length} kết quả
                 </span>
               )}
             </div>
@@ -170,7 +170,7 @@ export default function ClassesPage() {
             ) : (
               !searching && (
                 <p className="text-gray-500 text-center py-8">
-                  No classes found for &quot;{searchQuery}&quot;
+                  Không tìm thấy lớp học nào cho &quot;{searchQuery}&quot;
                 </p>
               )
             )}
@@ -185,10 +185,10 @@ export default function ClassesPage() {
                 <div className="space-y-4">
                   <div className="flex items-center justify-between">
                     <h2 className="text-xl font-semibold text-gray-900">
-                      Created by You
+                      Đã tạo bởi bạn
                     </h2>
                     <span className="text-sm text-gray-500">
-                      {classes.created.length} {classes.created.length === 1 ? 'class' : 'classes'}
+                      {classes.created.length} lớp học
                     </span>
                   </div>
                   <ClassesSection title="" classes={classes.created} />
@@ -199,10 +199,10 @@ export default function ClassesPage() {
                 <div className="space-y-4">
                   <div className="flex items-center justify-between">
                     <h2 className="text-xl font-semibold text-gray-900">
-                      Teaching
+                      Đang giảng dạy
                     </h2>
                     <span className="text-sm text-gray-500">
-                      {classes.teaching.length} {classes.teaching.length === 1 ? 'class' : 'classes'}
+                      {classes.teaching.length} lớp học
                     </span>
                   </div>
                   <ClassesSection title="" classes={classes.teaching} />
@@ -213,10 +213,10 @@ export default function ClassesPage() {
                 <div className="space-y-4">
                   <div className="flex items-center justify-between">
                     <h2 className="text-xl font-semibold text-gray-900">
-                      Enrolled
+                      Đã ghi danh
                     </h2>
                     <span className="text-sm text-gray-500">
-                      {classes.enrolled.length} {classes.enrolled.length === 1 ? 'class' : 'classes'}
+                      {classes.enrolled.length} lớp học
                     </span>
                   </div>
                   <ClassesSection title="" classes={classes.enrolled} />
@@ -230,10 +230,10 @@ export default function ClassesPage() {
                   <GraduationCap className="w-8 h-8 text-gray-400" />
                 </div>
                 <h3 className="text-xl font-semibold text-gray-900 mb-2">
-                  No classes yet
+                  Chưa có lớp học nào
                 </h3>
                 <p className="text-gray-600 mb-6">
-                  Get started by creating or joining a class
+                  Bắt đầu bằng cách tạo hoặc tham gia một lớp học
                 </p>
                 <div className="flex flex-col sm:flex-row gap-3 justify-center">
                   {(userRole === "TEACHER" || userRole === "ADMIN") && (
@@ -241,14 +241,14 @@ export default function ClassesPage() {
                       onClick={() => setShowAddModal(true)}
                       className="px-6 py-2.5 bg-gray-900 text-white rounded-lg font-medium hover:bg-gray-800 transition-colors"
                     >
-                      Create Class
+                      Tạo lớp học
                     </button>
                   )}
                   <button
                     onClick={() => setShowJoinModal(true)}
                     className="px-6 py-2.5 border border-gray-300 text-gray-700 rounded-lg font-medium hover:bg-gray-50 transition-colors"
                   >
-                    Join Class
+                    Tham gia lớp học
                   </button>
                 </div>
               </div>

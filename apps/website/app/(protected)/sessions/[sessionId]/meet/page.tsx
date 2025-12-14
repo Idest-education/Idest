@@ -359,8 +359,8 @@ export default function SessionMeetPage() {
               <Tabs defaultValue="video" className="flex h-full flex-col min-h-0">
                 <div className="flex-shrink-0 px-2 pb-2">
                   <TabsList className="grid w-full max-w-[400px] grid-cols-2">
-                    <TabsTrigger value="video">Video Call</TabsTrigger>
-                    <TabsTrigger value="whiteboard">Whiteboard</TabsTrigger>
+                    <TabsTrigger value="video">Cuộc gọi video</TabsTrigger>
+                    <TabsTrigger value="whiteboard">Bảng trắng</TabsTrigger>
                   </TabsList>
                 </div>
 

@@ -50,7 +50,7 @@ export default function AssignmentShowcaseClient() {
       <div className="py-24 flex justify-center">
         <div className="flex flex-col items-center gap-3">
           <div className="w-10 h-10 rounded-full border-2 border-gray-900 border-t-transparent animate-spin" />
-          <p className="text-gray-600 text-sm">Loading assignments...</p>
+          <p className="text-gray-600 text-sm">Đang tải bài tập...</p>
         </div>
       </div>
     );
@@ -66,13 +66,13 @@ export default function AssignmentShowcaseClient() {
       <div className="mb-10 text-center">
         <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-gradient-to-r from-amber-100 via-pink-100 to-indigo-100 text-xs font-medium text-gray-800 shadow-sm mb-4">
           <Sparkles className="w-4 h-4 text-indigo-500" />
-          Practice makes perfect
+          Luyện tập tạo nên sự hoàn hảo
         </div>
         <h2 className="text-4xl font-bold text-gray-900 tracking-tight mb-3">
-          Featured Assignments
+          Bài tập nổi bật
         </h2>
         <p className="text-gray-600 max-w-2xl mx-auto">
-          Explore our curated collection of IELTS practice assignments across all skills.
+          Khám phá bộ sưu tập bài tập luyện thi IELTS được tuyển chọn qua tất cả các kỹ năng.
         </p>
       </div>
 
@@ -108,7 +108,7 @@ export default function AssignmentShowcaseClient() {
             {/* Content */}
             <span className="relative z-10 flex items-center gap-4">
               <span className="group-hover:scale-125 group-hover:tracking-widest group-hover:animate-pulse transition-all duration-700 inline-block uppercase">
-                EXPLORE MORE ASSIGNMENTS
+                KHÁM PHÁ THÊM BÀI TẬP
               </span>
               <ArrowRight className="w-8 h-8 ml-2 group-hover:translate-x-8 group-hover:rotate-90 group-hover:scale-250 transition-all duration-700" />
             </span>

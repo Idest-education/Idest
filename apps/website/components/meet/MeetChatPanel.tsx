@@ -54,10 +54,10 @@ export function MeetChatPanel({ onSendMessage, onLoadMore }: MeetChatPanelProps)
     <div className="flex h-full w-full sm:w-80 flex-shrink-0 flex-col overflow-hidden rounded-lg border border-border/40 bg-card shadow-sm">
       <div className="flex-shrink-0 border-b border-border/40 px-4 py-3">
         <div className="flex items-center justify-between">
-          <span className="text-sm font-semibold text-foreground">Chat</span>
+          <span className="text-sm font-semibold text-foreground">Trò chuyện</span>
           {hasMoreMessages && (
             <Button variant="ghost" size="sm" onClick={loadOlder} disabled={isLoadingMessages}>
-              Load older
+              Tải tin cũ hơn
             </Button>
           )}
         </div>
@@ -81,11 +81,11 @@ export function MeetChatPanel({ onSendMessage, onLoadMore }: MeetChatPanelProps)
           <Input
             value={draft}
             onChange={(event) => setDraft(event.target.value)}
-            placeholder="Type a message..."
+            placeholder="Nhập tin nhắn..."
             className="flex-1"
           />
           <Button type="submit" size="sm">
-            Send
+            Gửi
           </Button>
         </div>
       </form>

@@ -88,7 +88,7 @@ export default function ConversationPopup({
         <div className="w-[380px] bg-white border border-indigo-100 rounded-2xl shadow-2xl overflow-hidden animate-fadeIn">
             {/* Header */}
             <div className="flex justify-between items-center px-4 py-3 border-b bg-gradient-to-r from-indigo-600 to-purple-600 text-white">
-                <h3 className="font-semibold text-lg">Messages</h3>
+                <h3 className="font-semibold text-lg">Tin nhắn</h3>
                 <button onClick={onClose} className="p-1 hover:bg-white/20 rounded-full">
                     <X className="w-5 h-5" />
                 </button>
@@ -96,9 +96,9 @@ export default function ConversationPopup({
 
             {/* Danh sách hội thoại */}
             <div className="max-h-[500px] overflow-y-auto p-3 space-y-2">
-                {loading && <p className="text-gray-500 text-sm">Loading...</p>}
+                {loading && <p className="text-gray-500 text-sm">Đang tải...</p>}
                 {!loading && conversations.length === 0 && (
-                    <p className="text-gray-400 text-sm italic">No conversations yet.</p>
+                    <p className="text-gray-400 text-sm italic">Chưa có cuộc hội thoại nào.</p>
                 )}
 
                 {conversations.map((conv) => {
@@ -108,8 +108,8 @@ export default function ConversationPopup({
                     );
 
                     const displayName = conv.isGroup
-                        ? (conv.title || "Untitled Chat")
-                        : (other?.user.full_name || "Unknown User");
+                        ? (conv.title || "Cuộc trò chuyện chưa có tên")
+                        : (other?.user.full_name || "Người dùng không xác định");
 
                     return (
                         <button
@@ -121,7 +121,7 @@ export default function ConversationPopup({
                                 {displayName}
                             </p>
                             <p className="text-sm text-gray-500 truncate">
-                                {conv.messages?.at(-1)?.content || "No messages yet"}
+                                {conv.messages?.at(-1)?.content || "Chưa có tin nhắn nào"}
                             </p>
                         </button>
                     );

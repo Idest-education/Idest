@@ -62,7 +62,7 @@ export default function SpeakingResultPage(props: Props) {
                 {/* Header */}
                 <div className="text-center mb-3">
                     <div className="inline-block bg-gradient-to-r from-red-600 to-blue-600 text-white px-6 py-2 rounded-full text-sm font-bold mb-4">
-                        IELTS SPEAKING TEST
+                        KẾT QUẢ BÀI THI NÓI IELTS
                     </div>
                     <h1 className="text-4xl font-bold text-gray-900 mb-2">Kết Quả Bài Thi</h1>
                     <p className="text-gray-600">Đánh giá chi tiết kỹ năng Speaking của bạn</p>
@@ -71,7 +71,7 @@ export default function SpeakingResultPage(props: Props) {
                 {/* Score Card */}
                 <div className={`bg-gradient-to-br ${getScoreBgColor(result.score)} rounded-2xl shadow-2xl p-8 mb-6 border-2 border-gray-200`}>
                     <div className="text-center">
-                        <p className="text-lg font-medium text-gray-700 mb-3">Band Score</p>
+                        <p className="text-lg font-medium text-gray-700 mb-3">Điểm số</p>
                         <div className="relative inline-block">
                             <div className="absolute inset-0 bg-white rounded-full blur-xl opacity-50"></div>
                             <div className={`relative text-7xl font-black ${getScoreColor(result.score)} bg-white rounded-full w-40 h-40 flex items-center justify-center mx-auto shadow-lg border-4 ${getScoreColor(result.score).replace('text-', 'border-')}`}>
@@ -79,10 +79,10 @@ export default function SpeakingResultPage(props: Props) {
                             </div>
                         </div>
                         <p className="text-sm text-gray-600 mt-4 font-medium">
-                            {result.score >= 8 && "🎉 Xuất sắc! Very Good User"}
-                            {result.score >= 6.5 && result.score < 8 && "👏 Tốt! Competent User"}
-                            {result.score >= 5 && result.score < 6.5 && "💪 Khá! Modest User"}
-                            {result.score < 5 && "📚 Cần cải thiện! Limited User"}
+                            {result.score >= 8 && "🎉 Xuất sắc! Người dùng rất tốt"}
+                            {result.score >= 6.5 && result.score < 8 && "👏 Tốt! Người dùng thành thạo"}
+                            {result.score >= 5 && result.score < 6.5 && "💪 Khá! Người dùng trung bình"}
+                            {result.score < 5 && "📚 Cần cải thiện! Người dùng hạn chế"}
                         </p>
                     </div>
                 </div>

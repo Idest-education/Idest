@@ -68,10 +68,10 @@ export function AuthButton() {
     return (
       <div className="flex gap-2">
         <Button asChild size="sm" variant="outline">
-          <Link href="/auth/login">Sign in</Link>
+          <Link href="/auth/login">Đăng nhập</Link>
         </Button>
         <Button asChild size="sm" variant="default">
-          <Link href="/auth/sign-up">Sign up</Link>
+          <Link href="/auth/sign-up">Đăng ký</Link>
         </Button>
       </div>
     );
@@ -90,7 +90,7 @@ export function AuthButton() {
             {avatarUrl ? (
               <Image
                 src={avatarUrl}
-                alt={displayName || "Profile"}
+                alt={displayName || "Hồ sơ"}
                 fill
                 sizes="32px"
                 className="object-cover"
@@ -111,14 +111,14 @@ export function AuthButton() {
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
         <DropdownMenuItem onClick={() => router.push("/settings/profile")}>
-          My profile
+          Hồ sơ của tôi
         </DropdownMenuItem>
         <DropdownMenuItem onClick={() => router.push("/settings/password")}>
-          Change password
+          Đổi mật khẩu
         </DropdownMenuItem>
         <DropdownMenuSeparator />
         <DropdownMenuItem onClick={handleLogout} className="text-red-600 focus:text-red-600">
-          Logout
+          Đăng xuất
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>

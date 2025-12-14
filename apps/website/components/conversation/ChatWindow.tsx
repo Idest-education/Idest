@@ -91,7 +91,7 @@ export default function ChatWindow({ conversationId }: ChatWindowProps) {
             setMessages((prev) =>
                 prev.map((m) =>
                     m.id === data.messageId
-                        ? { ...m, isDeleted: true, content: "Message deleted" }
+                        ? { ...m, isDeleted: true, content: "Tin nhắn đã bị xóa" }
                         : m
                 )
             );
@@ -151,7 +151,7 @@ export default function ChatWindow({ conversationId }: ChatWindowProps) {
             console.error("Send failed:", error);
             // Restore content on error
             setContent(messageContent);
-            alert("Failed to send message. Please try again.");
+            alert("Không thể gửi tin nhắn. Vui lòng thử lại.");
         }
     };
 
@@ -187,7 +187,7 @@ export default function ChatWindow({ conversationId }: ChatWindowProps) {
 
     // Xóa tin nhắn
     const handleDeleteMessage = async (messageId: string) => {
-        if (!confirm("Delete this message?")) return;
+        if (!confirm("Xóa tin nhắn này?")) return;
         try {
             await conversationService.deleteMessage(conversationId, messageId);
         } catch (error) {
@@ -238,7 +238,7 @@ export default function ChatWindow({ conversationId }: ChatWindowProps) {
                         <input
                             value={editContent}
                             onChange={(e) => setEditContent(e.target.value)}
-                            placeholder="Edit your message..."
+                            placeholder="Chỉnh sửa tin nhắn của bạn..."
                             className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-400"
                             onKeyDown={(e) => {
                                 if (e.key === "Enter" && !e.shiftKey) {
@@ -273,7 +273,7 @@ export default function ChatWindow({ conversationId }: ChatWindowProps) {
                     <input
                         value={content}
                         onChange={(e) => handleInputChange(e.target.value)}
-                        placeholder="Type a message..."
+                        placeholder="Nhập tin nhắn..."
                         className="flex-1 border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-400"
                         onKeyDown={(e) => {
                             if (e.key === "Enter" && !e.shiftKey) {

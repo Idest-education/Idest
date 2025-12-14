@@ -6,9 +6,18 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import Image from "next/image";
-import SignupImage from "@/assets/signup.jpg";
+
+// Import all carousel images
+import Carousel1 from "@/assets/carousel/1.png";
+import Carousel2 from "@/assets/carousel/2.png";
+import Carousel3 from "@/assets/carousel/3.png";
+import Carousel4 from "@/assets/carousel/4.png";
+import Carousel5 from "@/assets/carousel/5.png";
+import Carousel6 from "@/assets/carousel/6.png";
+
+const carouselImages = [Carousel1, Carousel2, Carousel3, Carousel4, Carousel5, Carousel6];
 import {
   Select,
   SelectContent,
@@ -29,6 +38,12 @@ export function SignUpForm({
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
+  
+  // Randomly select an image on component mount
+  const selectedImage = useMemo(() => {
+    const randomIndex = Math.floor(Math.random() * carouselImages.length);
+    return carouselImages[randomIndex];
+  }, []);
 
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -36,7 +51,7 @@ export function SignUpForm({
     setError(null);
 
     if (password !== repeatPassword) {
-      setError("Passwords do not match");
+      setError("Mật khẩu xác nhận không khớp");
       setIsLoading(false);
       return;
     }
@@ -51,11 +66,11 @@ export function SignUpForm({
       if (!res.ok) {
         const msg = await res.json();
         const errordata = msg.message;
-        throw new Error(errordata || `Sign up failed (${res.status})`);
+        throw new Error(errordata || `Đăng ký thất bại (${res.status})`);
       }
       router.push("/auth/sign-up-success");
     } catch (error: unknown) {
-      setError(error instanceof Error ? error.message : "An error occurred");
+      setError(error instanceof Error ? error.message : "Đã xảy ra lỗi");
     } finally {
       setIsLoading(false);
     }
@@ -67,8 +82,8 @@ export function SignUpForm({
         <div className="relative hidden h-full flex-col bg-muted p-10 text-white lg:flex dark:border-r">
           <div className="absolute inset-0 bg-gray-900">
             <Image
-              src={SignupImage}
-              alt="Sign up"
+              src={selectedImage}
+              alt="Đăng ký"
               fill
               className="object-cover opacity-60"
               priority
@@ -82,7 +97,7 @@ export function SignUpForm({
           <div className="relative z-20 mt-auto">
             <blockquote className="space-y-2">
               <p className="text-lg">
-                &ldquo;Join thousands of learners improving their English with AI-powered tools and personalized learning paths.&rdquo;
+                &ldquo;Tham gia cùng hàng ngàn người học đang cải thiện tiếng Anh với công cụ AI và lộ trình học tập cá nhân hóa.&rdquo;
               </p>
             </blockquote>
           </div>
@@ -91,20 +106,20 @@ export function SignUpForm({
           <div className="mx-auto flex w-full flex-col justify-center space-y-6 sm:w-[400px]">
             <div className="flex flex-col space-y-2 text-center">
               <h1 className="text-2xl font-semibold tracking-tight">
-                Create an account
+                Tạo tài khoản
               </h1>
               <p className="text-sm text-muted-foreground">
-                Enter your information to get started
+                Nhập thông tin của bạn để bắt đầu
               </p>
             </div>
             <div className="grid gap-6">
               <form onSubmit={handleSignUp}>
                 <div className="grid gap-4">
                   <div className="grid gap-2">
-                    <Label htmlFor="fullName">Full Name</Label>
+                    <Label htmlFor="fullName">Họ và tên</Label>
                     <Input
                       id="fullName"
-                      placeholder="John Doe"
+                      placeholder="Nguyễn Văn A"
                       type="text"
                       autoCapitalize="words"
                       autoComplete="name"
@@ -130,19 +145,19 @@ export function SignUpForm({
                     />
                   </div>
                   <div className="grid gap-2">
-                    <Label htmlFor="role">Role</Label>
+                    <Label htmlFor="role">Vai trò</Label>
                     <Select onValueChange={(val) => setRole(val as "student" | "teacher")} disabled={isLoading}>
                       <SelectTrigger id="role">
-                        <SelectValue placeholder="Select your role" />
+                        <SelectValue placeholder="Chọn vai trò của bạn" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="STUDENT">Student</SelectItem>
-                        <SelectItem value="TEACHER">Teacher</SelectItem>
+                        <SelectItem value="STUDENT">Học sinh</SelectItem>
+                        <SelectItem value="TEACHER">Giáo viên</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
                   <div className="grid gap-2">
-                    <Label htmlFor="password">Password</Label>
+                    <Label htmlFor="password">Mật khẩu</Label>
                     <Input
                       id="password"
                       type="password"
@@ -153,7 +168,7 @@ export function SignUpForm({
                     />
                   </div>
                   <div className="grid gap-2">
-                    <Label htmlFor="repeat-password">Confirm Password</Label>
+                    <Label htmlFor="repeat-password">Xác nhận mật khẩu</Label>
                     <Input
                       id="repeat-password"
                       type="password"
@@ -172,7 +187,7 @@ export function SignUpForm({
                     {isLoading && (
                       <div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-background border-t-transparent" />
                     )}
-                    Create Account
+                    Tạo tài khoản
                   </Button>
                 </div>
               </form>
@@ -182,21 +197,21 @@ export function SignUpForm({
                 </div>
                 <div className="relative flex justify-center text-xs uppercase">
                   <span className="bg-background px-2 text-muted-foreground">
-                    Or continue with
+                    Hoặc tiếp tục với
                   </span>
                 </div>
               </div>
               <Button variant="outline" type="button" disabled={isLoading}>
-                Google (Coming Soon)
+                Google (Sắp ra mắt)
               </Button>
             </div>
             <p className="px-8 text-center text-sm text-muted-foreground">
-              Already have an account?{" "}
+              Đã có tài khoản?{" "}
               <Link
                 href="/auth/login"
                 className="underline underline-offset-4 hover:text-primary"
               >
-                Sign in
+                Đăng nhập
               </Link>
             </p>
           </div>

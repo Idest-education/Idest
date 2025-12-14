@@ -138,26 +138,26 @@ export default function ClassDetailPage() {
       if (res.statusCode === 200) {
         refreshSessions();
       } else {
-        alert(res.message || "Failed to end session");
+        alert(res.message || "Không thể kết thúc buổi học");
       }
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : "An error occurred";
+      const errorMessage = err instanceof Error ? err.message : "Đã xảy ra lỗi";
       alert(errorMessage);
     }
   };
 
   const handleDeleteSession = async (sessionId: string) => {
-    if (!confirm("Are you sure you want to delete this session?")) return;
+    if (!confirm("Bạn có chắc chắn muốn xóa buổi học này?")) return;
 
     try {
       const res = await deleteSession(sessionId);
       if (res.statusCode === 200) {
         refreshSessions();
       } else {
-        alert(res.message || "Failed to delete session");
+        alert(res.message || "Không thể xóa buổi học");
       }
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : "An error occurred";
+      const errorMessage = err instanceof Error ? err.message : "Đã xảy ra lỗi";
       alert(errorMessage);
     }
   };
@@ -171,7 +171,7 @@ export default function ClassDetailPage() {
       <div className="min-h-screen bg-white flex items-center justify-center">
         <div className="text-center p-8">
           <BookOpen className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-          <p className="text-gray-600 text-lg">Class not found.</p>
+          <p className="text-gray-600 text-lg">Không tìm thấy lớp học.</p>
         </div>
       </div>
     );
@@ -201,7 +201,7 @@ export default function ClassDetailPage() {
               <h1 className="text-3xl font-semibold text-gray-900 mb-2">{name}</h1>
               <p className="text-gray-600 mb-4">{description}</p>
               <div className="flex items-center gap-2 text-sm text-gray-600">
-                <span>Created by</span>
+                <span>Được tạo bởi</span>
                 <span className="font-medium text-gray-900">{creator.full_name}</span>
                 <span>•</span>
                 <span>{creator.role}</span>
@@ -215,7 +215,7 @@ export default function ClassDetailPage() {
                   className="flex items-center gap-2 px-4 py-2 bg-gray-900 text-white rounded-lg hover:bg-gray-800 transition-colors font-medium text-sm"
                 >
                   {copied ? <CheckCircle2 className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
-                  {copied ? "Copied!" : "Copy Invite Code"}
+                  {copied ? "Đã sao chép!" : "Sao chép mã mời"}
                 </button>
                 <p className="text-center text-xs font-mono text-gray-600">
                   {classData.invite_code}
@@ -227,7 +227,7 @@ export default function ClassDetailPage() {
 
         {/* Schedule */}
         <div className="border border-gray-200 rounded-lg p-6">
-          <h2 className="text-xl font-semibold text-gray-900 mb-4">Schedule</h2>
+          <h2 className="text-xl font-semibold text-gray-900 mb-4">Lịch học</h2>
           {schedule?.days?.length ? (
             <div className="space-y-2">
               {schedule.days.map((day) => (
@@ -242,7 +242,7 @@ export default function ClassDetailPage() {
                       <span>{schedule.time}</span>
                     </span>
                     <span className="text-gray-500">•</span>
-                    <span>{schedule.duration} minutes</span>
+                    <span>{schedule.duration} phút</span>
                     {schedule.timezone && (
                       <>
                         <span className="text-gray-500">•</span>
@@ -254,7 +254,7 @@ export default function ClassDetailPage() {
               ))}
             </div>
           ) : (
-            <p className="text-sm text-gray-500">No schedule set for this class.</p>
+            <p className="text-sm text-gray-500">Chưa có lịch học cho lớp này.</p>
           )}
         </div>
 
@@ -263,23 +263,23 @@ export default function ClassDetailPage() {
           <div className="border border-gray-200 rounded-lg p-6">
             <Users className="w-6 h-6 text-gray-600 mb-3" />
             <p className="text-3xl font-semibold text-gray-900 mb-1">{memberCount}</p>
-            <p className="text-sm text-gray-600">Members</p>
+            <p className="text-sm text-gray-600">Thành viên</p>
           </div>
           <div className="border border-gray-200 rounded-lg p-6">
             <Award className="w-6 h-6 text-gray-600 mb-3" />
             <p className="text-3xl font-semibold text-gray-900 mb-1">{teacherCount}</p>
-            <p className="text-sm text-gray-600">Teachers</p>
+            <p className="text-sm text-gray-600">Giáo viên</p>
           </div>
           <div className="border border-gray-200 rounded-lg p-6">
             <BookOpen className="w-6 h-6 text-gray-600 mb-3" />
             <p className="text-3xl font-semibold text-gray-900 mb-1">{_count.sessions}</p>
-            <p className="text-sm text-gray-600">Learning Sessions</p>
+            <p className="text-sm text-gray-600">Buổi học</p>
           </div>
         </div>
 
         {/* Teachers Section */}
         <div className="border border-gray-200 rounded-lg p-6">
-          <h2 className="text-xl font-semibold text-gray-900 mb-4">Teachers</h2>
+          <h2 className="text-xl font-semibold text-gray-900 mb-4">Giáo viên</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {teacherList.map((t) => (
               <div key={t.id} className="flex items-center gap-3 p-3 border border-gray-200 rounded-lg hover:border-gray-900 transition-colors">
@@ -301,7 +301,7 @@ export default function ClassDetailPage() {
 
         {/* Members Section */}
         <div className="border border-gray-200 rounded-lg p-6 relative">
-          <h2 className="text-xl font-semibold text-gray-900 mb-4">Members</h2>
+          <h2 className="text-xl font-semibold text-gray-900 mb-4">Thành viên</h2>
 
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
             {members.map((m) => (
@@ -328,7 +328,7 @@ export default function ClassDetailPage() {
         {/* Sessions Section */}
         <div className="border border-gray-200 rounded-lg p-6">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-xl font-semibold text-gray-900">Sessions</h2>
+            <h2 className="text-xl font-semibold text-gray-900">Buổi học</h2>
             <div className="flex items-center gap-3">
               <div className="flex gap-2">
                 <Button
@@ -336,14 +336,14 @@ export default function ClassDetailPage() {
                   size="sm"
                   onClick={() => setSessionFilter("upcoming")}
                 >
-                  Upcoming
+                  Sắp tới
                 </Button>
                 <Button
                   variant={sessionFilter === "past" ? "default" : "outline"}
                   size="sm"
                   onClick={() => setSessionFilter("past")}
                 >
-                  Past
+                  Đã qua
                 </Button>
               </div>
               {(userRole === "TEACHER" || userRole === "ADMIN") && (
@@ -353,7 +353,7 @@ export default function ClassDetailPage() {
                   size="sm"
                 >
                   <PlusCircle className="w-4 h-4" />
-                  Create Session
+                  Tạo buổi học
                 </Button>
               )}
             </div>
@@ -362,7 +362,7 @@ export default function ClassDetailPage() {
           <div className="space-y-3">
             {classSessions.length === 0 ? (
               <p className="text-gray-500 text-center py-8">
-                No sessions yet
+                Chưa có buổi học nào
               </p>
             ) : (
               classSessions

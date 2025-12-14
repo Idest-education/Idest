@@ -121,18 +121,18 @@ export default function ListeningResultPage(props: Props) {
 
                                                         <div className="space-y-2">
                                                             <div className="flex items-center gap-2">
-                                                                <span className="text-gray-600 font-medium min-w-[120px]">Your answer:</span>
+                                                                <span className="text-gray-600 font-medium min-w-[120px]">Câu trả lời của bạn:</span>
                                                                 <span className={`font-bold px-3 py-1 rounded-lg ${isCorrect
                                                                     ? "text-green-700 bg-green-100"
                                                                     : "text-red-700 bg-red-100"
                                                                     }`}>
-                                                                    {sub.submitted_answer || "No answer"}
+                                                                    {sub.submitted_answer || "Chưa trả lời"}
                                                                 </span>
                                                             </div>
 
                                                             {!isCorrect && (
                                                                 <div className="flex items-center gap-2">
-                                                                    <span className="text-gray-600 font-medium min-w-[120px]">Correct answer:</span>
+                                                                    <span className="text-gray-600 font-medium min-w-[120px]">Đáp án đúng:</span>
                                                                     <span className="font-bold text-blue-700 bg-blue-100 px-3 py-1 rounded-lg">
                                                                         {sub.correct_answer}
                                                                     </span>

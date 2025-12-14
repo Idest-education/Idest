@@ -47,7 +47,7 @@ export default function ServiceStatusPage() {
   const [checkingServer, setCheckingServer] = useState(false);
 
   useEffect(() => {
-    setBackendUrl(process.env.NEXT_PUBLIC_API_URL || "Not configured");
+    setBackendUrl(process.env.NEXT_PUBLIC_API_URL || "Chưa được cấu hình");
   }, []);
 
   const safeStringify = (data: unknown): string => {
@@ -60,7 +60,7 @@ export default function ServiceStatusPage() {
 
   const checkServerConnectivity = async () => {
     setCheckingServer(true);
-    addLog("System", "success", "Checking backend server connectivity...");
+        addLog("System", "success", "Đang kiểm tra kết nối máy chủ backend...");
     
     try {
       const startTime = Date.now();
@@ -88,7 +88,7 @@ export default function ServiceStatusPage() {
         throw new Error(`Server responded with status ${response.status}`);
       }
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : "Unknown error";
+      const errorMessage = error instanceof Error ? error.message : "Lỗi không xác định";
       setServerOnline(false);
       addLog(
         "Server Connectivity",
@@ -134,7 +134,7 @@ export default function ServiceStatusPage() {
         const token = data.session?.access_token;
 
         if (!token) {
-          throw new Error("No authentication token found");
+          throw new Error("Không tìm thấy mã xác thực");
         }
 
         response = await fetch(
@@ -172,11 +172,11 @@ export default function ServiceStatusPage() {
           { status: response.status, data }
         );
       } else {
-        throw new Error(`HTTP ${response.status}: ${data.message || "Request failed"}`);
+        throw new Error(`HTTP ${response.status}: ${data.message || "Yêu cầu thất bại"}`);
       }
     } catch (error) {
       const responseTime = Date.now() - startTime;
-      const errorMessage = error instanceof Error ? error.message : "Unknown error";
+      const errorMessage = error instanceof Error ? error.message : "Lỗi không xác định";
       setServices((prev) =>
         prev.map((s, i) =>
           i === index
@@ -202,7 +202,7 @@ export default function ServiceStatusPage() {
   const testAllServices = async () => {
     setIsTestingAll(true);
     setLogs([]);
-    addLog("System", "success", "Starting comprehensive service health check...");
+        addLog("System", "success", "Bắt đầu kiểm tra sức khỏe dịch vụ toàn diện...");
 
     // First check server connectivity
     await checkServerConnectivity();
@@ -216,7 +216,7 @@ export default function ServiceStatusPage() {
     }
 
     setIsTestingAll(false);
-    addLog("System", "success", "Health check completed");
+    addLog("System", "success", "Kiểm tra sức khỏe hoàn tất");
   };
 
   const resetAll = () => {
@@ -250,10 +250,10 @@ export default function ServiceStatusPage() {
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-3xl font-semibold text-gray-900 mb-2">
-              Service Status
+              Trạng thái dịch vụ
             </h1>
             <p className="text-gray-600">
-              Monitor API connectivity and service health
+              Theo dõi kết nối API và tình trạng dịch vụ
             </p>
           </div>
           <div className="flex gap-3">
@@ -262,7 +262,7 @@ export default function ServiceStatusPage() {
               variant="outline"
               disabled={isTestingAll}
             >
-              Reset
+              Đặt lại
             </Button>
             <Button
               onClick={testAllServices}
@@ -272,12 +272,12 @@ export default function ServiceStatusPage() {
               {isTestingAll ? (
                 <>
                   <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  Testing...
+                  Đang kiểm tra...
                 </>
               ) : (
                 <>
                   <RefreshCw className="w-4 h-4 mr-2" />
-                  Test All Services
+                  Kiểm tra tất cả dịch vụ
                 </>
               )}
             </Button>
@@ -291,19 +291,19 @@ export default function ServiceStatusPage() {
           <div className="flex items-center gap-3">
             <Server className="w-5 h-5 text-gray-600" />
             <div>
-              <p className="text-sm font-medium text-gray-700">Backend API URL</p>
+              <p className="text-sm font-medium text-gray-700">URL API Backend</p>
               <p className="text-sm text-gray-600 font-mono">{backendUrl}</p>
               {serverOnline !== null && (
                 <div className="flex items-center gap-2 mt-1">
                   {serverOnline ? (
                     <>
                       <CheckCircle2 className="w-4 h-4 text-green-500" />
-                      <span className="text-xs text-green-700">Server Online</span>
+                      <span className="text-xs text-green-700">Máy chủ trực tuyến</span>
                     </>
                   ) : (
                     <>
                       <XCircle className="w-4 h-4 text-red-500" />
-                      <span className="text-xs text-red-700">Server Offline</span>
+                      <span className="text-xs text-red-700">Máy chủ ngoại tuyến</span>
                     </>
                   )}
                 </div>
@@ -319,10 +319,10 @@ export default function ServiceStatusPage() {
             {checkingServer ? (
               <>
                 <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                Checking...
+                Đang kiểm tra...
               </>
             ) : (
-              "Check Connectivity"
+              "Kiểm tra kết nối"
             )}
           </Button>
         </div>
@@ -332,17 +332,17 @@ export default function ServiceStatusPage() {
       {(successCount > 0 || errorCount > 0) && (
         <div className="grid grid-cols-3 gap-4 mb-6">
           <Card className="p-4">
-            <p className="text-sm text-gray-600 mb-1">Total Services</p>
+            <p className="text-sm text-gray-600 mb-1">Tổng số dịch vụ</p>
             <p className="text-2xl font-semibold text-gray-900">{totalCount}</p>
           </Card>
           <Card className="p-4">
-            <p className="text-sm text-gray-600 mb-1">Healthy</p>
+            <p className="text-sm text-gray-600 mb-1">Hoạt động tốt</p>
             <p className="text-2xl font-semibold text-green-600">
               {successCount}
             </p>
           </Card>
           <Card className="p-4">
-            <p className="text-sm text-gray-600 mb-1">Failed</p>
+            <p className="text-sm text-gray-600 mb-1">Thất bại</p>
             <p className="text-2xl font-semibold text-red-600">{errorCount}</p>
           </Card>
         </div>
@@ -350,7 +350,7 @@ export default function ServiceStatusPage() {
 
       {/* Services List */}
       <div className="space-y-4 mb-8">
-        <h2 className="text-xl font-semibold text-gray-900">Services</h2>
+        <h2 className="text-xl font-semibold text-gray-900">Dịch vụ</h2>
         {services.map((service, index) => (
           <Card key={index} className="p-4">
             <div className="flex items-center justify-between">
@@ -363,7 +363,7 @@ export default function ServiceStatusPage() {
                   </p>
                   {service.error && (
                     <p className="text-sm text-red-600 mt-1">
-                      Error: {service.error}
+                      Lỗi: {service.error}
                     </p>
                   )}
                   {service.responseTime !== undefined && (
@@ -387,7 +387,7 @@ export default function ServiceStatusPage() {
                 variant="outline"
                 size="sm"
               >
-                {service.status === "loading" ? "Testing..." : "Test"}
+                {service.status === "loading" ? "Đang kiểm tra..." : "Kiểm tra"}
               </Button>
             </div>
 
@@ -395,7 +395,7 @@ export default function ServiceStatusPage() {
             {service.response !== undefined && (
               <details className="mt-3">
                 <summary className="text-sm text-gray-700 cursor-pointer hover:text-gray-900">
-                  View Response
+                  Xem phản hồi
                 </summary>
                 <pre className="mt-2 p-3 bg-gray-50 rounded-md text-xs overflow-x-auto">
                   {safeStringify(service.response)}
@@ -409,14 +409,14 @@ export default function ServiceStatusPage() {
       {/* Logs Section */}
       <div className="space-y-4">
         <div className="flex items-center justify-between">
-          <h2 className="text-xl font-semibold text-gray-900">Logs</h2>
+          <h2 className="text-xl font-semibold text-gray-900">Nhật ký</h2>
           {logs.length > 0 && (
             <Button
               onClick={() => setLogs([])}
               variant="outline"
               size="sm"
             >
-              Clear Logs
+              Xóa nhật ký
             </Button>
           )}
         </div>
@@ -424,7 +424,7 @@ export default function ServiceStatusPage() {
         {logs.length === 0 ? (
           <Card className="p-8 text-center">
             <p className="text-gray-500">
-              No logs yet. Click &ldquo;Test All Services&rdquo; to begin.
+              Chưa có nhật ký. Nhấp &ldquo;Kiểm tra tất cả dịch vụ&rdquo; để bắt đầu.
             </p>
           </Card>
         ) : (
@@ -463,7 +463,7 @@ export default function ServiceStatusPage() {
                   {log.details !== undefined && (
                     <details className="mt-2">
                       <summary className="text-xs text-gray-600 cursor-pointer">
-                        Details
+                        Chi tiết
                       </summary>
                       <pre className="mt-1 p-2 bg-white rounded text-xs overflow-x-auto">
                         {safeStringify(log.details)}

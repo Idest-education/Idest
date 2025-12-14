@@ -57,7 +57,7 @@ export default function AssignmentCard({ item }: { item: AssignmentOverview }) {
                             size="sm"
                             className="group-hover:bg-white/20 group-hover:text-white group-hover:backdrop-blur-sm text-gray-700 hover:text-gray-900 transition-all duration-500 group-hover:scale-105 group-hover:shadow-lg"
                         >
-                            View Details
+                            Xem chi tiết
                             <ArrowRight className="w-3 h-3 ml-1 group-hover:translate-x-2 transition-transform duration-500" />
                         </Button>
                     </div>

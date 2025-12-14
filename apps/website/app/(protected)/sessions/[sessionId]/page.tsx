@@ -13,6 +13,6 @@ export default function SessionPageRedirect() {
     }
   }, [params, router]);
 
-  return <div className="p-6 text-sm text-muted-foreground">Redirecting to meeting...</div>;
+  return <div className="p-6 text-sm text-muted-foreground">Đang chuyển hướng đến buổi học...</div>;
 }
 

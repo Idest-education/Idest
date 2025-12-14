@@ -61,11 +61,11 @@ export default function SessionCard({
         <div className="flex-1">
           <div className="flex items-start justify-between mb-2">
             <h3 className="font-medium text-gray-900">
-              {session.metadata?.topic || "Untitled session"}
+              {session.metadata?.topic || "Buổi học chưa có tên"}
             </h3>
             {isActive && (
               <span className="px-2 py-1 bg-green-100 text-green-800 text-xs font-medium rounded-md ml-2">
-                Active
+                Đang diễn ra
               </span>
             )}
           </div>
@@ -87,7 +87,7 @@ export default function SessionCard({
             </div>
             <p className="flex items-center gap-2">
               <User className="w-4 h-4" />
-              Host:{" "}
+              Người chủ trì:{" "}
               <span className="font-medium text-gray-900">
                 {session.host.full_name}
               </span>
@@ -95,7 +95,7 @@ export default function SessionCard({
             {(session.attendance_summary?.total_attendees !== undefined || session.metadata?.attendees_count !== undefined) && (
               <p className="flex items-center gap-2">
                 <Users className="w-4 h-4" />
-                Attendees:{" "}
+                Người tham gia:{" "}
                 <span className="font-medium text-gray-900">
                   {session.attendance_summary?.total_attendees ?? session.metadata?.attendees_count}
                 </span>
@@ -113,7 +113,7 @@ export default function SessionCard({
               size="default"
             >
               <Video className="w-5 h-5 mr-2" />
-              Join Meeting
+              Tham gia buổi học
             </Button>
           )}
 
@@ -127,7 +127,7 @@ export default function SessionCard({
                   size="sm"
                   className="text-sm"
                 >
-                  Edit
+                  Chỉnh sửa
                 </Button>
               )}
               {isActive && onEnd && (
@@ -137,7 +137,7 @@ export default function SessionCard({
                   size="sm"
                   className="text-sm"
                 >
-                  End
+                  Kết thúc
                 </Button>
               )}
               {onDelete && (
@@ -147,7 +147,7 @@ export default function SessionCard({
                   size="sm"
                   className="text-sm text-red-600 hover:text-red-700 hover:bg-red-50"
                 >
-                  Delete
+                  Xóa
                 </Button>
               )}
             </div>

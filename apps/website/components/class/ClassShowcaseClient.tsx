@@ -28,7 +28,7 @@ import {
 } from "@/components/ui/dialog";
 
 function formatVnd(price?: number | null, currency?: string) {
-  if (price == null) return "Free";
+  if (price == null) return "Miễn phí";
   const formatter = new Intl.NumberFormat("vi-VN");
   const cur = (currency || "VND").toUpperCase();
   return `${formatter.format(price)} ${cur}`;
@@ -101,7 +101,7 @@ export default function ClassShowcaseClient() {
         setAllClasses(all || []);
       } catch (e) {
         console.error("Failed to load classes for showcase", e);
-        setError("Failed to load classes. Please try again.");
+        setError("Không thể tải lớp học. Vui lòng thử lại.");
       } finally {
         setLoading(false);
       }
@@ -144,7 +144,7 @@ export default function ClassShowcaseClient() {
       if (session.isFree) {
         // Free class - already enrolled by backend
         await refreshUserClasses();
-        setSuccessMessage("You have been enrolled in this class.");
+        setSuccessMessage("Bạn đã được ghi danh vào lớp học này.");
         setPurchaseLoading(false);
         return;
       }
@@ -152,7 +152,7 @@ export default function ClassShowcaseClient() {
       // Handle already owned classes
       if (session.alreadyOwned) {
         await refreshUserClasses();
-        setSuccessMessage("You already own this class.");
+        setSuccessMessage("Bạn đã sở hữu lớp học này.");
         setPurchaseLoading(false);
         return;
       }
@@ -165,12 +165,12 @@ export default function ClassShowcaseClient() {
         // Log the full response for debugging
         console.error("Checkout session response missing URL:", session);
         throw new Error(
-          "No checkout URL received from server. The payment session may not have been created properly. Please try again or contact support."
+          "Không nhận được URL thanh toán từ máy chủ. Phiên thanh toán có thể chưa được tạo đúng cách. Vui lòng thử lại hoặc liên hệ hỗ trợ."
         );
       }
     } catch (e) {
       console.error("Purchase failed", e);
-      const errorMessage = e instanceof Error ? e.message : "Purchase failed. Please try again.";
+      const errorMessage = e instanceof Error ? e.message : "Mua hàng thất bại. Vui lòng thử lại.";
       setError(errorMessage);
       setPurchaseLoading(false);
     }
@@ -181,7 +181,7 @@ export default function ClassShowcaseClient() {
       <div className="py-24 flex justify-center">
         <div className="flex flex-col items-center gap-3">
           <div className="w-10 h-10 rounded-full border-2 border-gray-900 border-t-transparent animate-spin" />
-          <p className="text-gray-600 text-sm">Loading classes for you...</p>
+          <p className="text-gray-600 text-sm">Đang tải lớp học cho bạn...</p>
         </div>
       </div>
     );
@@ -224,29 +224,30 @@ export default function ClassShowcaseClient() {
         <div>
           <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-gradient-to-r from-amber-100 via-pink-100 to-indigo-100 text-xs font-medium text-gray-800 shadow-sm mb-4 hover:shadow-md transition-shadow duration-300">
             <Sparkles className="w-4 h-4 text-indigo-500 animate-pulse" />
-            Curated English classes just for you
+            Các lớp tiếng Anh được tuyển chọn dành cho bạn
           </div>
           <h2 className="text-3xl md:text-4xl font-bold text-gray-900 tracking-tight mb-3 bg-gradient-to-r from-gray-900 via-indigo-900 to-purple-900 bg-clip-text text-transparent">
-            Discover your next{" "}
+            Khám phá{" "}
             <span className="bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 bg-clip-text text-transparent">
-              breakthrough class
-            </span>
+              lớp học đột phá
+            </span>{" "}
+            tiếp theo của bạn
           </h2>
           <p className="text-gray-600 max-w-2xl">
-            Hand-picked IELTS and English classes with live sessions, expert
-            teachers, and AI-powered practice. Enroll in a class that matches
-            your goals and level.
+            Các lớp IELTS và tiếng Anh được tuyển chọn kỹ lưỡng với buổi học trực tiếp, giáo viên
+            chuyên nghiệp và thực hành được hỗ trợ bởi AI. Ghi danh vào một lớp học phù hợp
+            với mục tiêu và trình độ của bạn.
           </p>
         </div>
 
         <div className="flex flex-wrap gap-3">
           <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-gray-900 text-white text-xs md:text-sm hover:scale-105 transition-transform duration-300 shadow-lg hover:shadow-xl">
             <Crown className="w-4 h-4 text-amber-300 animate-pulse" />
-            <span>Premium experiences</span>
+            <span>Trải nghiệm cao cấp</span>
           </div>
           <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-emerald-50 text-emerald-700 text-xs md:text-sm border border-emerald-100 hover:scale-105 hover:bg-emerald-100 transition-all duration-300 shadow-sm hover:shadow-md">
             <ShieldCheck className="w-4 h-4" />
-            <span>Safe & secure payments</span>
+            <span>Thanh toán an toàn và bảo mật</span>
           </div>
         </div>
       </div>
@@ -257,7 +258,7 @@ export default function ClassShowcaseClient() {
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5 group-focus-within:text-indigo-500 transition-colors duration-300" />
           <Input
             type="text"
-            placeholder="Search classes by name, description, or teacher..."
+            placeholder="Tìm kiếm lớp học theo tên, mô tả hoặc giáo viên..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="pl-10 w-full transition-all duration-300 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 hover:border-gray-400 shadow-sm hover:shadow-md"
@@ -265,7 +266,7 @@ export default function ClassShowcaseClient() {
         </div>
         {searchQuery && (
           <p className="mt-2 text-sm text-gray-600 animate-in fade-in slide-in-from-top-2">
-            Found {filteredClasses.length} class{filteredClasses.length !== 1 ? "es" : ""}
+            Tìm thấy {filteredClasses.length} lớp học
           </p>
         )}
       </div>
@@ -275,11 +276,11 @@ export default function ClassShowcaseClient() {
           <div className="max-w-md mx-auto space-y-4">
             <BookOpen className="w-10 h-10 mx-auto text-gray-400" />
             <h3 className="text-2xl font-semibold text-gray-900">
-              No classes available yet
+              Chưa có lớp học nào
             </h3>
             <p className="text-gray-600">
-              Check back soon for new classes, or ask your teacher to invite you
-              to a private class.
+              Hãy quay lại sau để xem các lớp học mới, hoặc yêu cầu giáo viên của bạn mời bạn
+              vào một lớp học riêng.
             </p>
           </div>
         </div>
@@ -288,17 +289,17 @@ export default function ClassShowcaseClient() {
           <div className="max-w-md mx-auto space-y-4">
             <Search className="w-10 h-10 mx-auto text-gray-400" />
             <h3 className="text-2xl font-semibold text-gray-900">
-              No classes found
+              Không tìm thấy lớp học
             </h3>
             <p className="text-gray-600">
-              Try adjusting your search query to find classes.
+              Thử điều chỉnh truy vấn tìm kiếm của bạn để tìm lớp học.
             </p>
             <Button
               variant="outline"
               onClick={() => setSearchQuery("")}
               className="mt-4"
             >
-              Clear search
+              Xóa tìm kiếm
             </Button>
           </div>
         </div>
@@ -339,7 +340,7 @@ export default function ClassShowcaseClient() {
                               : "border-gray-500 text-gray-100 group-hover:border-white/40 group-hover:bg-white/5 transition-all duration-300"
                           }
                         >
-                          {isEnrolled ? "Enrolled" : isGroup ? "Group class" : "1:1"}
+                          {isEnrolled ? "Đã ghi danh" : isGroup ? "Lớp nhóm" : "1:1"}
                         </Badge>
                       </div>
                       <CardTitle className="text-xl font-bold leading-tight group-hover:scale-[1.02] transition-transform duration-300">
@@ -354,13 +355,13 @@ export default function ClassShowcaseClient() {
                   <div className="mt-auto flex items-center justify-between pt-4 border-t border-white/10 group-hover:border-white/30 transition-colors duration-300">
                     <div className="space-y-1">
                       <div className="text-xs uppercase tracking-wide text-gray-400 group-hover:text-gray-300 transition-colors duration-300">
-                        Starting from
+                        Giá từ
                       </div>
                       <div className="text-xl font-bold group-hover:scale-105 transition-transform duration-300">
                         {formatVnd(cls.price, cls.currency)}
                       </div>
                       <span className="text-xs text-gray-400 group-hover:text-gray-300 transition-colors duration-300">
-                        {cls._count?.members ?? 0} learners
+                        {cls._count?.members ?? 0} người học
                       </span>
                     </div>
                     <Button
@@ -370,12 +371,12 @@ export default function ClassShowcaseClient() {
                     >
                       {isEnrolled ? (
                         <>
-                          Go to class
+                          Đi đến lớp
                           <ArrowRight className="w-4 h-4 ml-1 group-hover:translate-x-0.5 transition-transform duration-300" />
                         </>
                       ) : (
                         <>
-                          View details
+                          Xem chi tiết
                           <ArrowRight className="w-4 h-4 ml-1 group-hover:translate-x-0.5 transition-transform duration-300" />
                         </>
                       )}
@@ -398,7 +399,7 @@ export default function ClassShowcaseClient() {
                 className="transition-all duration-300 hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <ChevronLeft className="w-4 h-4 transition-transform duration-300 group-hover:-translate-x-1" />
-                Previous
+                Trước
               </Button>
               
               <div className="flex items-center gap-1">
@@ -447,7 +448,7 @@ export default function ClassShowcaseClient() {
                 disabled={currentPage === totalPages}
                 className="transition-all duration-300 hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                Next
+                Sau
                 <ChevronRight className="w-4 h-4 transition-transform duration-300 group-hover:translate-x-1" />
               </Button>
             </div>
@@ -456,9 +457,9 @@ export default function ClassShowcaseClient() {
           {/* Page Info */}
           {totalPages > 1 && (
             <div className="mt-4 text-center text-sm text-gray-600 animate-in fade-in">
-              Showing {(currentPage - 1) * itemsPerPage + 1} to{" "}
-              {Math.min(currentPage * itemsPerPage, filteredClasses.length)} of{" "}
-              {filteredClasses.length} classes
+              Hiển thị {(currentPage - 1) * itemsPerPage + 1} đến{" "}
+              {Math.min(currentPage * itemsPerPage, filteredClasses.length)} trong{" "}
+              {filteredClasses.length} lớp học
             </div>
           )}
         </>
@@ -476,42 +477,42 @@ export default function ClassShowcaseClient() {
                   </Badge>
                 </DialogTitle>
                 <DialogDescription className="text-gray-600">
-                  Taught by {selectedClass.creator.full_name} •{" "}
-                  {selectedClass._count.members} learners enrolled
+                  Giảng dạy bởi {selectedClass.creator.full_name} •{" "}
+                  {selectedClass._count.members} người học đã ghi danh
                 </DialogDescription>
               </DialogHeader>
 
               <div className="grid md:grid-cols-[1.7fr,1.3fr] gap-8 mt-4">
                 <div className="space-y-4">
-                  <h3 className="font-semibold text-gray-900">About this class</h3>
+                  <h3 className="font-semibold text-gray-900">Về lớp học này</h3>
                   <p className="text-gray-700 leading-relaxed">
                     {selectedClass.description}
                   </p>
 
                   <div className="mt-6 space-y-3">
                     <h4 className="text-sm font-semibold text-gray-900 uppercase tracking-wide">
-                      Highlights
+                      Điểm nổi bật
                     </h4>
                     <ul className="text-sm text-gray-700 space-y-2">
                       <li className="flex items-start gap-2">
                         <Sparkles className="w-4 h-4 text-indigo-500 mt-0.5" />
                         <span>
-                          Live interactive sessions designed to boost your confidence
-                          in real exam scenarios.
+                          Các buổi học tương tác trực tiếp được thiết kế để tăng cường sự tự tin
+                          của bạn trong các tình huống thi thực tế.
                         </span>
                       </li>
                       <li className="flex items-start gap-2">
                         <Users className="w-4 h-4 text-pink-500 mt-0.5" />
                         <span>
-                          Collaborative practice with peers plus 1:1 guidance from
-                          experienced instructors.
+                          Thực hành hợp tác với bạn bè cùng với hướng dẫn 1:1 từ
+                          các giảng viên giàu kinh nghiệm.
                         </span>
                       </li>
                       <li className="flex items-start gap-2">
                         <BookOpen className="w-4 h-4 text-emerald-500 mt-0.5" />
                         <span>
-                          Homework, assignments, and AI-powered feedback to refine
-                          your skills between sessions.
+                          Bài tập về nhà, bài tập và phản hồi được hỗ trợ bởi AI để cải thiện
+                          kỹ năng của bạn giữa các buổi học.
                         </span>
                       </li>
                     </ul>
@@ -521,13 +522,13 @@ export default function ClassShowcaseClient() {
                 <div className="space-y-4 rounded-2xl border border-gray-200 p-5 bg-gradient-to-br from-gray-900 via-gray-900/95 to-gray-900 text-white shadow-lg">
                   <div className="space-y-1">
                     <div className="text-xs uppercase tracking-wide text-gray-300">
-                      Investment
+                      Đầu tư
                     </div>
                     <div className="text-3xl font-bold">
                       {formatVnd(selectedClass.price, selectedClass.currency)}
                     </div>
                     <p className="text-xs text-gray-300">
-                      One-time purchase for full access to this class.
+                      Mua một lần để truy cập đầy đủ lớp học này.
                     </p>
                   </div>
 
@@ -539,30 +540,30 @@ export default function ClassShowcaseClient() {
                     >
                       {purchaseLoading ? (
                         <>
-                          Processing...
+                          Đang xử lý...
                           <div className="w-4 h-4 border-2 border-gray-900 border-t-transparent rounded-full animate-spin" />
                         </>
                       ) : (
                         <>
-                          Purchase &amp; Enroll
+                          Mua và ghi danh
                           <ArrowRight className="w-4 h-4" />
                         </>
                       )}
                     </Button>
                     <p className="text-[11px] text-gray-300 text-center">
-                      Secure payment powered by Stripe. Access is granted
-                      immediately after purchase.
+                      Thanh toán an toàn được hỗ trợ bởi Stripe. Truy cập được cấp
+                      ngay sau khi mua.
                     </p>
                   </div>
 
                   <div className="grid grid-cols-2 gap-3 text-xs text-gray-200 mt-2">
                     <div className="rounded-lg bg-white/5 p-3 border border-white/10">
-                      <div className="font-semibold mb-1">Live sessions</div>
-                      <div>{selectedClass._count.sessions}+ included</div>
+                      <div className="font-semibold mb-1">Buổi học trực tiếp</div>
+                      <div>{selectedClass._count.sessions}+ được bao gồm</div>
                     </div>
                     <div className="rounded-lg bg-white/5 p-3 border border-white/10">
-                      <div className="font-semibold mb-1">Level</div>
-                      <div>Intermediate – Advanced</div>
+                      <div className="font-semibold mb-1">Trình độ</div>
+                      <div>Trung cấp – Nâng cao</div>
                     </div>
                   </div>
 
@@ -582,16 +583,16 @@ export default function ClassShowcaseClient() {
           ) : (
             <>
               <DialogHeader>
-                <DialogTitle>Loading class…</DialogTitle>
+                <DialogTitle>Đang tải lớp học…</DialogTitle>
                 <DialogDescription>
-                  Fetching class details, please wait.
+                  Đang lấy chi tiết lớp học, vui lòng đợi.
                 </DialogDescription>
               </DialogHeader>
               <div className="py-6 flex justify-center">
                 <div className="flex flex-col items-center gap-3">
                   <div className="w-10 h-10 rounded-full border-2 border-gray-900 border-t-transparent animate-spin" />
                   <p className="text-gray-600 text-sm">
-                    Loading class details...
+                    Đang tải chi tiết lớp học...
                   </p>
                 </div>
               </div>

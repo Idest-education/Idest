@@ -29,7 +29,7 @@ export async function createClassCheckoutSession(
       throw new Error("No response from server. Please check your connection.");
     } else {
       // Something else happened
-      throw new Error(error.message || "Failed to create checkout session");
+      throw new Error(error.message || "Không thể tạo phiên thanh toán");
     }
   }
 }

@@ -16,7 +16,7 @@ export default function PassageTabs({ sections, active, setActive }: Props) {
                     className={`px-4 py-2 rounded-full border ${active === idx ? "bg-blue-600 text-white" : "bg-gray-200 text-gray-700"
                         }`}
                 >
-                    Passage {idx + 1}
+                    Bài đọc {idx + 1}
                 </button>
             ))}
         </div>

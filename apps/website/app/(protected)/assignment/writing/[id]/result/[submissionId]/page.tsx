@@ -46,7 +46,7 @@ export default function WritingResultPage(props: Props) {
                 {/* Header */}
                 <div className="text-center space-y-3">
                     <div className="inline-block px-4 py-2 bg-indigo-600 text-white rounded-full text-sm font-semibold mb-2">
-                        IELTS WRITING RESULT
+                        KẾT QUẢ BÀI VIẾT IELTS
                     </div>
                     <h1 className="text-4xl font-bold text-gray-900">Kết Quả Bài Viết</h1>
                     <p className="text-gray-600 text-lg">Đánh giá theo tiêu chuẩn IELTS Band Score</p>
@@ -56,7 +56,7 @@ export default function WritingResultPage(props: Props) {
                 <div className={`${colors.bg} border-2 ${colors.border} rounded-2xl p-5 shadow-xl`}>
                     <div className="text-center space-y-6">
                         <div className="space-y-2">
-                            <p className="text-gray-600 font-medium text-sm uppercase tracking-wider">Overall Band Score</p>
+                            <p className="text-gray-600 font-medium text-sm uppercase tracking-wider">Điểm tổng thể</p>
                             <div className="flex items-baseline justify-center gap-2">
                                 <span className={`text-8xl font-bold ${colors.text}`}>
                                     {result!.score}
@@ -91,7 +91,7 @@ export default function WritingResultPage(props: Props) {
                             <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                             </svg>
-                            Examiner&apos;s Feedback
+                            Nhận xét của giám khảo
                         </h2>
                         <p className="text-indigo-100 text-sm mt-2">Nhận xét chi tiết từ hệ thống chấm bài</p>
                     </div>
@@ -113,28 +113,28 @@ export default function WritingResultPage(props: Props) {
                         <svg className="w-5 h-5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                         </svg>
-                        IELTS Band Score Reference
+                        Tham khảo thang điểm IELTS
                     </h3>
                     <div className="grid grid-cols-2 md:grid-cols-5 gap-3 text-xs">
                         <div className="p-2 bg-emerald-50 rounded border border-emerald-200">
                             <span className="font-bold text-emerald-700">8.0-9.0</span>
-                            <p className="text-gray-600 mt-1">Expert User</p>
+                            <p className="text-gray-600 mt-1">Người dùng chuyên nghiệp</p>
                         </div>
                         <div className="p-2 bg-blue-50 rounded border border-blue-200">
                             <span className="font-bold text-blue-700">7.0-7.5</span>
-                            <p className="text-gray-600 mt-1">Good User</p>
+                            <p className="text-gray-600 mt-1">Người dùng tốt</p>
                         </div>
                         <div className="p-2 bg-cyan-50 rounded border border-cyan-200">
                             <span className="font-bold text-cyan-700">6.0-6.5</span>
-                            <p className="text-gray-600 mt-1">Competent</p>
+                            <p className="text-gray-600 mt-1">Người dùng thành thạo</p>
                         </div>
                         <div className="p-2 bg-yellow-50 rounded border border-yellow-200">
                             <span className="font-bold text-yellow-700">5.0-5.5</span>
-                            <p className="text-gray-600 mt-1">Modest User</p>
+                            <p className="text-gray-600 mt-1">Người dùng trung bình</p>
                         </div>
                         <div className="p-2 bg-orange-50 rounded border border-orange-200">
                             <span className="font-bold text-orange-700">0-4.5</span>
-                            <p className="text-gray-600 mt-1">Limited User</p>
+                            <p className="text-gray-600 mt-1">Người dùng hạn chế</p>
                         </div>
                     </div>
                 </div>

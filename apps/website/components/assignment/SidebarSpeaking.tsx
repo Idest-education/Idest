@@ -69,7 +69,7 @@ export default function SidebarSpeaking({ activePart, setActivePart, onSubmit }:
                                     : "bg-slate-100 text-slate-600 border border-slate-300 hover:bg-slate-200"
                                 }`}
                         >
-                            Part 1
+                            Phần 1
                         </button>
 
                         <button
@@ -80,7 +80,7 @@ export default function SidebarSpeaking({ activePart, setActivePart, onSubmit }:
                                     : "bg-slate-100 text-slate-600 border border-slate-300 hover:bg-slate-200"
                                 }`}
                         >
-                            Part 2 + 3
+                            Phần 2 + 3
                         </button>
                     </div>
                 </div>

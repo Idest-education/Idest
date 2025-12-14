@@ -161,12 +161,12 @@ export function MeetParticipantsPanel({
               onClick={() => setShowAbsents(!showAbsents)}
               className="h-7 text-xs"
             >
-              {showAbsents ? "Hide absents" : "Show absents"}
+              {showAbsents ? "Ẩn người vắng mặt" : "Hiển thị người vắng mặt"}
             </Button>
           )}
         </div>
         {allJoined && (
-          <p className="mt-1 text-xs text-green-600 font-medium">All joined!</p>
+          <p className="mt-1 text-xs text-green-600 font-medium">Tất cả đã tham gia!</p>
         )}
       </div>
       <div className="min-h-0 flex-1 space-y-2 overflow-y-auto p-3">
@@ -178,7 +178,7 @@ export function MeetParticipantsPanel({
             {/* Separator */}
             <div className="my-3 flex items-center gap-2">
               <div className="flex-1 border-t border-border/40"></div>
-              <span className="text-xs font-medium text-muted-foreground uppercase">Absent</span>
+              <span className="text-xs font-medium text-muted-foreground uppercase">Vắng mặt</span>
               <div className="flex-1 border-t border-border/40"></div>
             </div>
 
@@ -192,7 +192,7 @@ export function MeetParticipantsPanel({
 
         {displayedParticipants.length === 0 && (
           <p className="text-center text-sm text-muted-foreground">
-            {showAbsents ? "No participants yet." : "No participants online."}
+            {showAbsents ? "Chưa có người tham gia nào." : "Không có người tham gia trực tuyến."}
           </p>
         )}
       </div>

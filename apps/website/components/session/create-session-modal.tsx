@@ -23,8 +23,8 @@ interface CreateSessionModalProps {
   className?: string;
 }
 
-const getErrorMessage = (error: unknown) =>
-  error instanceof Error ? error.message : "An error occurred";
+const         getErrorMessage = (error: unknown) =>
+  error instanceof Error ? error.message : "Đã xảy ra lỗi";
 
 export default function CreateSessionModal({
   open,
@@ -62,9 +62,9 @@ export default function CreateSessionModal({
         ...(endTime && { end_time: endTime }),
         // Explicitly set is_recorded (matches new backend logic)
         is_recorded: formData.is_recorded,
-        metadata: {
-          topic: formData.topic || "Untitled session",
-        },
+          metadata: {
+            topic: formData.topic || "Buổi học chưa có tên",
+          },
       };
 
       const res = await createSession(payload);
@@ -78,7 +78,7 @@ export default function CreateSessionModal({
          onCreated();
          onClose();
       } else {
-        setError(res.message || "Failed to create session");
+        setError(res.message || "Không thể tạo buổi học");
       }
     } catch (err) {
       setError(getErrorMessage(err));
@@ -110,14 +110,14 @@ export default function CreateSessionModal({
     <Dialog open={open} onOpenChange={handleClose}>
       <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>
-          <DialogTitle>Create New Session</DialogTitle>
+          <DialogTitle>Tạo buổi học mới</DialogTitle>
         </DialogHeader>
 
         <form onSubmit={handleSubmit}>
           <div className="space-y-4 py-4">
             {className && (
               <div>
-                <Label className="text-sm text-gray-600">Class</Label>
+                <Label className="text-sm text-gray-600">Lớp học</Label>
                 <p className="text-sm font-medium text-gray-900 mt-1">
                   {className}
                 </p>
@@ -125,20 +125,20 @@ export default function CreateSessionModal({
             )}
 
             <div>
-              <Label htmlFor="topic">Topic *</Label>
+              <Label htmlFor="topic">Chủ đề *</Label>
               <Input
                 id="topic"
                 value={formData.topic}
                 onChange={(e) =>
                   setFormData({ ...formData, topic: e.target.value })
                 }
-                placeholder="e.g., IELTS Writing Task 1"
+                placeholder="ví dụ: IELTS Writing Task 1"
                 required
               />
             </div>
 
             <div>
-              <Label htmlFor="start_time">Start Time (Your Local Time) *</Label>
+              <Label htmlFor="start_time">Giờ bắt đầu (Giờ địa phương của bạn) *</Label>
               <Input
                 id="start_time"
                 type="datetime-local"
@@ -176,7 +176,7 @@ export default function CreateSessionModal({
                 }
               />
               <Label htmlFor="is_recorded" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
-                Record this session automatically
+                Tự động ghi lại buổi học này
               </Label>
             </div>
 
@@ -194,10 +194,10 @@ export default function CreateSessionModal({
               onClick={handleClose}
               disabled={loading}
             >
-              Cancel
+              Hủy
             </Button>
             <Button type="submit" disabled={loading}>
-              {loading ? "Creating..." : "Create Session"}
+              {loading ? "Đang tạo..." : "Tạo buổi học"}
             </Button>
           </DialogFooter>
         </form>

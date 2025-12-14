@@ -35,13 +35,13 @@ export default async function Home() {
                 href="/auth/login"
                 className="px-4 py-2 text-sm text-gray-700 hover:text-gray-900 transition-colors"
               >
-                Log in
+                Đăng nhập
               </Link>
               <Link
                 href="/auth/sign-up"
                 className="px-4 py-2 text-sm bg-gray-900 text-white rounded-lg hover:bg-gray-800 transition-colors"
               >
-                Sign up
+                Đăng ký
               </Link>
             </div>
           </div>
@@ -49,7 +49,7 @@ export default async function Home() {
       )}
       {/* Mobile disclaimer */}
       <div className="md:hidden bg-red-50 border-b border-red-500 text-red-800 px-6 py-3 text-sm text-center">
-        Mobile view is unsupported, please use a desktop for optimal experience!
+        Chế độ xem di động không được hỗ trợ, vui lòng sử dụng máy tính để có trải nghiệm tối ưu!
       </div>
 
       {isAuthenticated ? (
@@ -59,7 +59,7 @@ export default async function Home() {
             <div className="py-24 flex justify-center">
               <div className="flex flex-col items-center gap-3">
                 <div className="w-10 h-10 rounded-full border-2 border-gray-900 border-t-transparent animate-spin" />
-                <p className="text-gray-600 text-sm">Loading classes for you...</p>
+                <p className="text-gray-600 text-sm">Đang tải lớp học cho bạn...</p>
               </div>
             </div>
           }>
@@ -69,7 +69,7 @@ export default async function Home() {
             <div className="py-24 flex justify-center">
               <div className="flex flex-col items-center gap-3">
                 <div className="w-10 h-10 rounded-full border-2 border-gray-900 border-t-transparent animate-spin" />
-                <p className="text-gray-600 text-sm">Loading assignments...</p>
+                <p className="text-gray-600 text-sm">Đang tải bài tập...</p>
               </div>
             </div>
           }>
@@ -83,57 +83,57 @@ export default async function Home() {
                 <div>
                   <h3 className="text-lg font-semibold text-gray-900 mb-4">Idest</h3>
                   <p className="text-sm text-gray-600">
-                    Master English with confidence through AI-powered learning and practice.
+                    Làm chủ tiếng Anh một cách tự tin thông qua học tập và thực hành được hỗ trợ bởi AI.
                   </p>
                 </div>
                 <div>
-                  <h4 className="text-sm font-semibold text-gray-900 mb-4">Learn</h4>
+                  <h4 className="text-sm font-semibold text-gray-900 mb-4">Học tập</h4>
                   <ul className="space-y-2 text-sm text-gray-600">
                     <li>
                       <Link href="/classes" className="hover:text-gray-900 transition-colors">
-                        Classes
+                        Lớp học
                       </Link>
                     </li>
                     <li>
                       <Link href="/assignment" className="hover:text-gray-900 transition-colors">
-                        Assignments
+                        Bài tập
                       </Link>
                     </li>
                     <li>
                       <Link href="/sessions" className="hover:text-gray-900 transition-colors">
-                        Sessions
+                        Buổi học
                       </Link>
                     </li>
                   </ul>
                 </div>
                 <div>
-                  <h4 className="text-sm font-semibold text-gray-900 mb-4">Account</h4>
+                  <h4 className="text-sm font-semibold text-gray-900 mb-4">Tài khoản</h4>
                   <ul className="space-y-2 text-sm text-gray-600">
                     <li>
                       <Link href="/settings" className="hover:text-gray-900 transition-colors">
-                        Settings
+                        Cài đặt
                       </Link>
                     </li>
                     <li>
                       <Link href="/ai" className="hover:text-gray-900 transition-colors">
-                        AI Tools
+                        Công cụ AI
                       </Link>
                     </li>
                   </ul>
                 </div>
                 <div>
-                  <h4 className="text-sm font-semibold text-gray-900 mb-4">Support</h4>
+                  <h4 className="text-sm font-semibold text-gray-900 mb-4">Hỗ trợ</h4>
                   <ul className="space-y-2 text-sm text-gray-600">
                     <li>
                       <Link href="/service-status" className="hover:text-gray-900 transition-colors">
-                        Service Status
+                        Trạng thái dịch vụ
                       </Link>
                     </li>
                   </ul>
                 </div>
               </div>
               <div className="border-t border-gray-200 pt-8 text-center text-sm text-gray-600">
-                <p>© {new Date().getFullYear()} Idest. All rights reserved.</p>
+                <p>© {new Date().getFullYear()} Idest. Bảo lưu mọi quyền.</p>
               </div>
             </div>
           </footer>
@@ -145,29 +145,29 @@ export default async function Home() {
             <div className="max-w-3xl mx-auto text-center">
               <div className="inline-flex items-center gap-2 px-4 py-2 bg-gray-100 rounded-full text-sm text-gray-700 mb-8">
                 <Sparkles className="w-4 h-4" />
-                AI-Powered English Learning
+                Học tiếng Anh được hỗ trợ bởi AI
               </div>
               <h1 className="text-5xl md:text-6xl font-bold text-gray-900 mb-6 leading-tight">
-                Master English with
-                <span className="block mt-2">confidence and ease</span>
+                Làm chủ tiếng Anh với
+                <span className="block mt-2">sự tự tin và dễ dàng</span>
               </h1>
               <p className="text-xl text-gray-600 mb-10 leading-relaxed">
-                Practice speaking, writing, and comprehension with AI tutors
-                that adapt to your learning style.
+                Thực hành nói, viết và hiểu với các gia sư AI
+                thích ứng với phong cách học tập của bạn.
               </p>
               <div className="flex items-center justify-center gap-4">
                 <Link
                   href="/auth/sign-up"
                   className="inline-flex items-center gap-2 px-6 py-3 bg-gray-900 text-white rounded-lg hover:bg-gray-800 transition-colors text-lg font-medium"
                 >
-                  Get started
+                  Bắt đầu
                   <ArrowRight className="w-5 h-5" />
                 </Link>
                 <Link
                   href="/auth/login"
                   className="px-6 py-3 text-gray-700 hover:text-gray-900 transition-colors text-lg font-medium"
                 >
-                  Learn more
+                  Tìm hiểu thêm
                 </Link>
               </div>
             </div>
@@ -181,11 +181,11 @@ export default async function Home() {
                   <MessageSquare className="w-6 h-6 text-gray-900" />
                 </div>
                 <h3 className="text-xl font-semibold text-gray-900 mb-3">
-                  Speaking Practice
+                  Luyện nói
                 </h3>
                 <p className="text-gray-600 leading-relaxed">
-                  Have natural conversations with AI tutors and receive instant
-                  feedback on pronunciation and fluency.
+                  Trò chuyện tự nhiên với gia sư AI và nhận phản hồi tức thì
+                  về phát âm và độ trôi chảy.
                 </p>
               </div>
 
@@ -194,11 +194,11 @@ export default async function Home() {
                   <BookOpen className="w-6 h-6 text-gray-900" />
                 </div>
                 <h3 className="text-xl font-semibold text-gray-900 mb-3">
-                  Writing Assistance
+                  Hỗ trợ viết
                 </h3>
                 <p className="text-gray-600 leading-relaxed">
-                  Improve your writing skills with AI-powered suggestions,
-                  grammar corrections, and style recommendations.
+                  Cải thiện kỹ năng viết của bạn với các gợi ý được hỗ trợ bởi AI,
+                  sửa lỗi ngữ pháp và đề xuất phong cách.
                 </p>
               </div>
 
@@ -207,11 +207,11 @@ export default async function Home() {
                   <Brain className="w-6 h-6 text-gray-900" />
                 </div>
                 <h3 className="text-xl font-semibold text-gray-900 mb-3">
-                  Personalized Learning
+                  Học tập cá nhân hóa
                 </h3>
                 <p className="text-gray-600 leading-relaxed">
-                  Adaptive curriculum that adjusts to your level and learning
-                  pace for optimal progress.
+                  Chương trình học thích ứng điều chỉnh theo trình độ và tốc độ
+                  học tập của bạn để đạt tiến bộ tối ưu.
                 </p>
               </div>
             </div>
@@ -221,16 +221,16 @@ export default async function Home() {
           <section className="max-w-7xl mx-auto px-6 py-24 border-t border-gray-200">
             <div className="max-w-3xl mx-auto text-center">
               <h2 className="text-4xl font-bold text-gray-900 mb-6">
-                Ready to get started?
+                Sẵn sàng bắt đầu?
               </h2>
               <p className="text-xl text-gray-600 mb-8">
-                Join thousands of learners improving their English every day.
+                Tham gia cùng hàng ngàn người học đang cải thiện tiếng Anh mỗi ngày.
               </p>
               <Link
                 href="/auth/sign-up"
                 className="inline-flex items-center gap-2 px-6 py-3 bg-gray-900 text-white rounded-lg hover:bg-gray-800 transition-colors text-lg font-medium"
               >
-                Start learning for free
+                Bắt đầu học miễn phí
                 <ArrowRight className="w-5 h-5" />
               </Link>
             </div>
@@ -239,7 +239,7 @@ export default async function Home() {
           {/* Footer */}
           <footer className="border-t border-gray-200 mt-24">
             <div className="max-w-7xl mx-auto px-6 py-8 text-center text-sm text-gray-600">
-              <p>© {new Date().getFullYear()} Idest. All rights reserved.</p>
+              <p>© {new Date().getFullYear()} Idest. Bảo lưu mọi quyền.</p>
             </div>
           </footer>
         </>

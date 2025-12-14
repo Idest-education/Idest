@@ -33,10 +33,10 @@ export default async function ProtectedPage() {
             <ShieldCheckIcon className="w-8 h-8 text-green-600" />
           </div>
           <h1 className="text-4xl font-bold bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text text-black mb-2">
-            Protected Dashboard
+            Bảng điều khiển được bảo vệ
           </h1>
           <p className="text-muted-foreground text-lg">
-            Welcome to your secure, authenticated space
+            Chào mừng đến với không gian được xác thực và an toàn của bạn
           </p>
         </div>
 
@@ -48,10 +48,10 @@ export default async function ProtectedPage() {
             </div>
             <div>
               <h3 className="font-semibold text-green-800 dark:text-green-200">
-                Authentication Successful
+                Xác thực thành công
               </h3>
               <p className="text-green-700 dark:text-green-300 text-sm mt-1">
-                You are successfully authenticated and can access this protected content.
+                Bạn đã được xác thực thành công và có thể truy cập nội dung được bảo vệ này.
               </p>
             </div>
           </div>
@@ -64,19 +64,19 @@ export default async function ProtectedPage() {
               <div className="p-2 bg-blue-100 dark:bg-blue-900/20 rounded-lg">
                 <UserIcon className="w-5 h-5 text-blue-600" />
               </div>
-              <h2 className="text-xl font-semibold">User Information</h2>
+              <h2 className="text-xl font-semibold">Thông tin người dùng</h2>
             </div>
 
             <div className="space-y-4">
               <div className="flex justify-between items-center py-3 border-b border-border/50">
-                <span className="text-muted-foreground font-medium">User ID</span>
+                <span className="text-muted-foreground font-medium">ID người dùng</span>
                 <code className="px-3 py-1 bg-muted rounded-md text-sm font-mono">
                   {user.id}
                 </code>
               </div>
 
               <div className="flex justify-between items-center py-3 border-b border-border/50">
-                <span className="text-muted-foreground font-medium">Role</span>
+                <span className="text-muted-foreground font-medium">Vai trò</span>
                 <span className="font-medium">{user.user_metadata.role}</span>
               </div>
             </div>
@@ -90,7 +90,7 @@ export default async function ProtectedPage() {
               <div className="p-2 bg-orange-100 dark:bg-orange-900/20 rounded-lg">
                 <KeyIcon className="w-5 h-5 text-orange-600" />
               </div>
-              <h2 className="text-xl font-semibold">JWT Access Token</h2>
+              <h2 className="text-xl font-semibold">Mã truy cập JWT</h2>
             </div>
             <CopyButton text={jwt} label="Token" />
           </div>
@@ -99,7 +99,7 @@ export default async function ProtectedPage() {
             <div className="flex items-center gap-2 mb-3">
               <InfoIcon className="w-4 h-4 text-muted-foreground" />
               <span className="text-sm text-muted-foreground">
-                Your JWT token for API authentication
+                Mã JWT của bạn để xác thực API
               </span>
             </div>
             <pre className="text-xs font-mono bg-background border rounded-md p-4 overflow-auto max-h-40 leading-relaxed">
@@ -111,8 +111,8 @@ export default async function ProtectedPage() {
             <div className="flex items-start gap-2">
               <InfoIcon className="w-4 h-4 text-amber-600 mt-0.5" />
               <div className="text-sm text-amber-700 dark:text-amber-300">
-                <p className="font-medium">Security Note:</p>
-                <p className="mt-1">Keep this token secure and never share it publicly. It provides full access to your authenticated resources.</p>
+                <p className="font-medium">Lưu ý bảo mật:</p>
+                <p className="mt-1">Giữ mã này an toàn và không bao giờ chia sẻ công khai. Nó cung cấp quyền truy cập đầy đủ vào tài nguyên được xác thực của bạn.</p>
               </div>
             </div>
           </div>
@@ -126,9 +126,9 @@ export default async function ProtectedPage() {
                 <InfoIcon className="w-5 h-5 text-gray-600" />
               </div>
               <div>
-                <h2 className="text-xl font-semibold">Raw Session Data</h2>
+                <h2 className="text-xl font-semibold">Dữ liệu phiên thô</h2>
                 <p className="text-muted-foreground text-sm mt-1">
-                  Click to expand and view the complete session information
+                  Nhấp để mở rộng và xem thông tin phiên đầy đủ
                 </p>
               </div>
             </div>
@@ -151,7 +151,7 @@ export default async function ProtectedPage() {
                 },
                 expiresAt,
                 tokenType: session.token_type,
-                refreshToken: session.refresh_token ? '[HIDDEN FOR SECURITY]' : null,
+                refreshToken: session.refresh_token ? '[ĐÃ ẨN VÌ LÝ DO BẢO MẬT]' : null,
                 session
               }, null, 2)}
             </pre>
@@ -160,7 +160,7 @@ export default async function ProtectedPage() {
 
         {/* Footer */}
         <div className="mt-12 text-center text-muted-foreground text-sm">
-          <p>This protected page demonstrates successful authentication with Supabase</p>
+          <p>Trang được bảo vệ này thể hiện việc xác thực thành công với Supabase</p>
         </div>
       </div>
     </div>

@@ -105,7 +105,7 @@ export function MeetControls({
       // Optional: Emit socket event for backend logging/analytics only
       emitToggleMedia({ sessionId, type: "audio", isEnabled: nextState });
     } catch (error: unknown) {
-      const message = error instanceof Error ? error.message : "Unable to toggle microphone";
+      const message = error instanceof Error ? error.message : "Không thể bật/tắt microphone";
       toast.error(message);
       // State will sync from actual LiveKit state via TrackStateSync
     }
@@ -126,7 +126,7 @@ export function MeetControls({
       // Optional: Emit socket event for backend logging/analytics only
       emitToggleMedia({ sessionId, type: "video", isEnabled: nextState });
     } catch (error: unknown) {
-      const message = error instanceof Error ? error.message : "Unable to toggle camera";
+      const message = error instanceof Error ? error.message : "Không thể bật/tắt camera";
       toast.error(message);
       // State will sync from actual LiveKit state via TrackStateSync
     }
@@ -135,7 +135,7 @@ export function MeetControls({
   const toggleScreenShare = useCallback(async () => {
     if (!room || !sessionId) return;
     if (!canShareScreen) {
-      toast.error(`Screen is currently being shared by ${activeSharerName}`);
+      toast.error(`Màn hình hiện đang được chia sẻ bởi ${activeSharerName}`);
       return;
     }
     
@@ -167,7 +167,7 @@ export function MeetControls({
         }, 2000);
       }
     } catch (error: unknown) {
-      const message = error instanceof Error ? error.message : "Unable to toggle screen share";
+      const message = error instanceof Error ? error.message : "Không thể bật/tắt chia sẻ màn hình";
       toast.error(message);
       pendingScreenShareRef.current = false;
       // State will sync from actual LiveKit state via TrackStateSync
@@ -205,7 +205,7 @@ export function MeetControls({
             className="h-10 rounded-full"
           >
             {isAudioEnabled ? <Mic className="h-5 w-5" /> : <MicOff className="h-5 w-5" />}
-            <span className="ml-2 hidden sm:inline">{isAudioEnabled ? "Mute" : "Unmute"}</span>
+            <span className="ml-2 hidden sm:inline">{isAudioEnabled ? "Tắt tiếng" : "Bật tiếng"}</span>
           </Button>
 
           <Button
@@ -220,7 +220,7 @@ export function MeetControls({
             ) : (
               <VideoOff className="h-5 w-5" />
             )}
-            <span className="ml-2 hidden sm:inline">{isVideoEnabled ? "Stop video" : "Start video"}</span>
+            <span className="ml-2 hidden sm:inline">{isVideoEnabled ? "Dừng video" : "Bật video"}</span>
           </Button>
 
           <Tooltip>
@@ -239,7 +239,7 @@ export function MeetControls({
                     <MonitorUp className="h-5 w-5" />
                   )}
                   <span className="ml-2 hidden sm:inline">
-                    {isScreenSharing ? "Stop sharing" : "Share screen"}
+                    {isScreenSharing ? "Dừng chia sẻ" : "Chia sẻ màn hình"}
                   </span>
                   {!canShareScreen && (
                      <span className="absolute -top-1 -right-1 flex h-3 w-3">

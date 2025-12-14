@@ -7,9 +7,18 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import Image from "next/image";
-import LoginImage from "@/assets/login.jpg";
+
+// Import all carousel images
+import Carousel1 from "@/assets/carousel/1.png";
+import Carousel2 from "@/assets/carousel/2.png";
+import Carousel3 from "@/assets/carousel/3.png";
+import Carousel4 from "@/assets/carousel/4.png";
+import Carousel5 from "@/assets/carousel/5.png";
+import Carousel6 from "@/assets/carousel/6.png";
+
+const carouselImages = [Carousel1, Carousel2, Carousel3, Carousel4, Carousel5, Carousel6];
 
 export function LoginForm({
   className,
@@ -20,6 +29,12 @@ export function LoginForm({
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
+  
+  // Randomly select an image on component mount
+  const selectedImage = useMemo(() => {
+    const randomIndex = Math.floor(Math.random() * carouselImages.length);
+    return carouselImages[randomIndex];
+  }, []);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -48,7 +63,7 @@ export function LoginForm({
       // Chuyển hướng sau khi login thành công
       router.push("/classes");
     } catch (error: unknown) {
-      setError(error instanceof Error ? error.message : "An error occurred");
+      setError(error instanceof Error ? error.message : "Đã xảy ra lỗi");
     } finally {
       setIsLoading(false);
     }
@@ -60,8 +75,8 @@ export function LoginForm({
         <div className="relative hidden h-full flex-col bg-muted p-10 text-white lg:flex dark:border-r">
           <div className="absolute inset-0 bg-gray-900">
             <Image
-              src={LoginImage}
-              alt="Login"
+              src={selectedImage}
+              alt="Đăng nhập"
               fill
               className="object-cover opacity-60"
               priority
@@ -75,7 +90,7 @@ export function LoginForm({
           <div className="relative z-20 mt-auto">
             <blockquote className="space-y-2">
               <p className="text-lg">
-                &ldquo;Master English with AI-powered learning. Practice speaking, writing, and comprehension at your own pace.&rdquo;
+                &ldquo;Làm chủ tiếng Anh với học tập được hỗ trợ bởi AI. Thực hành nói, viết và hiểu theo tốc độ của bạn.&rdquo;
               </p>
             </blockquote>
           </div>
@@ -84,10 +99,10 @@ export function LoginForm({
           <div className="mx-auto flex w-full flex-col justify-center space-y-6 sm:w-[350px]">
             <div className="flex flex-col space-y-2 text-center">
               <h1 className="text-2xl font-semibold tracking-tight">
-                Welcome back
+                Chào mừng trở lại
               </h1>
               <p className="text-sm text-muted-foreground">
-                Enter your email to sign in to your account
+                Nhập email của bạn để đăng nhập vào tài khoản
               </p>
             </div>
             <div className="grid gap-6">
@@ -115,7 +130,7 @@ export function LoginForm({
                         href="/auth/forgot-password"
                         className="text-sm text-muted-foreground underline-offset-4 hover:underline"
                       >
-                        Forgot password?
+                        Quên mật khẩu?
                       </Link>
                     </div>
                     <Input
@@ -136,7 +151,7 @@ export function LoginForm({
                     {isLoading && (
                       <div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-background border-t-transparent" />
                     )}
-                    Sign In
+                    Đăng nhập
                   </Button>
                 </div>
               </form>
@@ -146,21 +161,21 @@ export function LoginForm({
                 </div>
                 <div className="relative flex justify-center text-xs uppercase">
                   <span className="bg-background px-2 text-muted-foreground">
-                    Or continue with
+                    Hoặc tiếp tục với
                   </span>
                 </div>
               </div>
               <Button variant="outline" type="button" disabled={isLoading}>
-                Google (Coming Soon)
+                Google (Sắp ra mắt)
               </Button>
             </div>
             <p className="px-8 text-center text-sm text-muted-foreground">
-              Don&apos;t have an account?{" "}
+              Chưa có tài khoản?{" "}
               <Link
                 href="/auth/sign-up"
                 className="underline underline-offset-4 hover:text-primary"
               >
-                Sign up
+                Đăng ký
               </Link>
             </p>
           </div>

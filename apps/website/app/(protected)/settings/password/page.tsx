@@ -21,15 +21,15 @@ export default function PasswordSettingsPage() {
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
     if (!newPassword || !confirmPassword) {
-      toast.error("Please fill all required fields");
+      toast.error("Vui lòng điền tất cả các trường bắt buộc");
       return;
     }
     if (newPassword !== confirmPassword) {
-      toast.error("New passwords do not match");
+      toast.error("Mật khẩu mới không khớp");
       return;
     }
     if (newPassword.length < 6) {
-      toast.error("Password should be at least 6 characters");
+      toast.error("Mật khẩu phải có ít nhất 6 ký tự");
       return;
     }
 
@@ -42,7 +42,7 @@ export default function PasswordSettingsPage() {
           error: sessionError,
         } = await supabase.auth.getUser();
         if (sessionError || !user) {
-          throw sessionError || new Error("Not authenticated");
+          throw sessionError || new Error("Chưa được xác thực");
         }
 
         const { error: signInError } = await supabase.auth.signInWithPassword({
@@ -62,14 +62,14 @@ export default function PasswordSettingsPage() {
         throw error;
       }
 
-      toast.success("Password updated successfully");
+      toast.success("Mật khẩu đã được cập nhật thành công");
       setCurrentPassword("");
       setNewPassword("");
       setConfirmPassword("");
       router.push("/settings/profile");
     } catch (error) {
       console.error(error);
-      toast.error("Failed to update password");
+      toast.error("Không thể cập nhật mật khẩu");
     } finally {
       setIsSubmitting(false);
     }
@@ -77,53 +77,53 @@ export default function PasswordSettingsPage() {
 
   return (
     <div className="max-w-xl mx-auto py-10">
-      <h1 className="text-2xl font-semibold tracking-tight mb-6">Change password</h1>
+      <h1 className="text-2xl font-semibold tracking-tight mb-6">Đổi mật khẩu</h1>
 
       <Card>
         <CardHeader>
-          <CardTitle>Password</CardTitle>
+          <CardTitle>Mật khẩu</CardTitle>
         </CardHeader>
         <CardContent>
           <form className="space-y-6" onSubmit={handleSubmit}>
             <div className="space-y-2">
-              <Label htmlFor="currentPassword">Current password</Label>
+              <Label htmlFor="currentPassword">Mật khẩu hiện tại</Label>
               <Input
                 id="currentPassword"
                 type="password"
                 autoComplete="current-password"
                 value={currentPassword}
                 onChange={(e) => setCurrentPassword(e.target.value)}
-                placeholder="Enter your current password"
+                placeholder="Nhập mật khẩu hiện tại"
               />
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="newPassword">New password</Label>
+              <Label htmlFor="newPassword">Mật khẩu mới</Label>
               <Input
                 id="newPassword"
                 type="password"
                 autoComplete="new-password"
                 value={newPassword}
                 onChange={(e) => setNewPassword(e.target.value)}
-                placeholder="Enter a strong password"
+                placeholder="Nhập mật khẩu mạnh"
               />
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="confirmPassword">Confirm new password</Label>
+              <Label htmlFor="confirmPassword">Xác nhận mật khẩu mới</Label>
               <Input
                 id="confirmPassword"
                 type="password"
                 autoComplete="new-password"
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
-                placeholder="Re-enter new password"
+                placeholder="Nhập lại mật khẩu mới"
               />
             </div>
 
             <div className="flex justify-end">
               <Button type="submit" disabled={isSubmitting}>
-                {isSubmitting ? "Updating..." : "Update password"}
+                {isSubmitting ? "Đang cập nhật..." : "Cập nhật mật khẩu"}
               </Button>
             </div>
           </form>

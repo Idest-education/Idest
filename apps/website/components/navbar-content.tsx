@@ -10,10 +10,10 @@ import Image from "next/image";
 import Logo from "@/assets/logo.png";
 
 const navItems = [
-  { href: "/classes", label: "Classes" },
-  { href: "/sessions", label: "Sessions" },
-  { href: "/assignment", label: "Assignments" },
-  { href: "/service-status", label: "Service Status" },
+  { href: "/classes", label: "Lớp học" },
+  { href: "/sessions", label: "Buổi học" },
+  { href: "/assignment", label: "Bài tập" },
+  { href: "/service-status", label: "Trạng thái dịch vụ" },
 ];
 
 export default function Navbar() {
@@ -30,7 +30,7 @@ export default function Navbar() {
           <button
             type="button"
             onClick={toggleMenu}
-            aria-label={isMenuOpen ? "Close navigation menu" : "Open navigation menu"}
+            aria-label={isMenuOpen ? "Đóng menu điều hướng" : "Mở menu điều hướng"}
             aria-expanded={isMenuOpen}
             className="lg:hidden p-2 rounded-md text-gray-700 hover:bg-gray-100 transition-colors focus:outline-none focus:ring-2 focus:ring-gray-200"
           >

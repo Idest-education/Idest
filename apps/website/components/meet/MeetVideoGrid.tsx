@@ -95,7 +95,7 @@ export function MeetVideoGrid() {
               <MeetParticipantTile />
             </GridLayout>
             <div className="pointer-events-none absolute bottom-3 left-3 rounded-full bg-black/70 px-3 py-1.5 text-xs font-medium text-white backdrop-blur-sm">
-              {screenShareTrack.participant?.name || "Screen share"}
+              {screenShareTrack.participant?.name || "Chia sẻ màn hình"}
             </div>
           </div>
 
@@ -184,7 +184,7 @@ export function MeetVideoGrid() {
               </div>
             )
           ) : (
-            renderEmptyState("Waiting for participants to join...")
+            renderEmptyState("Đang chờ người tham gia tham gia...")
           )}
         </div>
       )}

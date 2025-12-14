@@ -98,7 +98,7 @@ export default function SidebarListening({
                         >
                             <div className="flex items-center justify-between mb-3">
                                 <p className="font-semibold text-slate-800 text-sm">
-                                    Recording {secIdx + 1}
+                                    Bài nghe {secIdx + 1}
                                 </p>
 
                                 <span className="text-xs font-medium text-slate-500 bg-slate-100 px-2 py-1 rounded">

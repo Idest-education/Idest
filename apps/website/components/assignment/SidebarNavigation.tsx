@@ -130,7 +130,7 @@ export default function SidebarNavigation({
                         <div key={p.passageIndex} className="bg-white rounded-lg p-4 border border-slate-200 shadow-sm">
                             <div className="flex items-center justify-between mb-3">
                                 <p className="font-semibold text-slate-800 text-sm">
-                                    Passage {p.passageIndex + 1}
+                                    Bài đọc {p.passageIndex + 1}
                                 </p>
                                 <span className="text-xs font-medium text-slate-500 bg-slate-100 px-2 py-1 rounded">
                                     {passageAnswered}/{passageTotal}

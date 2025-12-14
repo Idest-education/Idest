@@ -22,7 +22,7 @@ interface UpdateSessionModalProps {
 }
 
 const getErrorMessage = (error: unknown) =>
-  error instanceof Error ? error.message : "An error occurred";
+  error instanceof Error ? error.message : "Đã xảy ra lỗi";
 
 export default function UpdateSessionModal({
   open,
@@ -79,7 +79,7 @@ export default function UpdateSessionModal({
         end_time: endTime,
         metadata: {
           ...session.metadata,
-          topic: formData.topic || "Untitled session",
+          topic: formData.topic || "Buổi học chưa có tên",
         },
       };
 
@@ -89,7 +89,7 @@ export default function UpdateSessionModal({
         onUpdated();
         onClose();
       } else {
-        setError(res.message || "Failed to update session");
+        setError(res.message || "Không thể cập nhật buổi học");
       }
     } catch (err) {
       setError(getErrorMessage(err));
@@ -122,33 +122,33 @@ export default function UpdateSessionModal({
     <Dialog open={open} onOpenChange={handleClose}>
       <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>
-          <DialogTitle>Update Session</DialogTitle>
+          <DialogTitle>Cập nhật buổi học</DialogTitle>
         </DialogHeader>
 
         <form onSubmit={handleSubmit}>
           <div className="space-y-4 py-4">
             <div>
-              <Label className="text-sm text-gray-600">Class</Label>
+              <Label className="text-sm text-gray-600">Lớp học</Label>
               <p className="text-sm font-medium text-gray-900 mt-1">
                 {session.class.name}
               </p>
             </div>
 
             <div>
-              <Label htmlFor="topic">Topic *</Label>
+              <Label htmlFor="topic">Chủ đề *</Label>
               <Input
                 id="topic"
                 value={formData.topic}
                 onChange={(e) =>
                   setFormData({ ...formData, topic: e.target.value })
                 }
-                placeholder="e.g., IELTS Writing Task 1"
+                placeholder="ví dụ: IELTS Writing Task 1"
                 required
               />
             </div>
 
             <div>
-              <Label htmlFor="start_time">Start Time (Your Local Time) *</Label>
+              <Label htmlFor="start_time">Giờ bắt đầu (Giờ địa phương của bạn) *</Label>
               <Input
                 id="start_time"
                 type="datetime-local"
@@ -162,7 +162,7 @@ export default function UpdateSessionModal({
             </div>
 
             <div>
-              <Label htmlFor="end_time">End Time (Your Local Time) - Optional</Label>
+              <Label htmlFor="end_time">Giờ kết thúc (Giờ địa phương của bạn) - Tùy chọn</Label>
               <Input
                 id="end_time"
                 type="datetime-local"
@@ -188,10 +188,10 @@ export default function UpdateSessionModal({
               onClick={handleClose}
               disabled={loading}
             >
-              Cancel
+              Hủy
             </Button>
             <Button type="submit" disabled={loading}>
-              {loading ? "Updating..." : "Update Session"}
+              {loading ? "Đang cập nhật..." : "Cập nhật buổi học"}
             </Button>
           </DialogFooter>
         </form>

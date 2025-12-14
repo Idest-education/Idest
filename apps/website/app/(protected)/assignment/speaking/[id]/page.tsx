@@ -39,7 +39,7 @@ export default function SpeakingAssignmentPage(props: Props) {
 
     async function handleSubmit() {
         if (!assignment || !audio1 || !audio2 || !audio3) {
-            alert("Please upload all recordings.");
+            alert("Vui lòng tải lên tất cả các bản ghi âm.");
             return;
         }
 
@@ -68,7 +68,7 @@ export default function SpeakingAssignmentPage(props: Props) {
         return <LoadingScreen />;
     }
 
-    if (!assignment) return <p className="p-6">Not found</p>;
+    if (!assignment) return <p className="p-6">Không tìm thấy</p>;
 
     const part1 = assignment.parts.find(p => p.part_number === 1);
     const part2 = assignment.parts.find(p => p.part_number === 2);
@@ -91,7 +91,7 @@ export default function SpeakingAssignmentPage(props: Props) {
                                 }`}
                             onClick={() => setActivePart(1)}
                         >
-                            Part 1
+                            Phần 1
                         </button>
 
                         <button
@@ -99,7 +99,7 @@ export default function SpeakingAssignmentPage(props: Props) {
                                 }`}
                             onClick={() => setActivePart(2)}
                         >
-                            Part 2 + 3
+                            Phần 2 + 3
                         </button>
                     </div>
 
@@ -107,7 +107,7 @@ export default function SpeakingAssignmentPage(props: Props) {
 
                     {activePart === 1 && part1 && (
                         <div>
-                            <h2 className="text-lg font-semibold mb-3">Part 1 Questions</h2>
+                            <h2 className="text-lg font-semibold mb-3">Câu hỏi phần 1</h2>
                             {part1.questions.map((q) => (
                                 <p key={q.id} className="mb-3 text-gray-800">
                                     • {q.prompt}
@@ -118,14 +118,14 @@ export default function SpeakingAssignmentPage(props: Props) {
 
                     {activePart === 2 && (
                         <div>
-                            <h2 className="text-lg font-semibold mb-3">Part 2</h2>
+                            <h2 className="text-lg font-semibold mb-3">Phần 2</h2>
                             {part2?.questions.map((q) => (
                                 <p key={q.id} className="mb-4 text-gray-800">
                                     • {q.prompt}
                                 </p>
                             ))}
 
-                            <h2 className="text-lg font-semibold mt-6 mb-3">Part 3</h2>
+                            <h2 className="text-lg font-semibold mt-6 mb-3">Phần 3</h2>
                             {part3?.questions.map((q) => (
                                 <p key={q.id} className="mb-4 text-gray-800">
                                     • {q.prompt}
@@ -137,7 +137,7 @@ export default function SpeakingAssignmentPage(props: Props) {
 
                 {/* MIDDLE – UPLOAD RECORDINGS */}
                 <div className="w-[45%] flex flex-col border border-gray-300 bg-white/80 backdrop-blur-sm shadow-sm rounded-r-2xl transition-all duration-300 hover:rounded-r-3x">
-                    <h2 className="text-xl font-semibold p-4">Upload Your Speaking Audio</h2>
+                    <h2 className="text-xl font-semibold p-4">Tải lên bản ghi âm nói của bạn</h2>
 
                     <div className="flex-1 px-6 overflow-y-auto">
                         <div className="space-y-6">
@@ -149,7 +149,7 @@ export default function SpeakingAssignmentPage(props: Props) {
                                         <div className="w-10 h-10 bg-indigo-600 rounded-lg flex items-center justify-center text-white font-bold">
                                             1
                                         </div>
-                                        <label className="text-lg font-bold text-gray-800">Part 1 Audio</label>
+                                        <label className="text-lg font-bold text-gray-800">Bản ghi âm phần 1</label>
                                     </div>
 
                                     <div className="relative">
@@ -169,9 +169,9 @@ export default function SpeakingAssignmentPage(props: Props) {
                                             </svg>
                                             <div className="text-center">
                                                 <p className="text-indigo-600 font-semibold group-hover:text-indigo-700">
-                                                    {audio1 ? audio1.name : "Click to upload audio file"}
+                                                    {audio1 ? audio1.name : "Nhấp để tải lên tệp âm thanh"}
                                                 </p>
-                                                <p className="text-sm text-gray-500 mt-1">MP3, WAV, or other audio formats</p>
+                                                <p className="text-sm text-gray-500 mt-1">MP3, WAV hoặc các định dạng âm thanh khác</p>
                                             </div>
                                         </label>
                                     </div>
@@ -204,7 +204,7 @@ export default function SpeakingAssignmentPage(props: Props) {
                                             <div className="w-10 h-10 bg-purple-600 rounded-lg flex items-center justify-center text-white font-bold">
                                                 2
                                             </div>
-                                            <label className="text-lg font-bold text-gray-800">Part 2 Audio</label>
+                                            <label className="text-lg font-bold text-gray-800">Bản ghi âm phần 2</label>
                                         </div>
 
                                         <div className="relative">
@@ -224,9 +224,9 @@ export default function SpeakingAssignmentPage(props: Props) {
                                                 </svg>
                                                 <div className="text-center">
                                                     <p className="text-purple-600 font-semibold group-hover:text-purple-700">
-                                                        {audio2 ? audio2.name : "Click to upload audio file"}
+                                                        {audio2 ? audio2.name : "Nhấp để tải lên tệp âm thanh"}
                                                     </p>
-                                                    <p className="text-sm text-gray-500 mt-1">MP3, WAV, or other audio formats</p>
+                                                    <p className="text-sm text-gray-500 mt-1">MP3, WAV hoặc các định dạng âm thanh khác</p>
                                                 </div>
                                             </label>
                                         </div>
@@ -244,7 +244,7 @@ export default function SpeakingAssignmentPage(props: Props) {
                                                     onClick={() => setAudio2(null)}
                                                     className="text-red-500 hover:text-red-700 font-medium text-sm"
                                                 >
-                                                    Remove
+                                                    Xóa
                                                 </button>
                                             </div>
                                         )}
@@ -255,7 +255,7 @@ export default function SpeakingAssignmentPage(props: Props) {
                                             <div className="w-10 h-10 bg-teal-600 rounded-lg flex items-center justify-center text-white font-bold">
                                                 3
                                             </div>
-                                            <label className="text-lg font-bold text-gray-800">Part 3 Audio</label>
+                                            <label className="text-lg font-bold text-gray-800">Bản ghi âm phần 3</label>
                                         </div>
 
                                         <div className="relative">
@@ -275,9 +275,9 @@ export default function SpeakingAssignmentPage(props: Props) {
                                                 </svg>
                                                 <div className="text-center">
                                                     <p className="text-teal-600 font-semibold group-hover:text-teal-700">
-                                                        {audio3 ? audio3.name : "Click to upload audio file"}
+                                                        {audio3 ? audio3.name : "Nhấp để tải lên tệp âm thanh"}
                                                     </p>
-                                                    <p className="text-sm text-gray-500 mt-1">MP3, WAV, or other audio formats</p>
+                                                    <p className="text-sm text-gray-500 mt-1">MP3, WAV hoặc các định dạng âm thanh khác</p>
                                                 </div>
                                             </label>
                                         </div>
@@ -295,7 +295,7 @@ export default function SpeakingAssignmentPage(props: Props) {
                                                     onClick={() => setAudio3(null)}
                                                     className="text-red-500 hover:text-red-700 font-medium text-sm"
                                                 >
-                                                    Remove
+                                                    Xóa
                                                 </button>
                                             </div>
                                         )}

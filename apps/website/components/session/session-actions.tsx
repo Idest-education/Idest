@@ -57,7 +57,7 @@ export default function SessionActions({
             variant="outline"
             size="sm"
           >
-            End Session
+            Kết thúc buổi học
           </Button>
         )}
         <Button
@@ -66,7 +66,7 @@ export default function SessionActions({
           size="sm"
           className="text-red-600 hover:text-red-700 hover:bg-red-50"
         >
-          Delete
+          Xóa
         </Button>
       </div>
 
@@ -74,10 +74,10 @@ export default function SessionActions({
       <Dialog open={showEndDialog} onOpenChange={setShowEndDialog}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>End Session</DialogTitle>
+            <DialogTitle>Kết thúc buổi học</DialogTitle>
             <DialogDescription>
-              Are you sure you want to end this session? This will set the end
-              time to now and mark the session as completed.
+              Bạn có chắc chắn muốn kết thúc buổi học này? Điều này sẽ đặt thời gian kết thúc
+              là bây giờ và đánh dấu buổi học là đã hoàn thành.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
@@ -86,10 +86,10 @@ export default function SessionActions({
               onClick={() => setShowEndDialog(false)}
               disabled={loading}
             >
-              Cancel
+              Hủy
             </Button>
             <Button onClick={handleEnd} disabled={loading}>
-              {loading ? "Ending..." : "End Session"}
+              {loading ? "Đang kết thúc..." : "Kết thúc buổi học"}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -99,10 +99,10 @@ export default function SessionActions({
       <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Delete Session</DialogTitle>
+            <DialogTitle>Xóa buổi học</DialogTitle>
             <DialogDescription>
-              Are you sure you want to delete this session? This action cannot
-              be undone.
+              Bạn có chắc chắn muốn xóa buổi học này? Hành động này không thể
+              hoàn tác.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
@@ -111,14 +111,14 @@ export default function SessionActions({
               onClick={() => setShowDeleteDialog(false)}
               disabled={loading}
             >
-              Cancel
+              Hủy
             </Button>
             <Button
               onClick={handleDelete}
               disabled={loading}
               className="bg-red-600 hover:bg-red-700 text-white"
             >
-              {loading ? "Deleting..." : "Delete Session"}
+              {loading ? "Đang xóa..." : "Xóa buổi học"}
             </Button>
           </DialogFooter>
         </DialogContent>

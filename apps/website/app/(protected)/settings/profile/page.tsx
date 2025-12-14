@@ -47,7 +47,7 @@ export default function ProfileSettingsPage() {
         setStudentProfile(profile.studentProfile ?? null);
       } catch (error) {
         console.error(error);
-        toast.error("Failed to load profile");
+        toast.error("Không thể tải hồ sơ");
       } finally {
         setIsLoading(false);
       }
@@ -63,10 +63,10 @@ export default function ProfileSettingsPage() {
       const updated = await updateUserProfile(user.id, { fullName: name });
       setUser(updated);
       setIsEditingProfile(false);
-      toast.success("Profile updated");
+      toast.success("Hồ sơ đã được cập nhật");
     } catch (error) {
       console.error(error);
-      toast.error("Failed to update profile");
+      toast.error("Không thể cập nhật hồ sơ");
     } finally {
       setIsSaving(false);
     }
@@ -98,10 +98,10 @@ export default function ProfileSettingsPage() {
 
       const updated = await updateUserProfile(user.id, { avatar: publicUrl });
       setUser(updated);
-      toast.success("Avatar updated");
+      toast.success("Ảnh đại diện đã được cập nhật");
     } catch (error) {
       console.error(error);
-      toast.error("Failed to upload avatar");
+      toast.error("Không thể tải ảnh đại diện");
     } finally {
       setIsUploading(false);
       event.target.value = "";
@@ -109,18 +109,18 @@ export default function ProfileSettingsPage() {
   };
 
   const handleDeleteAccount = async () => {
-    if (!window.confirm("Are you sure you want to delete your account? This action cannot be undone.")) {
+    if (!window.confirm("Bạn có chắc chắn muốn xóa tài khoản? Hành động này không thể hoàn tác.")) {
       return;
     }
     try {
       setIsDeleting(true);
       await deleteOwnAccount();
       await supabase.auth.signOut();
-      toast.success("Account deleted");
+      toast.success("Tài khoản đã được xóa");
       router.push("/auth/login");
     } catch (error) {
       console.error(error);
-      toast.error("Failed to delete account");
+      toast.error("Không thể xóa tài khoản");
     } finally {
       setIsDeleting(false);
     }
@@ -128,7 +128,7 @@ export default function ProfileSettingsPage() {
 
   const handleCreateStudentProfile = async () => {
     if (!studentForm.currentLevel || !studentForm.targetScore) {
-      toast.error("Please fill in target score and current level");
+      toast.error("Vui lòng điền điểm mục tiêu và trình độ hiện tại");
       return;
     }
 
@@ -136,10 +136,10 @@ export default function ProfileSettingsPage() {
       setIsCreatingStudent(true);
       const profile = await createStudentProfile(studentForm);
       setStudentProfile(profile);
-      toast.success("Student profile created");
+      toast.success("Hồ sơ học sinh đã được tạo");
     } catch (error) {
       console.error(error);
-      toast.error("Failed to create student profile");
+      toast.error("Không thể tạo hồ sơ học sinh");
     } finally {
       setIsCreatingStudent(false);
     }
@@ -148,7 +148,7 @@ export default function ProfileSettingsPage() {
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-16">
-        <span className="text-sm text-gray-500">Loading profile...</span>
+        <span className="text-sm text-gray-500">Đang tải hồ sơ...</span>
       </div>
     );
   }
@@ -156,19 +156,19 @@ export default function ProfileSettingsPage() {
   if (!user) {
     return (
       <div className="flex flex-col items-center justify-center py-16 gap-4">
-        <p className="text-gray-700 text-sm">No user data available.</p>
-        <Button onClick={() => router.push("/auth/login")}>Go to login</Button>
+        <p className="text-gray-700 text-sm">Không có dữ liệu người dùng.</p>
+        <Button onClick={() => router.push("/auth/login")}>Đi đến đăng nhập</Button>
       </div>
     );
   }
 
   return (
     <div className="max-w-3xl mx-auto py-10 space-y-8">
-      <h1 className="text-2xl font-semibold tracking-tight">Profile settings</h1>
+      <h1 className="text-2xl font-semibold tracking-tight">Cài đặt hồ sơ</h1>
 
       <Card>
         <CardHeader>
-          <CardTitle>Profile</CardTitle>
+          <CardTitle>Hồ sơ</CardTitle>
         </CardHeader>
         <CardContent className="space-y-6">
           <div className="flex items-center gap-6 border-b border-gray-200 pb-6">
@@ -194,7 +194,7 @@ export default function ProfileSettingsPage() {
               )}
             </div>
             <div className="space-y-2">
-              <Label htmlFor="avatar">Avatar</Label>
+              <Label htmlFor="avatar">Ảnh đại diện</Label>
               <Input
                 id="avatar"
                 type="file"
@@ -207,29 +207,29 @@ export default function ProfileSettingsPage() {
 
           <div className="grid gap-4 md:grid-cols-2 pt-6">
             <div className="space-y-2">
-              <Label htmlFor="name">Full name</Label>
+              <Label htmlFor="name">Họ và tên</Label>
               <Input
                 id="name"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                placeholder="Your name"
+                placeholder="Tên của bạn"
                 disabled={!isEditingProfile}
               />
             </div>
             <div className="space-y-2">
-              <Label>Email</Label>
+              <Label>Thư điện tử</Label>
               <Input value={user.email} disabled />
             </div>
           </div>
 
           <div className="grid gap-4 md:grid-cols-2">
             <div className="space-y-2">
-              <Label>Role</Label>
+              <Label>Vai trò</Label>
               <Input value={user.role} disabled />
             </div>
             <div className="space-y-2">
-              <Label>Status</Label>
-              <Input value={user.isActive ? "Active" : "Inactive"} disabled />
+              <Label>Trạng thái</Label>
+              <Input value={user.isActive ? "Hoạt động" : "Không hoạt động"} disabled />
             </div>
           </div>
 
@@ -247,10 +247,10 @@ export default function ProfileSettingsPage() {
                   }}
                   disabled={isSaving}
                 >
-                  Cancel
+                  Hủy
                 </Button>
                 <Button onClick={handleSaveProfile} disabled={isSaving}>
-                  {isSaving ? "Saving..." : "Save changes"}
+                  {isSaving ? "Đang lưu..." : "Lưu thay đổi"}
                 </Button>
               </div>
             ) : (
@@ -259,7 +259,7 @@ export default function ProfileSettingsPage() {
                 type="button"
                 onClick={() => setIsEditingProfile(true)}
               >
-                Edit profile
+                Chỉnh sửa hồ sơ
               </Button>
             )}
           </div>
@@ -269,17 +269,17 @@ export default function ProfileSettingsPage() {
       {user.role === "STUDENT" && (
         <Card>
           <CardHeader>
-            <CardTitle>Student profile</CardTitle>
+            <CardTitle>Hồ sơ học sinh</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             {studentProfile && (
               <div className="grid gap-4 md:grid-cols-2">
                 <div className="space-y-1 text-sm">
-                  <p className="font-medium">Target score</p>
+                  <p className="font-medium">Điểm mục tiêu</p>
                   <p>{studentProfile.targetScore}</p>
                 </div>
                 <div className="space-y-1 text-sm">
-                  <p className="font-medium">Current level</p>
+                  <p className="font-medium">Trình độ hiện tại</p>
                   <p>{studentProfile.currentLevel}</p>
                 </div>
               </div>
@@ -287,7 +287,7 @@ export default function ProfileSettingsPage() {
 
             <div className="grid gap-4 md:grid-cols-2">
               <div className="space-y-2">
-                <Label htmlFor="targetScore">Target score</Label>
+                <Label htmlFor="targetScore">Điểm mục tiêu</Label>
                 <Input
                   id="targetScore"
                   type="number"
@@ -298,11 +298,11 @@ export default function ProfileSettingsPage() {
                       targetScore: Number(e.target.value),
                     }))
                   }
-                  placeholder="e.g. 7.5"
+                  placeholder="ví dụ: 7.5"
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="currentLevel">Current level</Label>
+                <Label htmlFor="currentLevel">Trình độ hiện tại</Label>
                 <Input
                   id="currentLevel"
                   value={studentForm.currentLevel}
@@ -312,14 +312,14 @@ export default function ProfileSettingsPage() {
                       currentLevel: e.target.value,
                     }))
                   }
-                  placeholder="e.g. B2"
+                  placeholder="ví dụ: B2"
                 />
               </div>
             </div>
 
             <div className="flex justify-end">
               <Button onClick={handleCreateStudentProfile} disabled={isCreatingStudent}>
-                {isCreatingStudent ? "Creating..." : "Create student profile"}
+                {isCreatingStudent ? "Đang tạo..." : "Tạo hồ sơ học sinh"}
               </Button>
             </div>
           </CardContent>
@@ -328,19 +328,19 @@ export default function ProfileSettingsPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-red-600">Danger zone</CardTitle>
+          <CardTitle className="text-red-600">Khu vực nguy hiểm</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           <p className="text-sm text-gray-600">
-            Deleting your account will log you out and deactivate your profile. This action
-            cannot be undone.
+            Xóa tài khoản của bạn sẽ đăng xuất và vô hiệu hóa hồ sơ của bạn. Hành động này
+            không thể hoàn tác.
           </p>
           <Button
             variant="destructive"
             onClick={handleDeleteAccount}
             disabled={isDeleting}
           >
-            {isDeleting ? "Deleting..." : "Delete my account"}
+            {isDeleting ? "Đang xóa..." : "Xóa tài khoản của tôi"}
           </Button>
         </CardContent>
       </Card>

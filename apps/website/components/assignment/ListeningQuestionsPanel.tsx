@@ -47,7 +47,7 @@ export default function ListeningQuestionsPanel({
                             {/* LEFT: QUESTION TEXT */}
                             <div className="col-span-7">
                                 <p className="font-semibold mb-1 text-blue-600">
-                                    Question {global.globalIndex}
+                                    Câu hỏi {global.globalIndex}
                                 </p>
 
                                 <p className="font-medium mb-2">{q.prompt}</p>

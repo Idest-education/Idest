@@ -10,7 +10,7 @@ import { CheckCircle2, ArrowRight, Loader2 } from "lucide-react";
 import Link from "next/link";
 
 function formatVnd(price?: number | null, currency?: string) {
-  if (price == null) return "Free";
+  if (price == null) return "Miễn phí";
   const formatter = new Intl.NumberFormat("vi-VN");
   const cur = (currency || "VND").toUpperCase();
   return `${formatter.format(price)} ${cur}`;
@@ -32,7 +32,7 @@ function CheckoutSuccessContent() {
   useEffect(() => {
     const verifyEnrollment = async () => {
       if (!classId || !sessionId) {
-        setError("Missing required parameters");
+        setError("Thiếu các tham số bắt buộc");
         setLoading(false);
         return;
       }
@@ -51,7 +51,7 @@ function CheckoutSuccessContent() {
         }
         } catch (err: unknown) {
           console.error("Failed to verify enrollment:", err);
-          let errorMessage = "Payment succeeded but enrollment failed. Please contact support.";
+          let errorMessage = "Thanh toán thành công nhưng ghi danh thất bại. Vui lòng liên hệ hỗ trợ.";
           
           if (err && typeof err === 'object' && 'response' in err) {
             const axiosError = err as { response?: { data?: { message?: string }; status?: number } };
@@ -80,7 +80,7 @@ function CheckoutSuccessContent() {
           <CardContent className="pt-6">
             <div className="flex flex-col items-center gap-4">
               <Loader2 className="w-8 h-8 animate-spin text-gray-600" />
-              <p className="text-gray-600">Processing your enrollment...</p>
+              <p className="text-gray-600">Đang xử lý ghi danh của bạn...</p>
             </div>
           </CardContent>
         </Card>
@@ -93,13 +93,13 @@ function CheckoutSuccessContent() {
       <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
         <Card className="w-full max-w-md">
           <CardHeader>
-            <CardTitle className="text-red-600">Enrollment Failed</CardTitle>
+            <CardTitle className="text-red-600">Ghi danh thất bại</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <p className="text-gray-700">{error}</p>
             {sessionId && (
               <p className="text-sm text-gray-500">
-                Session ID: {sessionId}
+                Mã phiên: {sessionId}
               </p>
             )}
             <div className="flex gap-3">
@@ -108,13 +108,13 @@ function CheckoutSuccessContent() {
                 onClick={() => router.push("/")}
                 className="flex-1"
               >
-                Go Home
+                Về trang chủ
               </Button>
               <Button
                 onClick={() => router.push(`/classes/${classId}`)}
                 className="flex-1"
               >
-                Try Again
+                Thử lại
               </Button>
             </div>
           </CardContent>
@@ -133,28 +133,28 @@ function CheckoutSuccessContent() {
             </div>
           </div>
           <CardTitle className="text-2xl text-gray-900">
-            Payment Successful!
+            Thanh toán thành công!
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-6">
           {enrolled && (
             <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-4">
               <p className="text-emerald-800 font-medium text-center">
-                You have been successfully enrolled in the class!
+                Bạn đã được ghi danh thành công vào lớp học!
               </p>
             </div>
           )}
 
           {className && (
             <div className="space-y-2">
-              <p className="text-sm text-gray-600">Class Name</p>
+              <p className="text-sm text-gray-600">Tên lớp học</p>
               <p className="font-semibold text-gray-900">{className}</p>
             </div>
           )}
 
           {price && (
             <div className="space-y-2">
-              <p className="text-sm text-gray-600">Amount Paid</p>
+              <p className="text-sm text-gray-600">Số tiền đã thanh toán</p>
               <p className="font-semibold text-gray-900">
                 {formatVnd(Number(price), currency || undefined)}
               </p>
@@ -167,12 +167,12 @@ function CheckoutSuccessContent() {
               onClick={() => router.push("/")}
               className="flex-1"
             >
-              Browse Classes
+              Duyệt lớp học
             </Button>
             {classId && (
               <Link href={`/classes/${classId}`} className="flex-1">
                 <Button className="w-full">
-                  Go to Class
+                  Đi đến lớp
                   <ArrowRight className="w-4 h-4 ml-2" />
                 </Button>
               </Link>
@@ -193,7 +193,7 @@ export default function CheckoutSuccessPage() {
             <CardContent className="pt-6">
               <div className="flex flex-col items-center gap-4">
                 <Loader2 className="w-8 h-8 animate-spin text-gray-600" />
-                <p className="text-gray-600">Loading...</p>
+                <p className="text-gray-600">Đang tải...</p>
               </div>
             </CardContent>
           </Card>

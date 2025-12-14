@@ -85,7 +85,7 @@ function MeetParticipantTileBody({ trackRef }: { trackRef: TrackReferenceOrPlace
   const shouldShowPlaceholder = (trackState.isCameraSource && !trackState.isVideoActive) || !isTrackRef;
 
   // Get participant name
-  const participantName = participant?.name || participant?.identity || "Loading...";
+  const participantName = participant?.name || participant?.identity || "Đang tải...";
 
   return (
     <div className="relative h-full w-full" style={{ width: "100%", height: "100%" }}>

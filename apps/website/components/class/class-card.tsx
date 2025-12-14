@@ -65,7 +65,7 @@ export default function ClassCard({ cls }: { cls: ClassData }) {
               <Users className="w-4 h-4 text-gray-700" />
             </div>
             <div>
-              <p className="text-xs text-gray-500">Members</p>
+              <p className="text-xs text-gray-500">Thành viên</p>
               <p className="text-sm font-semibold text-gray-900">{cls._count.members}</p>
             </div>
           </div>
@@ -75,7 +75,7 @@ export default function ClassCard({ cls }: { cls: ClassData }) {
               <BookOpen className="w-4 h-4 text-gray-700" />
             </div>
             <div>
-              <p className="text-xs text-gray-500">Sessions</p>
+              <p className="text-xs text-gray-500">Buổi học</p>
               <p className="text-sm font-semibold text-gray-900">{cls._count.sessions}</p>
             </div>
           </div>
