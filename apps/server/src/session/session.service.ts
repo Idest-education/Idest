@@ -597,17 +597,25 @@ export class SessionService {
   ): Promise<boolean> {
     const classData = await this.prisma.class.findUnique({
       where: { id: classId },
-      include: {
-        teachers: true,
+      select: {
+        created_by: true,
       },
     });
 
     if (!classData) return false;
 
-    return (
-      classData.created_by === userId ||
-      classData.teachers.some((t) => t.teacher_id === userId)
-    );
+    // Check if user is the class creator
+    if (classData.created_by === userId) return true;
+
+    // Check if user is a teacher in the class
+    const isTeacher = await this.prisma.classTeacher.findFirst({
+      where: {
+        class_id: classId,
+        teacher_id: userId,
+      },
+    });
+
+    return !!isTeacher;
   }
 
   /**
