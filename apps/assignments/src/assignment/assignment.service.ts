@@ -14,6 +14,7 @@ import { SpeakingService } from './speaking/speaking.service';
 import { PaginationDto } from './dto/pagination.dto';
 
 type Skill = 'reading' | 'listening' | 'writing' | 'speaking';
+type SubmissionStatus = 'pending' | 'graded' | 'failed';
 
 export interface MySubmissionListItem {
   submissionId: string;
@@ -22,6 +23,7 @@ export interface MySubmissionListItem {
   createdAt: Date;
   score?: number;
   assignmentTitle?: string;
+  status?: SubmissionStatus;
 }
 
 export interface Paginated<T> {
@@ -223,6 +225,7 @@ export class AssignmentService {
         skill: s.skill as Skill,
         createdAt: new Date(s.created_at),
         score: typeof s.score === 'number' ? s.score : undefined,
+        status: 'graded' as const,
       })),
       ...writingDocs.map((s: any) => ({
         submissionId: String(s.id ?? s._id),
@@ -230,6 +233,7 @@ export class AssignmentService {
         skill: 'writing' as const,
         createdAt: new Date(s.created_at),
         score: typeof s.score === 'number' ? s.score : undefined,
+        status: (s.status as SubmissionStatus) ?? (typeof s.score === 'number' ? 'graded' : 'pending'),
       })),
       ...speakingDocs.map((s: any) => ({
         submissionId: String(s.id ?? s._id),
@@ -237,6 +241,7 @@ export class AssignmentService {
         skill: 'speaking' as const,
         createdAt: new Date(s.created_at),
         score: typeof s.score === 'number' ? s.score : undefined,
+        status: (s.status as SubmissionStatus) ?? (typeof s.score === 'number' ? 'graded' : 'pending'),
       })),
     ];
 
