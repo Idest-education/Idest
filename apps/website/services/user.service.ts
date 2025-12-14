@@ -79,4 +79,23 @@ export async function createStudentProfile(
   return response.data;
 }
 
+export interface SearchUserSummary {
+  id: string;
+  full_name: string;
+  email: string;
+  avatar_url?: string | null;
+  role: "ADMIN" | "STUDENT" | "TEACHER" | string;
+}
+
+export async function searchUsers(query: string): Promise<SearchUserSummary[]> {
+  const q = query.trim();
+  if (!q) return [];
+  const res = await http.get<{ data?: any; users?: SearchUserSummary[] }>(
+    `/user/search`,
+    { params: { q } },
+  );
+  // backend wraps in { users, total }
+  return (res.data as any)?.users ?? (res.data as any)?.data?.users ?? [];
+}
+
 

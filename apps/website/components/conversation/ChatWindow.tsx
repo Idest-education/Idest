@@ -1,10 +1,16 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { conversationService } from "@/services/conversation.service";
-import { MessageDto, TypingStatusDto, MessageReadStatus } from "@/types/conversation";
+import type { AttachmentDto, MessageDto } from "@/types/conversation";
 import MessageBubble from "./MessageBubble";
+import DateSeparator from "./DateSeparator";
+import TypingIndicator from "./TypingIndicator";
+import MessageSearch from "./MessageSearch";
 import { socket, connectSocket } from "@/lib/socket";
+import { createClient } from "@/lib/supabase/client";
+import { Paperclip, ArrowDown, Loader2, Search } from "lucide-react";
+import { groupMessages } from "@/lib/utils/message-grouping";
 
 interface ChatWindowProps {
     conversationId: string;
@@ -15,19 +21,92 @@ export default function ChatWindow({ conversationId }: ChatWindowProps) {
     const [messages, setMessages] = useState<MessageDto[]>([]);
     const [content, setContent] = useState("");
     const [loading, setLoading] = useState(true);
-    const [typingUsers, setTypingUsers] = useState<TypingStatusDto[]>([]);
-    const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
-    const [editContent, setEditContent] = useState("");
+    const [loadingOlder, setLoadingOlder] = useState(false);
+    const [hasMore, setHasMore] = useState(false);
+    const [replyTo, setReplyTo] = useState<MessageDto | null>(null);
+
+    const [attachments, setAttachments] = useState<AttachmentDto[]>([]);
+    const [uploading, setUploading] = useState(false);
+    const fileInputRef = useRef<HTMLInputElement | null>(null);
+
+    const scrollContainerRef = useRef<HTMLDivElement | null>(null);
     const endOfMessagesRef = useRef<HTMLDivElement | null>(null);
-    const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+    const isNearBottomRef = useRef(true);
+    const [showScrollToBottom, setShowScrollToBottom] = useState(false);
+    const [pendingMessages, setPendingMessages] = useState<Map<string, MessageDto>>(new Map());
+    const [typingUsers, setTypingUsers] = useState<Set<string>>(new Set());
+    const typingTimeoutRef = useRef<Map<string, NodeJS.Timeout>>(new Map());
+    const [editingMessage, setEditingMessage] = useState<MessageDto | null>(null);
+    const [showSearch, setShowSearch] = useState(false);
+    const messageRefs = useRef<Map<string, HTMLDivElement>>(new Map());
+
+    const canSend = useMemo(() => {
+        return content.trim().length > 0 || attachments.length > 0;
+    }, [content, attachments.length]);
+
+    // Group messages for better UI
+    const groupedMessages = useMemo(() => {
+        return groupMessages(messages);
+    }, [messages]);
 
     // Load tin nhắn ban đầu
     useEffect(() => {
+        let cancelled = false;
+        setLoading(true);
+        setMessages([]);
+        setHasMore(false);
+
         conversationService
-            .getMessages(conversationId)
-            .then((res) => setMessages(res.messages))
-            .finally(() => setLoading(false));
+            .getMessages(conversationId, { limit: 50 })
+            .then((res) => {
+                if (cancelled) return;
+                setMessages(res.messages);
+                setHasMore(res.hasMore);
+                scrollToBottom(false);
+            })
+            .finally(() => {
+                if (cancelled) return;
+                setLoading(false);
+            });
+
+        return () => {
+            cancelled = true;
+        };
     }, [conversationId]);
+
+    const loadOlderMessages = useCallback(async () => {
+        if (loading || loadingOlder || !hasMore) return;
+        const oldest = messages[0];
+        if (!oldest?.sentAt) return;
+
+        const container = scrollContainerRef.current;
+        const prevScrollHeight = container?.scrollHeight ?? 0;
+        const prevScrollTop = container?.scrollTop ?? 0;
+
+        setLoadingOlder(true);
+        try {
+            const res = await conversationService.getMessages(conversationId, {
+                limit: 50,
+                before: new Date(oldest.sentAt),
+            });
+
+            setMessages((prev) => {
+                const existingIds = new Set(prev.map((m) => m.id));
+                const toPrepend = res.messages.filter((m) => !existingIds.has(m.id));
+                return [...toPrepend, ...prev];
+            });
+            setHasMore(res.hasMore);
+
+            requestAnimationFrame(() => {
+                const nextScrollHeight = container?.scrollHeight ?? 0;
+                if (container) {
+                    container.scrollTop = nextScrollHeight - prevScrollHeight + prevScrollTop;
+                }
+            });
+        } finally {
+            setLoadingOlder(false);
+        }
+    }, [conversationId, hasMore, loading, loadingOlder, messages]);
 
     // Kết nối socket và lắng nghe realtime
     useEffect(() => {
@@ -39,257 +118,481 @@ export default function ChatWindow({ conversationId }: ChatWindowProps) {
 
         connectSocket(token);
         
-        socket.on("connect", () => {
-            console.log("Socket connected:", socket.id);
+        const handleConnected = () => {
             socket.emit("join-conversation", { conversationId });
-        });
+        };
 
-        socket.on("disconnect", () => {
-            console.log("Socket disconnected");
-        });
+        const handleNewMessage = (msg: MessageDto) => {
+            // Safety: only append messages for this conversation
+            if (msg.conversationId && msg.conversationId !== conversationId) return;
+            
+            // Remove from pending if it was a pending message
+            setPendingMessages((prev) => {
+                const newMap = new Map(prev);
+                newMap.delete(msg.id);
+                return newMap;
+            });
+            
+            setMessages((prev) => {
+                if (prev.find((m) => m.id === msg.id)) return prev;
+                return [...prev, msg];
+            });
 
-        socket.on("join-conversation-success", (data) => {
-            console.log("Joined conversation:", data);
-        });
+            if (isNearBottomRef.current) {
+                scrollToBottom(false);
+            }
+        };
 
-        socket.on("join-conversation-error", (error) => {
-            console.error("Failed to join conversation:", error);
-        });
+        socket.on("connect", handleConnected);
 
         // If already connected, join immediately
         if (socket.connected) {
             socket.emit("join-conversation", { conversationId });
         }
 
-        socket.on("message-new", (msg: MessageDto) => {
-            console.log("Received new message:", msg);
-            setMessages((prev) => {
-                // Check if message already exists
-                if (prev.find((m) => m.id === msg.id)) {
-                    console.log("Message already exists, skipping:", msg.id);
-                    return prev;
-                }
-                console.log("Adding new message to list:", msg.id);
-                return [...prev, msg];
+        socket.on("message-new", handleNewMessage);
+
+        // Handle typing indicators
+        const handleTyping = (data: { userId: string; userName: string; conversationId: string }) => {
+            if (data.conversationId !== conversationId) return;
+            
+            setTypingUsers((prev) => {
+                const newSet = new Set(prev);
+                newSet.add(data.userName);
+                return newSet;
             });
-        });
 
-        socket.on("user-typing-status", (data: TypingStatusDto) => {
-            if (data.conversationId === conversationId) {
+            // Clear typing after 3 seconds
+            const timeoutId = setTimeout(() => {
                 setTypingUsers((prev) => {
-                    const filtered = prev.filter((u) => u.userId !== data.userId);
-                    return data.isTyping ? [...filtered, data] : filtered;
+                    const newSet = new Set(prev);
+                    newSet.delete(data.userName);
+                    return newSet;
                 });
+                typingTimeoutRef.current.delete(data.userName);
+            }, 3000);
+
+            // Clear existing timeout
+            const existingTimeout = typingTimeoutRef.current.get(data.userName);
+            if (existingTimeout) {
+                clearTimeout(existingTimeout);
             }
-        });
+            typingTimeoutRef.current.set(data.userName, timeoutId);
+        };
 
-        socket.on("message-edited", (msg: MessageDto) => {
-            setMessages((prev) => prev.map((m) => (m.id === msg.id ? msg : m)));
-        });
-
-        socket.on("message-deleted", (data: { messageId: string; conversationId: string }) => {
-            setMessages((prev) =>
-                prev.map((m) =>
-                    m.id === data.messageId
-                        ? { ...m, isDeleted: true, content: "Tin nhắn đã bị xóa" }
-                        : m
-                )
-            );
-        });
-
-        socket.on("message-read-status", (data: MessageReadStatus) => {
-            setMessages((prev) =>
-                prev.map((m) => {
-                    if (m.id === data.messageId) {
-                        return { ...m, readBy: [...(m.readBy || []), data.userId] };
-                    }
-                    return m;
-                })
-            );
-        });
+        socket.on("user-typing", handleTyping);
 
         return () => {
-            console.log("Cleaning up conversation:", conversationId);
             socket.emit("leave-conversation", conversationId);
-            socket.off("connect");
-            socket.off("disconnect");
-            socket.off("join-conversation-success");
-            socket.off("join-conversation-error");
-            socket.off("message-new");
-            socket.off("user-typing-status");
-            socket.off("message-edited");
-            socket.off("message-deleted");
-            socket.off("message-read-status");
+            socket.off("connect", handleConnected);
+            socket.off("message-new", handleNewMessage);
+            socket.off("user-typing", handleTyping);
+            
+            // Clear all typing timeouts
+            typingTimeoutRef.current.forEach((timeout) => clearTimeout(timeout));
+            typingTimeoutRef.current.clear();
         };
     }, [conversationId]);
 
-    // Tự động scroll xuống cuối khi có tin nhắn mới
-    useEffect(() => {
-        endOfMessagesRef.current?.scrollIntoView({ behavior: "auto" });
-    }, [messages]);
+    const handleScroll = useCallback(() => {
+        const container = scrollContainerRef.current;
+        if (!container) return;
+
+        // mark "near bottom" to decide auto-scroll on incoming messages
+        const distanceToBottom = container.scrollHeight - container.scrollTop - container.clientHeight;
+        isNearBottomRef.current = distanceToBottom < 100;
+        
+        // Show/hide scroll to bottom button
+        setShowScrollToBottom(distanceToBottom > 200);
+
+        // load older when user scrolls to top
+        if (container.scrollTop < 20) {
+            loadOlderMessages();
+        }
+    }, [loadOlderMessages]);
+
+    const scrollToBottom = useCallback((smooth = true) => {
+        requestAnimationFrame(() => {
+            endOfMessagesRef.current?.scrollIntoView({ 
+                behavior: smooth ? "smooth" : "auto",
+                block: "end"
+            });
+        });
+    }, []);
 
     // Gửi tin nhắn
     const handleSend = async () => {
-        if (!content.trim()) return;
+        if (!canSend) return;
         
         const messageContent = content;
-        setContent(""); // Clear input immediately for better UX
+        const messageReplyToId = replyTo?.id;
+        const messageAttachments = attachments;
+        const isEditing = editingMessage !== null;
+
+        setContent("");
+        setReplyTo(null);
+        setAttachments([]);
+        setEditingMessage(null);
         
         try {
-            console.log("Sending message:", messageContent);
-            const result = await conversationService.sendMessage(conversationId, { content: messageContent });
-            console.log("Message sent successfully:", result);
-            // Don't add message here - let the socket "message-new" event handle it
-            // This ensures consistency across all clients
-            
-            // Stop typing indicator
-            socket.emit("user-typing", { conversationId, isTyping: false });
-            if (typingTimeoutRef.current) {
-                clearTimeout(typingTimeoutRef.current);
+            const contentToSend =
+                messageContent.trim() ||
+                messageAttachments.find((a) => a?.filename)?.filename ||
+                "Attachment";
+
+            // TODO: If editing, call update message API instead
+            if (isEditing) {
+                // For now, just send as new message
+                // await conversationService.updateMessage(conversationId, editingMessage.id, { content: contentToSend });
+            }
+
+            const result = await conversationService.sendMessage(conversationId, {
+                content: contentToSend,
+                replyToId: messageReplyToId,
+                attachments: messageAttachments.length > 0 ? messageAttachments : undefined,
+            });
+
+            // Add to pending messages with sending status
+            setPendingMessages((prev) => {
+                const newMap = new Map(prev);
+                newMap.set(result.id, { ...result, status: "sending" } as any);
+                return newMap;
+            });
+
+            // If socket is disconnected, fall back to optimistic append.
+            if (!socket.connected) {
+                setMessages((prev) => {
+                    if (prev.find((m) => m.id === result.id)) return prev;
+                    return [...prev, result];
+                });
+                setPendingMessages((prev) => {
+                    const newMap = new Map(prev);
+                    newMap.delete(result.id);
+                    return newMap;
+                });
+                scrollToBottom(false);
             }
         } catch (error) {
             console.error("Send failed:", error);
-            // Restore content on error
+            // Restore on error
             setContent(messageContent);
+            setReplyTo(replyTo);
+            setAttachments(messageAttachments);
             alert("Không thể gửi tin nhắn. Vui lòng thử lại.");
         }
     };
 
-    // Xử lý typing indicator
-    const handleInputChange = (value: string) => {
-        setContent(value);
-
-        // Emit typing event
-        socket.emit("user-typing", { conversationId, isTyping: true });
-
-        // Clear existing timeout
-        if (typingTimeoutRef.current) {
-            clearTimeout(typingTimeoutRef.current);
-        }
-
-        // Stop typing after 2 seconds of inactivity
-        typingTimeoutRef.current = setTimeout(() => {
-            socket.emit("user-typing", { conversationId, isTyping: false });
-        }, 2000);
+    const handlePickFile = () => {
+        fileInputRef.current?.click();
     };
 
-    // Chỉnh sửa tin nhắn
-    const handleEditMessage = async (messageId: string) => {
-        if (!editContent.trim()) return;
+    const handleFileSelected = async (file: File) => {
+        const supabase = createClient();
+        const bucket = process.env.NEXT_PUBLIC_CHAT_FILES_BUCKET || "avatars";
+        const currentUserId = typeof window !== "undefined" ? localStorage.getItem("user_id") : null;
+
+        const safeName = file.name.replace(/[^\w.\-() ]+/g, "_");
+        const uuid = typeof crypto !== "undefined" && "randomUUID" in crypto ? crypto.randomUUID() : `${Date.now()}`;
+        const path = `chat/${conversationId}/${currentUserId || "user"}/${uuid}-${safeName}`;
+
+        setUploading(true);
         try {
-            await conversationService.editMessage(conversationId, messageId, { content: editContent });
-            setEditingMessageId(null);
-            setEditContent("");
-        } catch (error) {
-            console.error("Edit failed:", error);
+            const { error: uploadError } = await supabase.storage.from(bucket).upload(path, file, {
+                upsert: false,
+                contentType: file.type || undefined,
+            });
+            if (uploadError) throw uploadError;
+
+            const {
+                data: { publicUrl },
+            } = supabase.storage.from(bucket).getPublicUrl(path);
+
+            setAttachments((prev) => [
+                ...prev,
+                {
+                    type: file.type || "file",
+                    url: publicUrl,
+                    filename: file.name,
+                    size: file.size,
+                },
+            ]);
+        } catch (e) {
+            console.error(e);
+            alert("Không thể tải file lên. Vui lòng thử lại.");
+        } finally {
+            setUploading(false);
         }
     };
 
-    // Xóa tin nhắn
-    const handleDeleteMessage = async (messageId: string) => {
-        if (!confirm("Xóa tin nhắn này?")) return;
-        try {
-            await conversationService.deleteMessage(conversationId, messageId);
-        } catch (error) {
-            console.error("Delete failed:", error);
+    const handleSelectSearchResult = useCallback((messageId: string) => {
+        const messageElement = messageRefs.current.get(messageId);
+        if (messageElement) {
+            messageElement.scrollIntoView({ behavior: "smooth", block: "center" });
+            messageElement.classList.add("ring-2", "ring-orange-500", "ring-offset-2", "rounded-lg");
+            setTimeout(() => {
+                messageElement.classList.remove("ring-2", "ring-orange-500", "ring-offset-2", "rounded-lg");
+            }, 2000);
         }
-    };
-
-    // Bắt đầu edit
-    const handleStartEdit = (message: MessageDto) => {
-        setEditingMessageId(message.id);
-        setEditContent(message.content);
-    };
+        setShowSearch(false);
+    }, []);
 
     return (
-        <div className="flex flex-col h-[500px] bg-white rounded-2xl border border-indigo-100 shadow-lg">
-            <div className="flex-1 overflow-y-auto p-4 space-y-3">
+        <div className="flex flex-col h-full bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden relative">
+            {showSearch && (
+                <MessageSearch
+                    messages={messages}
+                    onSelectMessage={handleSelectSearchResult}
+                    onClose={() => setShowSearch(false)}
+                />
+            )}
+            <div
+                ref={scrollContainerRef}
+                onScroll={handleScroll}
+                className="flex-1 min-h-0 overflow-y-auto p-3 sm:p-4 bg-gradient-to-b from-gray-50/50 to-white scroll-smooth"
+                style={{ scrollBehavior: "smooth" }}
+                role="log"
+                aria-label="Message list"
+                aria-live="polite"
+                aria-atomic="false"
+            >
                 {loading ? (
-                    <div className="flex items-center justify-center h-full">
-                        <div className="w-8 h-8 border-4 border-indigo-400 border-t-transparent rounded-full animate-spin"></div>
+                    <div className="flex flex-col items-center justify-center h-full gap-3" role="status" aria-live="polite">
+                        <Loader2 className="w-8 h-8 text-orange-500 animate-spin" aria-hidden="true" />
+                        <p className="text-sm text-gray-500">Loading messages...</p>
                     </div>
                 ) : messages.length === 0 ? (
-                    <p className="text-gray-400 italic text-center">No messages yet.</p>
+                    <div className="flex flex-col items-center justify-center h-full gap-4 animate-fadeIn" role="status" aria-live="polite">
+                        <div className="w-16 h-16 rounded-full bg-gradient-to-br from-orange-100 to-orange-200 flex items-center justify-center" aria-hidden="true">
+                            <svg
+                                className="w-8 h-8 text-orange-500"
+                                fill="none"
+                                stroke="currentColor"
+                                viewBox="0 0 24 24"
+                            >
+                                <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    strokeWidth={2}
+                                    d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
+                                />
+                            </svg>
+                        </div>
+                        <div className="text-center">
+                            <p className="text-lg font-semibold text-gray-900 mb-1">No messages yet</p>
+                            <p className="text-sm text-gray-500">Start the conversation by sending a message</p>
+                        </div>
+                    </div>
                 ) : (
                     <>
-                        {messages.map((m, i) => (
-                            <MessageBubble 
-                                key={m.id ?? i} 
-                                message={m}
-                                onEdit={handleStartEdit}
-                                onDelete={handleDeleteMessage}
-                            />
-                        ))}
-                        {typingUsers.length > 0 && (
-                            <div className="text-sm text-gray-500 italic px-4 py-2">
-                                {typingUsers.map((u) => u.userName).join(", ")}{" "}
-                                {typingUsers.length > 1 ? "are" : "is"} typing...
+                        {loadingOlder && (
+                            <div className="flex items-center justify-center py-3 animate-fadeIn" role="status" aria-live="polite">
+                                <Loader2 className="w-5 h-5 text-orange-500 animate-spin" aria-label="Loading older messages" />
                             </div>
                         )}
-                        <div ref={endOfMessagesRef}></div>
+                        {groupedMessages.map((grouped, i) => {
+                            const prevGrouped = i > 0 ? groupedMessages[i - 1] : null;
+                            const showSeparator = grouped.showDateSeparator || 
+                                (prevGrouped && prevGrouped.message.sentAt !== grouped.message.sentAt);
+
+                            return (
+                                <div 
+                                    key={grouped.message.id ?? i}
+                                    ref={(el) => {
+                                        if (el && grouped.message.id) {
+                                            messageRefs.current.set(grouped.message.id, el);
+                                        }
+                                    }}
+                                >
+                                    {grouped.showDateSeparator && (
+                                        <DateSeparator date={grouped.message.sentAt} />
+                                    )}
+                                    <MessageBubble
+                                        groupedMessage={grouped}
+                                        onReply={() => setReplyTo(grouped.message)}
+                                        replyPreview={
+                                            grouped.message.replyToId
+                                                ? messages.find((x) => x.id === grouped.message.replyToId) ?? null
+                                                : null
+                                        }
+                                        status={
+                                            pendingMessages.has(grouped.message.id)
+                                                ? "sending"
+                                                : grouped.message.senderId === (typeof window !== "undefined" ? localStorage.getItem("user_id") : null)
+                                                ? "sent"
+                                                : undefined
+                                        }
+                                        onEdit={(msg) => {
+                                            setEditingMessage(msg);
+                                            setContent(msg.content);
+                                            setReplyTo(null);
+                                        }}
+                                        onDelete={async (messageId) => {
+                                            // TODO: Implement delete API call
+                                            setMessages((prev) => prev.filter((m) => m.id !== messageId));
+                                        }}
+                                        onCopy={(text) => {
+                                            navigator.clipboard.writeText(text);
+                                        }}
+                                        onForward={(msg) => {
+                                            // TODO: Implement forward functionality
+                                            console.log("Forward message:", msg);
+                                        }}
+                                        onReact={(messageId, emoji) => {
+                                            // TODO: Implement reaction API call
+                                            console.log("React to message:", messageId, emoji);
+                                        }}
+                                    />
+                                </div>
+                            );
+                        })}
+                        {typingUsers.size > 0 && (
+                            <TypingIndicator users={Array.from(typingUsers)} />
+                        )}
+                        <div ref={endOfMessagesRef} className="h-1" />
                     </>
                 )}
             </div>
 
-            {editingMessageId ? (
-                <div className="flex gap-2 p-3 border-t bg-yellow-50">
-                    <div className="flex-1">
-                        <p className="text-xs text-gray-600 mb-1">Editing message</p>
-                        <input
-                            value={editContent}
-                            onChange={(e) => setEditContent(e.target.value)}
-                            placeholder="Chỉnh sửa tin nhắn của bạn..."
-                            className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-400"
-                            onKeyDown={(e) => {
-                                if (e.key === "Enter" && !e.shiftKey) {
-                                    e.preventDefault();
-                                    handleEditMessage(editingMessageId);
-                                }
-                                if (e.key === "Escape") {
-                                    setEditingMessageId(null);
-                                    setEditContent("");
-                                }
-                            }}
-                        />
-                    </div>
+            {/* Scroll to bottom button */}
+            {showScrollToBottom && (
+                <button
+                    onClick={() => scrollToBottom(true)}
+                    className="absolute bottom-20 right-4 sm:right-6 z-10 p-3 bg-white border border-gray-200 rounded-full shadow-lg hover:shadow-xl transition-all duration-200 hover:scale-110 active:scale-95 touch-manipulation min-w-[44px] min-h-[44px]"
+                    aria-label="Scroll to bottom"
+                    title="Scroll to bottom"
+                >
+                    <ArrowDown className="w-5 h-5 text-gray-700" />
+                </button>
+            )}
+
+            <div className="border-t bg-white flex-shrink-0">
+                {/* Search button */}
+                <div className="px-3 pt-2 flex justify-end">
                     <button
-                        onClick={() => handleEditMessage(editingMessageId)}
-                        className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-all"
+                        type="button"
+                        onClick={() => setShowSearch(!showSearch)}
+                        className="p-2 rounded-lg hover:bg-gray-100 transition-colors"
+                        title="Search messages"
+                        aria-label="Search messages"
                     >
-                        Save
-                    </button>
-                    <button
-                        onClick={() => {
-                            setEditingMessageId(null);
-                            setEditContent("");
-                        }}
-                        className="bg-gray-400 text-white px-4 py-2 rounded-lg hover:bg-gray-500 transition-all"
-                    >
-                        Cancel
+                        <Search className="w-4 h-4 text-gray-600" />
                     </button>
                 </div>
-            ) : (
-                <div className="flex gap-2 p-3 border-t">
+
+                {replyTo && (
+                    <div className="px-3 pt-3 animate-slideDown">
+                        <div className="flex items-center justify-between bg-orange-50 border border-orange-100 rounded-lg px-3 py-2">
+                            <div className="min-w-0">
+                                <p className="text-xs text-orange-700 font-medium">Replying to</p>
+                                <p className="text-sm text-gray-700 truncate">
+                                    {replyTo.sender?.full_name ? `${replyTo.sender.full_name}: ` : ""}
+                                    {replyTo.content}
+                                </p>
+                            </div>
+                            <button
+                                onClick={() => setReplyTo(null)}
+                                className="text-xs text-gray-600 hover:text-gray-900 px-2 py-1 transition-colors"
+                                type="button"
+                            >
+                                ✕
+                            </button>
+                        </div>
+                    </div>
+                )}
+
+                {attachments.length > 0 && (
+                    <div className="px-3 pt-3 flex flex-wrap gap-2">
+                        {attachments.map((a, idx) => (
+                            <span
+                                key={`${a.url ?? "att"}-${idx}`}
+                                className="inline-flex items-center gap-2 text-xs bg-gray-100 border border-gray-200 rounded-full px-3 py-1"
+                            >
+                                <span className="truncate max-w-[220px]">{a.filename || a.url || "attachment"}</span>
+                                <button
+                                    type="button"
+                                    onClick={() =>
+                                        setAttachments((prev) => prev.filter((_, i) => i !== idx))
+                                    }
+                                    className="text-gray-600 hover:text-gray-900"
+                                    aria-label="Remove attachment"
+                                >
+                                    ✕
+                                </button>
+                            </span>
+                        ))}
+                    </div>
+                )}
+
+                <div className="flex gap-2 p-2 sm:p-3">
+                    <input
+                        ref={fileInputRef}
+                        type="file"
+                        className="hidden"
+                        onChange={(e) => {
+                            const file = e.target.files?.[0];
+                            if (file) handleFileSelected(file);
+                            e.target.value = "";
+                        }}
+                        aria-label="Attach file"
+                    />
+                    <button
+                        type="button"
+                        onClick={handlePickFile}
+                        disabled={uploading}
+                        className="inline-flex items-center justify-center w-11 h-11 sm:w-11 sm:h-11 rounded-xl border border-gray-200 hover:bg-gray-50 active:bg-gray-100 transition disabled:opacity-50 touch-manipulation"
+                        title="Attach file"
+                        aria-label="Attach file"
+                    >
+                        <Paperclip className="w-5 h-5 text-gray-700" />
+                    </button>
                     <input
                         value={content}
-                        onChange={(e) => handleInputChange(e.target.value)}
-                        placeholder="Nhập tin nhắn..."
-                        className="flex-1 border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-400"
+                        onChange={(e) => {
+                            setContent(e.target.value);
+                            // Emit typing indicator
+                            if (socket.connected && e.target.value.trim().length > 0) {
+                                socket.emit("typing", { conversationId });
+                            }
+                        }}
+                        placeholder={editingMessage ? "Edit message..." : "Nhập tin nhắn..."}
+                        className="flex-1 border border-gray-200 rounded-xl px-3 sm:px-4 py-2.5 sm:py-3 focus:outline-none focus:ring-2 focus:ring-orange-200 focus:border-orange-300 transition-all text-sm"
                         onKeyDown={(e) => {
                             if (e.key === "Enter" && !e.shiftKey) {
                                 e.preventDefault();
                                 handleSend();
                             }
+                            if (e.key === "Escape" && editingMessage) {
+                                setEditingMessage(null);
+                                setContent("");
+                                setReplyTo(null);
+                            }
                         }}
+                        aria-label={editingMessage ? "Edit message" : "Type a message"}
                     />
+                    {editingMessage && (
+                        <button
+                            type="button"
+                            onClick={() => {
+                                setEditingMessage(null);
+                                setContent("");
+                                setReplyTo(null);
+                            }}
+                            className="px-3 py-2 text-sm text-gray-600 hover:text-gray-900 active:text-gray-700 transition-colors touch-manipulation min-w-[44px] min-h-[44px] sm:min-w-0 sm:min-h-0"
+                            aria-label="Cancel editing"
+                        >
+                            Cancel
+                        </button>
+                    )}
                     <button
                         onClick={handleSend}
-                        className="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 transition-all"
+                        disabled={!canSend}
+                        className="bg-orange-500 disabled:bg-orange-300 text-white px-4 sm:px-5 py-2.5 sm:py-3 rounded-xl hover:bg-orange-600 active:bg-orange-700 transition-all text-sm font-medium shadow-md hover:shadow-lg disabled:shadow-none touch-manipulation min-w-[60px] sm:min-w-0"
+                        aria-label={uploading ? "Uploading" : editingMessage ? "Save changes" : "Send message"}
                     >
-                        Send
+                        {uploading ? "Uploading..." : editingMessage ? "Save" : "Send"}
                     </button>
                 </div>
-            )}
+            </div>
         </div>
     );
 }

@@ -11,11 +11,19 @@ interface ConversationListProps {
 export default function ConversationList({ onSelect }: ConversationListProps) {
     const [conversations, setConversations] = useState<ConversationDto[]>([]);
     const [loading, setLoading] = useState(true);
+    const [nextCursor, setNextCursor] = useState<string | undefined>(undefined);
+    const [loadingMore, setLoadingMore] = useState(false);
+
+    const currentUserId = typeof window !== "undefined" ? localStorage.getItem("user_id") : null;
 
     const loadConversations = () => {
+        setLoading(true);
         conversationService
-            .getUserConversations()
-            .then((res) => setConversations(res.items))
+            .getUserConversations({ limit: 20 })
+            .then((res) => {
+                setConversations(res.items);
+                setNextCursor(res.nextCursor || undefined);
+            })
             .finally(() => setLoading(false));
     };
 
@@ -23,17 +31,19 @@ export default function ConversationList({ onSelect }: ConversationListProps) {
         loadConversations();
     }, []);
 
-    const handleDeleteConversation = async (conversationId: string, e: React.MouseEvent) => {
-        e.stopPropagation(); // Prevent triggering onSelect
-        if (!confirm("Xóa cuộc hội thoại này? Hành động này không thể hoàn tác.")) return;
-        
+    const loadMore = async () => {
+        if (!nextCursor || loadingMore) return;
+        setLoadingMore(true);
         try {
-            await conversationService.deleteConversation(conversationId);
-            // Remove from local state
-            setConversations((prev) => prev.filter((c) => c.id !== conversationId));
-        } catch (error) {
-            console.error("Delete conversation failed:", error);
-            alert("Không thể xóa cuộc hội thoại");
+            const res = await conversationService.getUserConversations({ cursor: nextCursor, limit: 20 });
+            setConversations((prev) => {
+                const ids = new Set(prev.map((c) => c.id));
+                const merged = [...prev, ...res.items.filter((c) => !ids.has(c.id))];
+                return merged;
+            });
+            setNextCursor(res.nextCursor || undefined);
+        } finally {
+            setLoadingMore(false);
         }
     };
 
@@ -53,27 +63,54 @@ export default function ConversationList({ onSelect }: ConversationListProps) {
 
     return (
         <div className="space-y-2">
-            {conversations.map((c) => (
-                <div
-                    key={c.id}
-                    className="relative group bg-white rounded-xl border border-gray-200 hover:bg-indigo-50 hover:border-indigo-300 transition-all"
-                >
-                    <button
-                        onClick={() => onSelect(c.id)}
-                        className="w-full text-left p-4"
+            {conversations.map((c) => {
+                const other = c.participants.find((p) => p.userId !== currentUserId);
+                const displayName = c.isGroup
+                    ? (c.title || "Cuộc trò chuyện")
+                    : (other?.user.full_name || "Direct message");
+
+                const lastMessage = c.messages?.[0];
+
+                return (
+                    <div
+                        key={c.id}
+                        className="bg-white rounded-xl border border-gray-200 hover:bg-indigo-50 hover:border-indigo-300 transition-all"
                     >
-                        <p className="font-semibold text-gray-800">{c.title || "Chưa có tiêu đề"}</p>
-                        <p className="text-sm text-gray-500">{c.participants.length} người tham gia</p>
-                    </button>
+                        <button
+                            onClick={() => onSelect(c.id)}
+                            className="w-full text-left p-4"
+                        >
+                            <div className="flex items-center justify-between gap-3">
+                                <p className="font-semibold text-gray-800 truncate">{displayName}</p>
+                                {c._count?.messages !== undefined && (
+                                    <span className="text-xs text-gray-500 whitespace-nowrap">
+                                        {c._count.messages} msgs
+                                    </span>
+                                )}
+                            </div>
+                            <p className="text-sm text-gray-500 truncate">
+                                {lastMessage ? lastMessage.content : "Chưa có tin nhắn nào"}
+                            </p>
+                            <p className="text-xs text-gray-400 mt-1">
+                                {c.participants.length} người tham gia
+                            </p>
+                        </button>
+                    </div>
+                );
+            })}
+
+            {nextCursor && (
+                <div className="pt-2 flex justify-center">
                     <button
-                        onClick={(e) => handleDeleteConversation(c.id, e)}
-                        className="absolute right-2 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity bg-red-500 text-white px-3 py-1 rounded-lg hover:bg-red-600 text-xs"
-                        title="Xóa cuộc hội thoại"
+                        type="button"
+                        disabled={loadingMore}
+                        onClick={loadMore}
+                        className="text-sm bg-gray-900 disabled:bg-gray-400 text-white px-4 py-2 rounded-lg"
                     >
-                        Xóa
+                        {loadingMore ? "Loading..." : "Load more"}
                     </button>
                 </div>
-            ))}
+            )}
         </div>
     );
 }

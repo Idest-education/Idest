@@ -1,9 +1,11 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import { useParams } from "next/navigation";
 import Image from "next/image";
 import { getClassBySlug } from "@/services/class.service";
+import { conversationService } from "@/services/conversation.service";
 import {
   getClassSessions,
   getAllSessions,
@@ -27,15 +29,21 @@ export default function ClassDetailPage() {
   const [loading, setLoading] = useState(true);
   const [copied, setCopied] = useState(false);
 
-  const [showChatPopup, setShowChatPopup] = useState(false);
+  const [showChatDrawer, setShowChatDrawer] = useState(false);
   const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
+  const [activeConversationName, setActiveConversationName] = useState<string | null>(null);
+  const [mounted, setMounted] = useState(false);
+  const [classConversationId, setClassConversationId] = useState<string | null>(null);
 
   const [classSessions, setClassSessions] = useState<SessionData[]>([]);
   const [sessionFilter, setSessionFilter] = useState<"upcoming" | "past">("upcoming");
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [currentUserId, setCurrentUserId] = useState<string>("");
   const [userRole, setUserRole] = useState<string | null>(null);
-  const [receiverName, setReceiverName] = useState<string>("");
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   useEffect(() => {
     const fetchUserData = async () => {
@@ -58,6 +66,18 @@ export default function ClassDetailPage() {
       .catch(console.error)
       .finally(() => setLoading(false));
   }, [slug]);
+
+  // Preload class group conversation (if any)
+  useEffect(() => {
+    if (!classData?.id) return;
+    conversationService
+      .getUserConversations({ limit: 100 })
+      .then((res) => {
+        const conv = res.items.find((c) => c.classId === classData.id);
+        setClassConversationId(conv?.id ?? null);
+      })
+      .catch(() => setClassConversationId(null));
+  }, [classData?.id]);
 
   useEffect(() => {
     const loadSessions = async () => {
@@ -128,8 +148,35 @@ export default function ClassDetailPage() {
 
   const handleOpenConversation = (conversationId: string, fullName: string) => {
     setActiveConversationId(conversationId);
-    setShowChatPopup(true);
-    setReceiverName(fullName);
+    setActiveConversationName(fullName);
+    setShowChatDrawer(true);
+  };
+
+  const handleOpenClassChat = async () => {
+    if (!classData?.id) return;
+    try {
+      let convId = classConversationId;
+
+      // Ensure class conversation exists (for legacy classes)
+      if (!convId) {
+        const participantSeed = currentUserId || classData.creator.id;
+        const conv = await conversationService.createConversation({
+          isGroup: true,
+          title: classData.name,
+          participantIds: [participantSeed],
+          classId: classData.id,
+        });
+        convId = conv.id;
+        setClassConversationId(convId);
+      }
+
+      setActiveConversationId(convId);
+      setActiveConversationName(`${classData.name} (Class chat)`);
+      setShowChatDrawer(true);
+    } catch (err) {
+      console.error(err);
+      alert("Không thể mở nhóm chat của lớp.");
+    }
   };
 
   const handleEndSession = async (sessionId: string) => {
@@ -208,20 +255,29 @@ export default function ClassDetailPage() {
               </div>
             </div>
 
-            {isStaff && (
-              <div className="flex flex-col gap-2">
-                <button
-                  onClick={handleCopyCode}
-                  className="flex items-center gap-2 px-4 py-2 bg-gray-900 text-white rounded-lg hover:bg-gray-800 transition-colors font-medium text-sm"
-                >
-                  {copied ? <CheckCircle2 className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
-                  {copied ? "Đã sao chép!" : "Sao chép mã mời"}
-                </button>
-                <p className="text-center text-xs font-mono text-gray-600">
-                  {classData.invite_code}
-                </p>
-              </div>
-            )}
+            <div className="flex flex-col gap-2">
+              <button
+                onClick={handleOpenClassChat}
+                className="flex items-center justify-center gap-2 px-4 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition-colors font-medium text-sm"
+              >
+                Mở nhóm chat lớp
+              </button>
+
+              {isStaff && (
+                <>
+                  <button
+                    onClick={handleCopyCode}
+                    className="flex items-center gap-2 px-4 py-2 bg-gray-900 text-white rounded-lg hover:bg-gray-800 transition-colors font-medium text-sm"
+                  >
+                    {copied ? <CheckCircle2 className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+                    {copied ? "Đã sao chép!" : "Sao chép mã mời"}
+                  </button>
+                  <p className="text-center text-xs font-mono text-gray-600">
+                    {classData.invite_code}
+                  </p>
+                </>
+              )}
+            </div>
           </div>
         </div>
 
@@ -313,16 +369,36 @@ export default function ClassDetailPage() {
             ))}
           </div>
 
-          {/* Chat Popup hiển thị sau khi tạo hội thoại */}
-          {showChatPopup && activeConversationId && (
-            <div className="fixed bottom-6 right-6 z-50">
-              <ConversationPopup
-                onClose={() => setShowChatPopup(false)}
-                defaultConversationId={activeConversationId} // 👈 mở sẵn ChatWindow
-                receiverName={receiverName}
-              />
-            </div>
-          )}
+          {/* Chat Drawer - hiển thị sau khi tạo hội thoại */}
+          {mounted && showChatDrawer &&
+            createPortal(
+              <div className="fixed inset-0 z-[10000]">
+                {/* Backdrop */}
+                <button
+                  type="button"
+                  onClick={() => setShowChatDrawer(false)}
+                  className="absolute inset-0 bg-black/30 backdrop-blur-[2px] animate-fadeIn"
+                  aria-label="Close chat"
+                />
+
+                {/* Drawer */}
+                <div className="absolute right-0 top-0 h-full w-[920px] max-w-[95vw] bg-white shadow-2xl border-l border-gray-200 animate-fadeIn">
+                  <ConversationPopup
+                    onClose={() => setShowChatDrawer(false)}
+                    activeConversationId={activeConversationId}
+                    activeConversationName={activeConversationName}
+                    onActiveConversationChange={(id, name) => {
+                      setActiveConversationId(id);
+                      setActiveConversationName(name ?? null);
+                    }}
+                    unreadConversationIds={[]}
+                    onClearUnread={() => {}}
+                  />
+                </div>
+              </div>,
+              document.body,
+            )
+          }
         </div>
 
         {/* Sessions Section */}

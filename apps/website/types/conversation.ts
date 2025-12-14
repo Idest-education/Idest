@@ -1,100 +1,127 @@
+// Types aligned with `ie-backend/src/conversation/dto/*`
+
 // ====================
 // 🎯 DTO (Request)
 // ====================
 
-// Tạo hội thoại mới
 export interface CreateConversationDto {
+  /** Whether this is a group conversation (default false) */
+  isGroup?: boolean;
+  /** Array of user IDs to include as participants */
+  participantIds: string[];
+  /** Title for group conversations */
   title?: string;
-  participantIds: string[];     // danh sách participant IDs
-  ownerId: string;            // 🆕 người tạo cuộc hội thoại
+  /** Avatar URL for group conversations */
+  avatar_url?: string;
+  /** Optional: class conversation */
+  classId?: string;
+  /** Optional: ownerId (defaults to current user in backend) */
+  ownerId?: string;
 }
 
-// Gửi tin nhắn
+export type AttachmentDto = {
+  type?: string;
+  url?: string;
+  filename?: string;
+  size?: number;
+  [key: string]: any;
+};
+
 export interface SendMessageDto {
-  content: string;             // Nội dung tin nhắn
-  attachments?: string[];      // (Tuỳ chọn) danh sách URL file đính kèm
+  content: string;
+  replyToId?: string;
+  attachments?: AttachmentDto[];
 }
 
-// Thêm người vào group
 export interface AddParticipantDto {
-  userIds: string[];           // Danh sách ID user cần thêm
-}
-
-// Chỉnh sửa tin nhắn
-export interface EditMessageDto {
-  content: string;             // Nội dung tin nhắn mới
-}
-
-// Trạng thái typing
-export interface TypingStatusDto {
-  conversationId: string;
+  /** ID of the user to add as a participant */
   userId: string;
-  userName: string;
-  isTyping: boolean;
-}
-
-// Trạng thái đọc tin nhắn
-export interface MessageReadStatus {
-  messageId: string;
-  userId: string;
-  readAt: string;
 }
 
 // ====================
 // 🎯 DTO (Response)
 // ====================
 
-// Thông tin một hội thoại
+export interface UserSummaryDto {
+  id: string;
+  full_name: string;
+  email: string;
+  avatar_url?: string | null;
+}
+
+export interface ConversationParticipantDto {
+  id: string;
+  userId: string;
+  conversationId: string;
+  joinedAt: string; // ISO date string
+  user: UserSummaryDto;
+}
+
+export type MessageType = "DIRECT" | "CLASSROOM" | "MEETING";
+
+export interface MessageSenderDto {
+  id: string;
+  full_name: string;
+  avatar_url?: string | null;
+}
+
+export interface ConversationSummaryDto {
+  id: string;
+  isGroup: boolean;
+}
+
+export interface MessageDto {
+  id: string;
+  content: string;
+  type: MessageType;
+  sentAt: string; // ISO date string
+  senderId: string;
+  conversationId?: string;
+  replyToId?: string;
+  attachments?: AttachmentDto[] | null;
+  sender: MessageSenderDto;
+  conversation?: ConversationSummaryDto;
+}
+
+export interface ConversationCountDto {
+  messages: number;
+}
+
 export interface ConversationDto {
   id: string;
   isGroup: boolean;
+  createdAt: string; // ISO date string
+  updatedAt: string; // ISO date string
   title?: string;
-  participants: {
-    userId: string;
-    user: {
-      id: string;
-      full_name: string;
-      avatar_url?: string | null;
-    };
-  }[];
-  messages?: MessageDto[];    // 🆕 thêm messages để preview ở ConversationList
-  createdAt: string;
-  updatedAt: string;
+  avatar_url?: string | null;
+  createdBy: string;
+  ownerId?: string;
+  isDeleted: boolean;
+  classId?: string;
+  participants: ConversationParticipantDto[];
+  /** Recent messages (may be empty) */
+  messages: MessageDto[];
+  _count?: ConversationCountDto;
 }
 
-// Danh sách hội thoại (phân trang)
+export interface UpdateConversationDto {
+  title?: string;
+  avatar_url?: string;
+}
+
 export interface ConversationsListDto {
   items: ConversationDto[];
-  nextCursor?: string | null;
+  nextCursor?: string;
 }
 
-// Tin nhắn trong hội thoại
-export interface MessageDto {
-  id: string;
-  senderId: string;
-  content: string;
-  attachments?: string[];
-  createdAt: string;
-  isDeleted?: boolean;         // 🆕 Đánh dấu tin nhắn đã xóa
-  editedAt?: string;           // 🆕 Thời gian chỉnh sửa
-  readBy?: string[];           // 🆕 Danh sách user IDs đã đọc tin nhắn
+export interface ConversationWithMessagesDto {
+  conversation: ConversationDto;
+  nextCursor?: string;
 }
 
-// Danh sách tin nhắn (phân trang)
 export interface MessagesListDto {
   messages: MessageDto[];
-  nextCursor?: string | null;
-}
-
-// Thông tin chi tiết hội thoại (gồm tin nhắn + participants)
-export interface ConversationWithMessagesDto extends ConversationDto {
-  messages: MessageDto[];
-}
-
-// Kết quả khi thêm participant
-export interface ConversationParticipantDto {
-  conversationId: string;
-  userIds: string[];
-  addedBy: string;
-  addedAt: string;
+  hasMore: boolean;
+  total: number;
+  nextCursor?: string;
 }

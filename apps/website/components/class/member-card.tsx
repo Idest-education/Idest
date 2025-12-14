@@ -21,19 +21,15 @@ export default function MemberCard({ member, onConversationCreated }: MemberCard
 
     const handleCreateConversation = async () => {
         setLoading(true);
-        const ownerId = localStorage.getItem("user_id");
-        if (!ownerId) {
+        const currentUserId = localStorage.getItem("user_id");
+        if (!currentUserId) {
             alert("Chưa đăng nhập!");
             return;
         }
 
         try {
-            const dto = {
-                ownerId,
-                participantIds: [member.id],
-            };
-
-            const conversation = await conversationService.createConversation(dto);
+            // Use getDirectConversation to get or create a direct conversation
+            const conversation = await conversationService.getDirectConversation(member.id);
 
             onConversationCreated?.(conversation.id, member.full_name);
             setShowMenu(false);
@@ -89,10 +85,10 @@ export default function MemberCard({ member, onConversationCreated }: MemberCard
                     <button
                         onClick={handleCreateConversation}
                         disabled={loading}
-                        className="flex items-center gap-2 px-4 py-2 text-sm text-indigo-700 hover:bg-indigo-50 w-full rounded-lg transition disabled:opacity-50"
+                        className="flex items-center gap-2 px-4 py-2 text-sm text-orange-600 hover:bg-orange-50 w-full rounded-lg transition disabled:opacity-50"
                     >
                         <MessageCircle className="w-4 h-4" />
-                        Nhắn tin
+                        {loading ? "Đang tạo..." : "Nhắn tin"}
                     </button>
                 </div>
             )}

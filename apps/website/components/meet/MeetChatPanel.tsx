@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useMeetStore } from "@/hooks/useMeetStore";
 import { MeetChatMessage } from "@/types/meet";
+import { formatMessageTime } from "@/lib/utils/date-format";
 
 interface MeetChatPanelProps {
   onSendMessage: (message: string) => void;
@@ -63,7 +64,7 @@ export function MeetChatPanel({ onSendMessage, onLoadMore }: MeetChatPanelProps)
         </div>
       </div>
 
-      <div className="min-h-0 flex-1 space-y-2 overflow-y-auto p-3">
+      <div className="min-h-0 flex-1 space-y-1 overflow-y-auto p-3 bg-gradient-to-b from-gray-50/50 to-white scroll-smooth">
         {sortedMessages
           .filter((message) => message && message.sender && message.id)
           .map((message, index) => (
@@ -101,32 +102,51 @@ function ChatMessageBubble({
   isOwnMessage: boolean;
 }) {
   return (
-    <div className={`flex ${isOwnMessage ? "justify-end" : "justify-start"}`}>
-      <div
-        className={`rounded-lg border p-3 max-w-[80%] ${
-          isOwnMessage
-            ? "bg-blue-500 text-white border-blue-600"
-            : "bg-card border-border/40"
-        }`}
-      >
+    <div className={`flex items-end gap-2 ${isOwnMessage ? "justify-end" : "justify-start"} mb-1 animate-fadeIn`}>
+      {!isOwnMessage && (
+        <div className="flex-shrink-0 w-6 h-6 mb-1">
+          {message.sender?.avatar_url ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={message.sender.avatar_url}
+              alt={message.sender.full_name}
+              className="w-6 h-6 rounded-full object-cover border border-gray-200"
+            />
+          ) : (
+            <div className="w-6 h-6 rounded-full bg-gradient-to-br from-gray-300 to-gray-400 flex items-center justify-center border border-gray-200">
+              <span className="text-xs font-semibold text-gray-600">
+                {message.sender?.full_name?.charAt(0)?.toUpperCase() || "?"}
+              </span>
+            </div>
+          )}
+        </div>
+      )}
+      <div className="flex flex-col max-w-[75%] min-w-0">
         {!isOwnMessage && (
-          <div className="flex items-center justify-between text-xs text-muted-foreground mb-1">
-            <span className={`font-semibold ${isOwnMessage ? "text-white" : "text-foreground"}`}>
+          <div className="flex items-center gap-2 px-1 mb-0.5">
+            <span className="text-xs font-semibold text-gray-700">
               {message.sender.full_name}
             </span>
-            <span className={isOwnMessage ? "text-blue-100" : ""}>
-              {format(new Date(message.sentAt), "HH:mm")}
+          </div>
+        )}
+        <div
+          className={`relative px-3 py-2 rounded-2xl text-sm transition-all duration-200 ${
+            isOwnMessage
+              ? "bg-gradient-to-br from-orange-500 to-orange-600 text-white rounded-br-md shadow-lg"
+              : "bg-white text-gray-900 rounded-bl-md border border-gray-200 shadow-sm"
+          }`}
+        >
+          <p className="whitespace-pre-wrap break-words">{message.content}</p>
+          <div className={`flex items-center gap-1.5 mt-1.5 ${
+            isOwnMessage ? "justify-end" : "justify-start"
+          }`}>
+            <span className={`text-[10px] ${
+              isOwnMessage ? "text-white/70" : "text-gray-500"
+            }`}>
+              {formatMessageTime(message.sentAt)}
             </span>
           </div>
-        )}
-        {isOwnMessage && (
-          <div className="flex items-center justify-end text-xs text-blue-100 mb-1">
-            <span>{format(new Date(message.sentAt), "HH:mm")}</span>
-          </div>
-        )}
-        <p className={`text-sm ${isOwnMessage ? "text-white" : "text-foreground"}`}>
-          {message.content}
-        </p>
+        </div>
       </div>
     </div>
   );
