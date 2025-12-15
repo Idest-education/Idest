@@ -99,6 +99,24 @@ export class LiveKitService {
     return value || undefined;
   }
 
+   /**
+    * Require an environment variable specifically for egress/recording.
+    * Throws a clear error so we fail fast instead of sending an invalid
+    * egress request to LiveKit (which only reports "missing output").
+    */
+  private requireEgressEnv(key: string): string {
+    const value = this.optionalEnv(key);
+    if (!value) {
+      this.logger.error(
+        `LiveKit egress configuration error: ${key} environment variable is required for recording`,
+      );
+      throw new Error(
+        `LiveKit recording storage is misconfigured. Missing required env: ${key}`,
+      );
+    }
+    return value;
+  }
+
   get url(): string {
     return this.serverUrl;
   }
@@ -202,43 +220,37 @@ export class LiveKitService {
       const filepath =
         options?.filepath || `recordings/${sessionId}/${Date.now()}.mp4`;
 
-      // Prefer S3 upload when configured; otherwise fall back to local file output
-      const s3Bucket = this.optionalEnv('LIVEKIT_EGRESS_S3_BUCKET');
-      const s3Region = this.optionalEnv('LIVEKIT_EGRESS_S3_REGION');
-      const s3AccessKey = this.optionalEnv('LIVEKIT_EGRESS_S3_ACCESS_KEY');
-      const s3Secret = this.optionalEnv('LIVEKIT_EGRESS_S3_SECRET_KEY');
-      const s3Endpoint = this.optionalEnv('LIVEKIT_EGRESS_S3_ENDPOINT');
+      // Require S3-compatible upload configuration for LiveKit Cloud egress.
+      // If any of these are missing, fail fast with a clear error instead of
+      // letting LiveKit respond with the generic "missing or invalid field: output".
+      const s3Bucket = this.requireEgressEnv('LIVEKIT_EGRESS_S3_BUCKET');
+      const s3Region = this.requireEgressEnv('LIVEKIT_EGRESS_S3_REGION');
+      const s3AccessKey = this.requireEgressEnv('LIVEKIT_EGRESS_S3_ACCESS_KEY');
+      const s3Secret = this.requireEgressEnv('LIVEKIT_EGRESS_S3_SECRET_KEY');
+      const s3Endpoint = this.requireEgressEnv('LIVEKIT_EGRESS_S3_ENDPOINT');
 
-      const s3Upload: S3Upload | undefined =
-        s3Bucket && s3Region && s3AccessKey && s3Secret
-          ? ({
-              bucket: s3Bucket,
-              region: s3Region,
-              accessKey: s3AccessKey,
-              secret: s3Secret,
-              endpoint: s3Endpoint ?? '',
-              forcePathStyle:
-                (this.optionalEnv('LIVEKIT_EGRESS_S3_FORCE_PATH_STYLE') ??
-                  'false') === 'true',
-              metadata: {},
-              tagging: '',
-              contentDisposition: 'attachment',
-              sessionToken: '',
-              assumeRoleArn: '',
-              assumeRoleExternalId: '',
-            } as unknown as S3Upload)
-          : undefined;
+      const s3Upload: S3Upload = {
+        bucket: s3Bucket,
+        region: s3Region,
+        accessKey: s3AccessKey,
+        secret: s3Secret,
+        endpoint: s3Endpoint,
+        forcePathStyle:
+          (this.optionalEnv('LIVEKIT_EGRESS_S3_FORCE_PATH_STYLE') ?? 'false') ===
+          'true',
+        metadata: {},
+        tagging: '',
+        contentDisposition: 'attachment',
+        sessionToken: '',
+        assumeRoleArn: '',
+        assumeRoleExternalId: '',
+      } as unknown as S3Upload;
 
-      const output = (s3Upload
-        ? {
-            fileType: EncodedFileType.MP4,
-            filepath,
-            s3: s3Upload,
-          }
-        : {
-            fileType: EncodedFileType.MP4,
-            filepath,
-          }) as EncodedFileOutput;
+      const output = {
+        fileType: EncodedFileType.MP4,
+        filepath,
+        s3: s3Upload,
+      } as EncodedFileOutput;
 
       // Create options
       const opts: RoomCompositeOptions = {
