@@ -6,6 +6,7 @@ import {
   BadRequestException,
   Logger,
 } from '@nestjs/common';
+import * as crypto from 'node:crypto';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { UserService } from 'src/user/user.service';
@@ -40,6 +41,110 @@ export class MeetService {
     private readonly connectedUsersManager: ConnectedUsersManager,
     private readonly liveKitService: LiveKitService,
   ) {}
+
+  private presignS3GetUrl(args: {
+    bucket: string;
+    key: string;
+    expiresSeconds: number;
+  }): string | null {
+    const accessKey = process.env.LIVEKIT_EGRESS_S3_ACCESS_KEY;
+    const secret = process.env.LIVEKIT_EGRESS_S3_SECRET_KEY;
+    const region = process.env.LIVEKIT_EGRESS_S3_REGION;
+    const endpoint =
+      process.env.LIVEKIT_EGRESS_S3_ENDPOINT ||
+      (region ? `https://s3.${region}.amazonaws.com` : null);
+    const forcePathStyle =
+      (process.env.LIVEKIT_EGRESS_S3_FORCE_PATH_STYLE || 'false') === 'true';
+
+    if (!accessKey || !secret || !region || !endpoint) return null;
+
+    const url = new URL(endpoint);
+    const host = forcePathStyle ? url.host : `${args.bucket}.${url.host}`;
+
+    const now = new Date();
+    const pad = (n: number) => String(n).padStart(2, '0');
+    const amzDate =
+      `${now.getUTCFullYear()}${pad(now.getUTCMonth() + 1)}${pad(now.getUTCDate())}` +
+      `T${pad(now.getUTCHours())}${pad(now.getUTCMinutes())}${pad(now.getUTCSeconds())}Z`;
+    const dateStamp = `${now.getUTCFullYear()}${pad(now.getUTCMonth() + 1)}${pad(now.getUTCDate())}`;
+
+    const encodeRFC3986 = (s: string) =>
+      encodeURIComponent(s).replace(/[!'()*]/g, (c) =>
+        `%${c.charCodeAt(0).toString(16).toUpperCase()}`,
+      );
+
+    const canonicalUri = (() => {
+      const keyPath = args.key
+        .split('/')
+        .map((seg) => encodeRFC3986(seg))
+        .join('/');
+      if (forcePathStyle) {
+        const bucketPath = encodeRFC3986(args.bucket);
+        return `/${bucketPath}/${keyPath}`;
+      }
+      return `/${keyPath}`;
+    })();
+
+    const credentialScope = `${dateStamp}/${region}/s3/aws4_request`;
+    const signedHeaders = 'host';
+
+    const query: Record<string, string> = {
+      'X-Amz-Algorithm': 'AWS4-HMAC-SHA256',
+      'X-Amz-Credential': `${accessKey}/${credentialScope}`,
+      'X-Amz-Date': amzDate,
+      'X-Amz-Expires': String(args.expiresSeconds),
+      'X-Amz-SignedHeaders': signedHeaders,
+    };
+
+    const canonicalQuerystring = Object.keys(query)
+      .sort()
+      .map((k) => `${encodeRFC3986(k)}=${encodeRFC3986(query[k])}`)
+      .join('&');
+
+    const canonicalHeaders = `host:${host}\n`;
+    const payloadHash = 'UNSIGNED-PAYLOAD';
+
+    const canonicalRequest = [
+      'GET',
+      canonicalUri,
+      canonicalQuerystring,
+      canonicalHeaders,
+      signedHeaders,
+      payloadHash,
+    ].join('\n');
+
+    const hash = (data: string) =>
+      crypto.createHash('sha256').update(data, 'utf8').digest('hex');
+
+    const stringToSign = [
+      'AWS4-HMAC-SHA256',
+      amzDate,
+      credentialScope,
+      hash(canonicalRequest),
+    ].join('\n');
+
+    const hmac = (key: Buffer | string, data: string) =>
+      crypto.createHmac('sha256', key).update(data, 'utf8').digest();
+
+    const signingKey = (() => {
+      const kDate = hmac(`AWS4${secret}`, dateStamp);
+      const kRegion = hmac(kDate, region);
+      const kService = hmac(kRegion, 's3');
+      return hmac(kService, 'aws4_request');
+    })();
+
+    const signature = crypto
+      .createHmac('sha256', signingKey)
+      .update(stringToSign, 'utf8')
+      .digest('hex');
+
+    const finalUrl = new URL(endpoint);
+    finalUrl.host = host;
+    finalUrl.pathname = canonicalUri;
+    finalUrl.search = `${canonicalQuerystring}&X-Amz-Signature=${signature}`;
+
+    return finalUrl.toString();
+  }
   /**
    * Validate JWT token
    */
@@ -1036,6 +1141,7 @@ export class MeetService {
     requesterId: string,
     sessionId: string,
   ): Promise<string> {
+    const prismaAny = this.prisma as any;
     const isRequesterAdmin = await this.isAdmin(requesterId);
     const isRequesterTeacher = await this.isTeacherInSession(
       requesterId,
@@ -1056,8 +1162,30 @@ export class MeetService {
       throw new NotFoundException(`Session ${sessionId} not found`);
     }
 
-    const roomName = this.liveKitService.buildRoomName(sessionId);
-    const egressId = await this.liveKitService.startRoomRecording(roomName);
+    // Prevent concurrent active recordings for the same session
+    const active = await prismaAny.recording.findFirst({
+      where: {
+        sessionId,
+        status: { in: ['STARTING', 'ACTIVE', 'ENDING'] },
+      },
+      select: { id: true },
+    });
+    if (active) {
+      throw new BadRequestException('Recording is already active for this session');
+    }
+
+    const egressId = await this.liveKitService.startRoomRecording(sessionId, {
+      layout: process.env.LIVEKIT_RECORDING_LAYOUT || 'speaker',
+    });
+
+    await prismaAny.recording.create({
+      data: {
+        sessionId,
+        egressId,
+        status: 'STARTING',
+        startedAt: new Date(),
+      },
+    });
 
     // Update session to mark as recorded
     await this.prisma.session.update({
@@ -1079,6 +1207,7 @@ export class MeetService {
    * Stop recording a session
    */
   async stopRecording(requesterId: string, sessionId: string): Promise<void> {
+    const prismaAny = this.prisma as any;
     const isRequesterAdmin = await this.isAdmin(requesterId);
     const isRequesterTeacher = await this.isTeacherInSession(
       requesterId,
@@ -1108,6 +1237,16 @@ export class MeetService {
 
     await this.liveKitService.stopRecording(egressId);
 
+    await prismaAny.recording.updateMany({
+      where: {
+        sessionId,
+        egressId,
+      },
+      data: {
+        status: 'ENDING',
+      },
+    });
+
     // Update session metadata
     await this.prisma.session.update({
       where: { id: sessionId },
@@ -1118,5 +1257,127 @@ export class MeetService {
         },
       },
     });
+  }
+
+  /**
+   * List recording info for a session.
+   * Note: this is a temporary 0–1 item list backed by Session metadata/recording_url.
+   * A proper recordings table + webhook ingestion is implemented in the next todo.
+   */
+  async listRecordings(sessionId: string): Promise<
+    Array<{
+      recordingId: string | null;
+      egressId: string | null;
+      url: string | null;
+      startedAt: string | null;
+      stoppedAt: string | null;
+    }>
+  > {
+    const prismaAny = this.prisma as any;
+    const session = await this.prisma.session.findUnique({
+      where: { id: sessionId },
+      select: { recording_url: true },
+    });
+
+    const recordings = await prismaAny.recording.findMany({
+      where: { sessionId },
+      orderBy: { created_at: 'desc' },
+      select: {
+        id: true,
+        egressId: true,
+        fileLocation: true,
+        startedAt: true,
+        endedAt: true,
+        status: true,
+      },
+    });
+
+    const publicBaseUrl = process.env.RECORDING_PUBLIC_BASE_URL || '';
+    const resolveUrl = (fileLocation: string | null): string | null => {
+      if (!fileLocation) return null;
+      if (fileLocation.startsWith('http://') || fileLocation.startsWith('https://')) {
+        return fileLocation;
+      }
+      if (fileLocation.startsWith('s3://')) {
+        const withoutScheme = fileLocation.slice('s3://'.length);
+        const firstSlash = withoutScheme.indexOf('/');
+        const key = firstSlash >= 0 ? withoutScheme.slice(firstSlash + 1) : '';
+        if (!key || !publicBaseUrl) return null;
+        return `${publicBaseUrl.replace(/\/$/, '')}/${key}`;
+      }
+      return null;
+    };
+
+    const items = recordings.map((r) => ({
+      recordingId: r.id,
+      egressId: r.egressId,
+      url: resolveUrl(r.fileLocation) || (r.status === 'COMPLETE' ? session?.recording_url || null : null),
+      startedAt: r.startedAt ? r.startedAt.toISOString() : null,
+      stoppedAt: r.endedAt ? r.endedAt.toISOString() : null,
+    }));
+
+    // Back-compat: if we have no Recording rows yet but the session has a recording_url, return it.
+    if (items.length === 0 && session?.recording_url) {
+      return [
+        {
+          recordingId: null,
+          egressId: null,
+          url: session.recording_url,
+          startedAt: null,
+          stoppedAt: null,
+        },
+      ];
+    }
+
+    return items;
+  }
+
+  async getRecordingUrl(recordingId: string): Promise<{
+    sessionId: string;
+    url: string | null;
+    location: string | null;
+  }> {
+    const prismaAny = this.prisma as any;
+    const recording = await prismaAny.recording.findUnique({
+      where: { id: recordingId },
+      select: {
+        sessionId: true,
+        fileLocation: true,
+      },
+    });
+    if (!recording) {
+      throw new NotFoundException('Recording not found');
+    }
+
+    const publicBaseUrl = process.env.RECORDING_PUBLIC_BASE_URL || '';
+    let url: string | null = null;
+    const fileLocation = recording.fileLocation;
+    if (fileLocation) {
+      if (fileLocation.startsWith('http://') || fileLocation.startsWith('https://')) {
+        url = fileLocation;
+      } else if (fileLocation.startsWith('s3://')) {
+        const withoutScheme = fileLocation.slice('s3://'.length);
+        const firstSlash = withoutScheme.indexOf('/');
+        const bucket = firstSlash >= 0 ? withoutScheme.slice(0, firstSlash) : '';
+        const key = firstSlash >= 0 ? withoutScheme.slice(firstSlash + 1) : '';
+
+        // Prefer presigned URL when we have S3 creds, otherwise fall back to public base URL rewrite.
+        url =
+          (bucket && key
+            ? this.presignS3GetUrl({
+                bucket,
+                key,
+                expiresSeconds: Number(process.env.RECORDING_URL_EXPIRES_SECONDS || 3600),
+              })
+            : null) ||
+          (key && publicBaseUrl ? `${publicBaseUrl.replace(/\/$/, '')}/${key}` : null);
+      }
+    }
+
+    return {
+      sessionId: recording.sessionId,
+      url,
+      location: fileLocation || null,
+    };
   }
 }

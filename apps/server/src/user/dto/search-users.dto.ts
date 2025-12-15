@@ -38,3 +38,4 @@ export class SearchUsersResponseDto {
   @ApiProperty({ example: 3 })
   total: number;
 }
+

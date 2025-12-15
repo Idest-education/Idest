@@ -3,6 +3,7 @@ import { AppModule } from './app.module';
 import { ConfigService } from '@nestjs/config';
 import { InternalServerErrorException, ValidationPipe } from '@nestjs/common';
 import helmet from 'helmet';
+import { json } from 'express';
 import { AllExceptionFilter } from './common/filters/exception.filter';
 import { SuccessEnvelopeInterceptor } from './common/interceptors/response.interceptor';
 import { SwaggerModule } from '@nestjs/swagger';
@@ -21,6 +22,15 @@ async function bootstrap() {
       `Missing required environment variables: ${missing.join(', ')}`,
     );
   }
+
+  // Capture raw request bodies for webhook signature verification (Stripe, LiveKit, etc.)
+  app.use(
+    json({
+      verify: (req: any, _res, buf) => {
+        req.rawBody = buf;
+      },
+    }),
+  );
 
   app.useGlobalPipes(
     new ValidationPipe({

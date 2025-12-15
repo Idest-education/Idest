@@ -10,8 +10,10 @@ import {
   DataPacket_Kind,
   EgressClient,
   TrackType,
+  EncodedFileType,
   type EncodedFileOutput,
   type RoomCompositeOptions,
+  type S3Upload,
 } from 'livekit-server-sdk';
 import type { VideoGrant } from 'livekit-server-sdk';
 
@@ -90,6 +92,11 @@ export class LiveKitService {
       );
     }
     return value;
+  }
+
+  private optionalEnv(key: string): string | undefined {
+    const value = this.configService.get<string>(key);
+    return value || undefined;
   }
 
   get url(): string {
@@ -192,13 +199,46 @@ export class LiveKitService {
     try {
       const roomName = this.buildRoomName(sessionId);
 
-      // Create output configuration - using file output by default
-      // EncodedFileOutput is a protocol type, we create a compatible object
-      const output = {
-        fileType: 1, // MP4 (EncodedFileType.MP4)
-        filepath:
-          options?.filepath || `recordings/${sessionId}-${Date.now()}.mp4`,
-      } as EncodedFileOutput;
+      const filepath =
+        options?.filepath || `recordings/${sessionId}/${Date.now()}.mp4`;
+
+      // Prefer S3 upload when configured; otherwise fall back to local file output
+      const s3Bucket = this.optionalEnv('LIVEKIT_EGRESS_S3_BUCKET');
+      const s3Region = this.optionalEnv('LIVEKIT_EGRESS_S3_REGION');
+      const s3AccessKey = this.optionalEnv('LIVEKIT_EGRESS_S3_ACCESS_KEY');
+      const s3Secret = this.optionalEnv('LIVEKIT_EGRESS_S3_SECRET_KEY');
+      const s3Endpoint = this.optionalEnv('LIVEKIT_EGRESS_S3_ENDPOINT');
+
+      const s3Upload: S3Upload | undefined =
+        s3Bucket && s3Region && s3AccessKey && s3Secret
+          ? ({
+              bucket: s3Bucket,
+              region: s3Region,
+              accessKey: s3AccessKey,
+              secret: s3Secret,
+              endpoint: s3Endpoint ?? '',
+              forcePathStyle:
+                (this.optionalEnv('LIVEKIT_EGRESS_S3_FORCE_PATH_STYLE') ??
+                  'false') === 'true',
+              metadata: {},
+              tagging: '',
+              contentDisposition: 'attachment',
+              sessionToken: '',
+              assumeRoleArn: '',
+              assumeRoleExternalId: '',
+            } as unknown as S3Upload)
+          : undefined;
+
+      const output = (s3Upload
+        ? {
+            fileType: EncodedFileType.MP4,
+            filepath,
+            s3: s3Upload,
+          }
+        : {
+            fileType: EncodedFileType.MP4,
+            filepath,
+          }) as EncodedFileOutput;
 
       // Create options
       const opts: RoomCompositeOptions = {

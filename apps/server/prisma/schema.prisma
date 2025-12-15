@@ -100,6 +100,7 @@ model Session {
   end_time        DateTime?
   is_recorded     Boolean
   recording_url   String?
+  recordings      Recording[]
   whiteboard_data Json?
   metadata        Json?
   created_at      DateTime            @default(now())
@@ -110,6 +111,26 @@ model Session {
 
   @@index([class_id, start_time])
   @@index([host_id, start_time])
+}
+
+model Recording {
+  id               String   @id @default(uuid())
+  sessionId         String
+  egressId          String   @unique
+  status            String
+  filename          String?
+  fileLocation      String?
+  startedAt         DateTime?
+  endedAt           DateTime?
+  durationSeconds   Int?
+  sizeBytes         BigInt?
+  error             String?
+  created_at        DateTime @default(now())
+  updated_at        DateTime @updatedAt
+
+  session Session @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@index([sessionId, created_at])
 }
 
 model Assignment {

@@ -21,3 +21,4 @@ export class UpdateConversationDto {
   @IsOptional()
   avatar_url?: string;
 }
+

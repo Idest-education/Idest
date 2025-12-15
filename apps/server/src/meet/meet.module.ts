@@ -7,10 +7,11 @@ import { UserModule } from 'src/user/user.module';
 import { SessionModule } from 'src/session/session.module';
 import { ConnectedUsersManager } from './utils/connected-users-manager';
 import { LiveKitService } from './utils/livekit.service';
+import { LiveKitWebhookController } from './meet.webhook.controller';
 
 @Module({
   imports: [PrismaModule, UserModule, SessionModule],
-  controllers: [MeetController],
+  controllers: [MeetController, LiveKitWebhookController],
   providers: [MeetService, MeetGateway, ConnectedUsersManager, LiveKitService],
   exports: [MeetService, ConnectedUsersManager, LiveKitService],
 })
