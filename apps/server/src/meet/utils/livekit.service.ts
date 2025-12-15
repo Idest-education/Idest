@@ -246,11 +246,16 @@ export class LiveKitService {
         assumeRoleExternalId: '',
       } as unknown as S3Upload;
 
+      // Build a minimal EncodedFileOutput message shape
       const output = {
         fileType: EncodedFileType.MP4,
         filepath,
-        s3: s3Upload,
-      } as EncodedFileOutput;
+        disableManifest: false,
+        output: {
+          case: 's3',
+          value: s3Upload,
+        },
+      } as unknown as EncodedFileOutput;
 
       // Create options
       const opts: RoomCompositeOptions = {
