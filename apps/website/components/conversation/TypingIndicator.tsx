@@ -22,3 +22,7 @@ export default function TypingIndicator({ users }: TypingIndicatorProps) {
         </div>
     );
 }
+
+
+
+

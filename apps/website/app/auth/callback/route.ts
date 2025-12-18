@@ -43,3 +43,7 @@ export async function GET(request: NextRequest) {
     `${origin}/auth/error?error=${encodeURIComponent("No authorization code provided")}`
   );
 }
+
+
+
+

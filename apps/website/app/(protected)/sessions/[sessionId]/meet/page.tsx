@@ -12,6 +12,7 @@ import { MeetParticipantsPanel } from "@/components/meet/MeetParticipantsPanel";
 import { MeetChatPanel } from "@/components/meet/MeetChatPanel";
 import { MeetStatusBanner } from "@/components/meet/MeetStatusBanner";
 import { MeetingWhiteboard } from "@/components/meet/MeetingWhiteboard";
+import { MeetRecordingsDialog } from "@/components/meet/MeetRecordingsDialog";
 import { useMeetStore } from "@/hooks/useMeetStore";
 import { useMeetClient } from "@/hooks/useMeetClient";
 import { getSessionById } from "@/services/session.service";
@@ -321,6 +322,9 @@ export default function SessionMeetPage() {
                 {format(new Date(session.start_time), "PPpp")}
               </p>
             )}
+          </div>
+          <div className="flex items-center gap-2">
+            <MeetRecordingsDialog sessionId={sessionId} />
           </div>
         </div>
       </div>
