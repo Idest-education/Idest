@@ -25,3 +25,7 @@ CREATE INDEX "Recording_sessionId_created_at_idx" ON "Recording"("sessionId", "c
 ALTER TABLE "Recording" ADD CONSTRAINT "Recording_sessionId_fkey" FOREIGN KEY ("sessionId") REFERENCES "Session"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 
+
+
+
+
