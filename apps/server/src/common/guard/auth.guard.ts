@@ -4,9 +4,18 @@ import {
   Injectable,
   UnauthorizedException,
 } from '@nestjs/common';
-import { JwtPayload, decode } from 'jsonwebtoken';
+import { JwtPayload, decode, verify } from 'jsonwebtoken';
 import { PrismaService } from '../../prisma/prisma.service';
 import { Reflector } from '@nestjs/core';
+
+export function verifyTokenAsync(token: string, secret: string): Promise<JwtPayload> {
+  return new Promise((resolve, reject) => {
+    verify(token, secret, { algorithms: ['HS256'], issuer: process.env.JWT_ISSUER }, (err, decoded) => {
+      if (err) return reject(err);
+      resolve(decoded as JwtPayload);
+    });
+  });
+}
 
 @Injectable()
 export class AuthGuard implements CanActivate {
