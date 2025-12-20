@@ -215,6 +215,78 @@ export class UserController {
     return await this.userService.searchUsers(query, user.id);
   }
 
+  @Get('all')
+  @Roles(Role.ADMIN)
+  @ApiOperation({
+    summary: 'Get all users',
+    description:
+      'Retrieves a paginated list of all users with filtering and sorting options. Only accessible by users with ADMIN role.',
+  })
+  @ApiQuery({
+    name: 'page',
+    required: false,
+    description: 'Page number',
+    example: 1,
+  })
+  @ApiQuery({
+    name: 'limit',
+    required: false,
+    description: 'Items per page (max 100)',
+    example: 10,
+  })
+  @ApiQuery({
+    name: 'sortBy',
+    required: false,
+    description: 'Field to sort by',
+    example: 'name',
+    enum: ['name', 'role', 'active', 'created', 'specialization'],
+  })
+  @ApiQuery({
+    name: 'sortOrder',
+    required: false,
+    description: 'Sort order',
+    enum: ['asc', 'desc'],
+  })
+  @ApiQuery({
+    name: 'filter',
+    required: false,
+    description:
+      'Filters in format key:value. Multiple filters can be comma-separated. Examples: role:STUDENT, search:john, active:true, specialization:math',
+    example: 'role:STUDENT,active:true',
+  })
+  @ApiOkResponse({
+    description: 'Successfully retrieved users list',
+    type: AllUsersDto,
+  })
+  @ApiForbiddenResponse({ description: 'Access denied - ADMIN role required' })
+  @ApiUnauthorizedResponse({ description: 'Authentication required' })
+  @ApiInternalServerErrorResponse({ description: 'Internal server error' })
+  async getAllUsers(
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+    @Query('sortBy') sortBy?: string,
+    @Query('filter') filter?: string | string[],
+    @Query('sortOrder') sortOrder?: 'asc' | 'desc',
+  ): Promise<AllUsers | null> {
+    const pageNum = page ? parseInt(page) : 1;
+    const limitNum = limit ? parseInt(limit) : 10;
+    const filtersArray = Array.isArray(filter)
+      ? filter
+      : filter
+        ? filter
+            .split(',')
+            .map((s) => s.trim())
+            .filter(Boolean)
+        : undefined;
+    return await this.userService.getAllUsers(
+      pageNum,
+      limitNum,
+      sortBy,
+      filtersArray,
+      sortOrder,
+    );
+  }
+
   @Get(':id')
   @Roles(Role.TEACHER, Role.ADMIN)
   @ApiOperation({
@@ -364,77 +436,5 @@ export class UserController {
   @ApiInternalServerErrorResponse({ description: 'Internal server error' })
   async deleteOwnAccount(@CurrentUser() user: userPayload): Promise<boolean> {
     return await this.userService.deleteAccount(user.id, user, true);
-  }
-
-  @Get('all')
-  @Roles(Role.ADMIN)
-  @ApiOperation({
-    summary: 'Get all users',
-    description:
-      'Retrieves a paginated list of all users with filtering and sorting options. Only accessible by users with ADMIN role.',
-  })
-  @ApiQuery({
-    name: 'page',
-    required: false,
-    description: 'Page number',
-    example: 1,
-  })
-  @ApiQuery({
-    name: 'limit',
-    required: false,
-    description: 'Items per page (max 100)',
-    example: 10,
-  })
-  @ApiQuery({
-    name: 'sortBy',
-    required: false,
-    description: 'Field to sort by',
-    example: 'name',
-    enum: ['name', 'role', 'active', 'created', 'specialization'],
-  })
-  @ApiQuery({
-    name: 'sortOrder',
-    required: false,
-    description: 'Sort order',
-    enum: ['asc', 'desc'],
-  })
-  @ApiQuery({
-    name: 'filter',
-    required: false,
-    description:
-      'Filters in format key:value. Multiple filters can be comma-separated. Examples: role:STUDENT, search:john, active:true, specialization:math',
-    example: 'role:STUDENT,active:true',
-  })
-  @ApiOkResponse({
-    description: 'Successfully retrieved users list',
-    type: AllUsersDto,
-  })
-  @ApiForbiddenResponse({ description: 'Access denied - ADMIN role required' })
-  @ApiUnauthorizedResponse({ description: 'Authentication required' })
-  @ApiInternalServerErrorResponse({ description: 'Internal server error' })
-  async getAllUsers(
-    @Query('page') page?: string,
-    @Query('limit') limit?: string,
-    @Query('sortBy') sortBy?: string,
-    @Query('filter') filter?: string | string[],
-    @Query('sortOrder') sortOrder?: 'asc' | 'desc',
-  ): Promise<AllUsers | null> {
-    const pageNum = page ? parseInt(page) : 1;
-    const limitNum = limit ? parseInt(limit) : 10;
-    const filtersArray = Array.isArray(filter)
-      ? filter
-      : filter
-        ? filter
-            .split(',')
-            .map((s) => s.trim())
-            .filter(Boolean)
-        : undefined;
-    return await this.userService.getAllUsers(
-      pageNum,
-      limitNum,
-      sortBy,
-      filtersArray,
-      sortOrder,
-    );
   }
 }
