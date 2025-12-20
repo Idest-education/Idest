@@ -508,10 +508,11 @@ export class ClassController {
   }
 
   @Get('all')
+  @Roles(Role.ADMIN)
   @ApiOperation({
     summary: 'Get all classes',
     description:
-      'Retrieves all classes with pagination, filtering, and sorting options.',
+      'Retrieves all classes with pagination, filtering, and sorting options. Only accessible by users with ADMIN role.',
   })
   @ApiQuery({
     name: 'page',

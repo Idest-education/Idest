@@ -11,6 +11,9 @@ import {
 } from '@nestjs/common';
 import { SessionService } from './session.service';
 import { AuthGuard } from 'src/common/guard/auth.guard';
+import { RolesGuard } from 'src/common/guard/role.guard';
+import { Roles } from 'src/common/decorator/role.decorator';
+import { Role } from 'src/common/enum/role.enum';
 import { CurrentUser } from 'src/common/decorator/currentUser.decorator';
 import { userPayload } from 'src/common/types/userPayload.interface';
 import { CreateSessionDto } from './dto/create-session.dto';
@@ -38,7 +41,7 @@ import {
 @Controller('session')
 @ApiTags('Session')
 @ApiBearerAuth()
-@UseGuards(AuthGuard)
+@UseGuards(AuthGuard, RolesGuard)
 export class SessionController {
   constructor(private readonly sessionService: SessionService) {}
 
@@ -70,6 +73,7 @@ export class SessionController {
   }
 
   @Get('')
+  @Roles(Role.TEACHER, Role.ADMIN)
   @ApiOperation({
     summary: 'Get all sessions',
     description:

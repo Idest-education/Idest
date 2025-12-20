@@ -313,7 +313,7 @@ export class UserController {
   @ApiOperation({
     summary: 'Update user',
     description:
-      'Updates user information by ID. Can update name, role, avatar, and active status.',
+      'Updates user information by ID. Users can update their own name and avatar. Only admins can update other users or change roles/active status.',
   })
   @ApiParam({ name: 'id', description: 'User ID', example: 'uuid-string' })
   @ApiBody({ type: UpdateUserDto })
@@ -322,13 +322,20 @@ export class UserController {
     type: UserResponseDto,
   })
   @ApiNotFoundResponse({ description: 'User not found' })
+  @ApiForbiddenResponse({
+    description: 'Access denied - only admins can update other users or change roles/status',
+  })
   @ApiUnprocessableEntityResponse({
     description: 'Failed to update user',
   })
   @ApiUnauthorizedResponse({ description: 'Authentication required' })
   @ApiInternalServerErrorResponse({ description: 'Internal server error' })
-  async updateUser(@Param('id') id: string, @Body() request: UpdateUserDto) {
-    return await this.userService.updateUser(id, request);
+  async updateUser(
+    @Param('id') id: string,
+    @Body() request: UpdateUserDto,
+    @CurrentUser() currentUser: userPayload,
+  ) {
+    return await this.userService.updateUser(id, request, currentUser);
   }
 
   @Post('ban/:id')

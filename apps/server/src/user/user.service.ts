@@ -1,5 +1,6 @@
 import {
   ConflictException,
+  ForbiddenException,
   Injectable,
   InternalServerErrorException,
   NotFoundException,
@@ -129,7 +130,11 @@ export class UserService {
     }
   }
 
-  async updateUser(id: string, dto: UpdateUserDto): Promise<User> {
+  async updateUser(
+    id: string,
+    dto: UpdateUserDto,
+    currentUser: userPayload,
+  ): Promise<User> {
     try {
       const user = await this.prisma.user.findUnique({
         where: { id },
@@ -138,14 +143,43 @@ export class UserService {
         throw new NotFoundException(`User with ID ${id} not found`);
       }
 
+      const isSelfUpdate = currentUser.id === id;
+      const isAdmin = currentUser.role === Role.ADMIN;
+
+      // Non-admins can only update themselves, and cannot change role or is_active
+      if (!isAdmin && !isSelfUpdate) {
+        throw new ForbiddenException(
+          'Only administrators can update other users',
+        );
+      }
+
+      if (!isAdmin && (dto.role !== undefined || dto.isActive !== undefined)) {
+        throw new ForbiddenException(
+          'Only administrators can change user roles or active status',
+        );
+      }
+
+      // Build update data - only include fields that are allowed
+      const updateData: any = {};
+      if (dto.fullName !== undefined) {
+        updateData.full_name = dto.fullName;
+      }
+      if (dto.avatar !== undefined) {
+        updateData.avatar_url = dto.avatar;
+      }
+      // Only admins can update these
+      if (isAdmin) {
+        if (dto.role !== undefined) {
+          updateData.role = dto.role;
+        }
+        if (dto.isActive !== undefined) {
+          updateData.is_active = dto.isActive;
+        }
+      }
+
       await this.prisma.user.update({
         where: { id },
-        data: {
-          full_name: dto.fullName,
-          role: dto.role,
-          avatar_url: dto.avatar,
-          is_active: dto.isActive,
-        },
+        data: updateData,
       });
       const newUser = await this.prisma.user.findUnique({
         where: { id: id },
