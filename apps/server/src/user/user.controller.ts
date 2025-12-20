@@ -18,6 +18,7 @@ import { UserService } from './user.service';
 import { ResponseDto } from 'src/common/dto/response.dto';
 import { UpdateUserDto } from './dto/updateUser.dto';
 import { AuthGuard } from 'src/common/guard/auth.guard';
+import { RolesGuard } from 'src/common/guard/role.guard';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { Role } from 'src/common/enum/role.enum';
 import { Roles } from 'src/common/decorator/role.decorator';
@@ -51,7 +52,7 @@ import { Public } from 'src/common/decorator/public.decorator';
 @Controller('user')
 @ApiTags('User')
 @ApiBearerAuth()
-@UseGuards(AuthGuard)
+@UseGuards(AuthGuard, RolesGuard)
 export class UserController {
   constructor(private readonly userService: UserService) {}
 
