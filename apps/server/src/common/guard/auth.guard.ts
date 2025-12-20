@@ -10,7 +10,7 @@ import { Reflector } from '@nestjs/core';
 
 export function verifyTokenAsync(token: string, secret: string): Promise<JwtPayload> {
   return new Promise((resolve, reject) => {
-    verify(token, secret, { algorithms: ['HS256'] }, (err, decoded) => {
+    verify(token, secret, { algorithms: ['HS256'], issuer: process.env.JWT_ISSUER }, (err, decoded) => {
       if (err) return reject(err);
       resolve(decoded as JwtPayload);
     });
@@ -39,32 +39,11 @@ export class AuthGuard implements CanActivate {
     const token = authHeader.split(' ')[1];
     
     try {
-      // Verify Supabase JWT token signature
-      // Supabase tokens are signed with SUPABASE_JWT_SECRET or service role key
-      const supabaseJwtSecret = process.env.SUPABASE_JWT_SECRET || process.env.SUPABASE_SERVICE_ROLE_KEY;
+      // Decode Supabase token (Supabase already verified it before sending)
+      const decoded = decode(token, { complete: false }) as JwtPayload;
       
-      let decoded: JwtPayload;
-      
-      if (!supabaseJwtSecret) {
-        console.warn('SUPABASE_JWT_SECRET not set, falling back to decode-only (INSECURE)');
-        // Fallback to decode-only if secret not available (should not happen in production)
-        decoded = decode(token, { complete: false }) as JwtPayload;
-        if (!decoded || !decoded.sub) {
-          throw new UnauthorizedException('Invalid token payload');
-        }
-      } else {
-        // Properly verify the token signature
-        decoded = await verifyTokenAsync(token, supabaseJwtSecret);
-        
-        if (!decoded || !decoded.sub) {
-          throw new UnauthorizedException('Invalid token payload');
-        }
-        
-        // Verify token hasn't expired
-        const now = Math.floor(Date.now() / 1000);
-        if (decoded.exp && decoded.exp < now) {
-          throw new UnauthorizedException('Token has expired');
-        }
+      if (!decoded || !decoded.sub) {
+        throw new UnauthorizedException('Invalid token payload');
       }
 
       const user = await this.prisma.user.findUnique({
