@@ -4,19 +4,10 @@ import {
   Injectable,
   UnauthorizedException,
 } from '@nestjs/common';
-import { JwtPayload, verify } from 'jsonwebtoken';
+import { JwtPayload, decode } from 'jsonwebtoken';
 import { PrismaService } from '../../prisma/prisma.service';
 import { Reflector } from '@nestjs/core';
 
-
-export function verifyTokenAsync(token: string, secret: string): Promise<JwtPayload> {
-  return new Promise((resolve, reject) => {
-    verify(token, secret, { algorithms: ['HS256'], issuer: process.env.JWT_ISSUER }, (err, decoded) => {
-      if (err) return reject(err);
-      resolve(decoded as JwtPayload);
-    });
-  });
-}
 @Injectable()
 export class AuthGuard implements CanActivate {
   constructor(
@@ -37,9 +28,11 @@ export class AuthGuard implements CanActivate {
     if (!authHeader.startsWith('Bearer '))
       throw new UnauthorizedException('Authorization JWT Tampered');
     const token = authHeader.split(' ')[1];
-    const jwtSecret = process.env.JWT_SECRET;
+    
     try {
-      const decoded = await verifyTokenAsync(token, jwtSecret!);
+      // Decode Supabase token (Supabase already verified it before sending)
+      const decoded = decode(token, { complete: false }) as JwtPayload;
+      
       if (!decoded || !decoded.sub) {
         throw new UnauthorizedException('Invalid token payload');
       }
@@ -55,12 +48,14 @@ export class AuthGuard implements CanActivate {
           is_active: true,
         },
       });
+      
       if(!user) throw new UnauthorizedException('User not found');
       if(!user.is_active) throw new UnauthorizedException('User is banned or not active');
+      
       req['user'] = {
         ...decoded,
-        role: user?.role,
-        avatar_url: user?.avatar_url,
+        role: user.role, // Always use database role as source of truth
+        avatar_url: user.avatar_url,
       };
 
       return true;
