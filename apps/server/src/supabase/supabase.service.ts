@@ -39,11 +39,13 @@ export class SupabaseService {
   }
 
   get authAdmin() {
-    return this.client.auth.admin;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    return this.client.auth.admin as any;
   }
 
   get auth() {
-    return this.authClient.auth;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    return this.authClient.auth as any;
   }
 
   async inviteUserByEmail(email: string, metadata?: Record<string, any>) {
