@@ -5,18 +5,21 @@ import { CreateSpeakingAssignmentDto } from './dto/create-speaking-assignment.dt
 import { UpdateSpeakingAssignmentDto } from './dto/update-speaking-assignment.dto';
 import { CreateSpeakingResponseDto } from './dto/create-speaking-response.dto';
 import { JwtAuthGuard } from '../../guards/jwt-auth.guard';
+import { RolesGuard } from '../../guards/role.guard';
+import { Roles } from '../../decorators/role.decorator';
 import { FileInterceptor, FileFieldsInterceptor } from '@nestjs/platform-express';
 import { PaginationDto } from '../dto/pagination.dto';
 
 @ApiTags('speaking')
 @ApiBearerAuth()
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, RolesGuard)
 @Controller('speaking')
 export class SpeakingController {
   constructor(private readonly speakingService: SpeakingService) {}
 
   @Post('assignments')
-  @ApiOperation({ summary: 'Create speaking assignment' })
+  @Roles('ADMIN', 'TEACHER')
+  @ApiOperation({ summary: 'Create speaking assignment (ADMIN/TEACHER only)' })
   @ApiResponse({ status: HttpStatus.CREATED })
   async create(@Body() dto: CreateSpeakingAssignmentDto) {
     const data = await this.speakingService.createAssignment(dto);
@@ -42,7 +45,8 @@ export class SpeakingController {
   }
 
   @Patch('assignments/:id')
-  @ApiOperation({ summary: 'Update speaking assignment' })
+  @Roles('ADMIN', 'TEACHER')
+  @ApiOperation({ summary: 'Update speaking assignment (ADMIN/TEACHER only)' })
   @ApiResponse({ status: HttpStatus.OK })
   async update(@Param('id') id: string, @Body() dto: UpdateSpeakingAssignmentDto) {
     const data = await this.speakingService.update(id, dto);
@@ -50,7 +54,8 @@ export class SpeakingController {
   }
 
   @Delete('assignments/:id')
-  @ApiOperation({ summary: 'Delete speaking assignment' })
+  @Roles('ADMIN', 'TEACHER')
+  @ApiOperation({ summary: 'Delete speaking assignment (ADMIN/TEACHER only)' })
   @ApiResponse({ status: HttpStatus.OK })
   async remove(@Param('id') id: string) {
     const data = await this.speakingService.remove(id);

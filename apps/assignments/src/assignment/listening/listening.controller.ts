@@ -5,17 +5,20 @@ import { CreateAssignmentDto } from '../dto/create-assignment.dto';
 import { UpdateAssignmentDto } from '../dto/update-assignment.dto';
 import { SubmitAssignmentDto } from '../dto/submit-assignment.dto';
 import { JwtAuthGuard } from '../../guards/jwt-auth.guard';
+import { RolesGuard } from '../../guards/role.guard';
+import { Roles } from '../../decorators/role.decorator';
 import { PaginationDto } from '../dto/pagination.dto';
 
 @ApiTags('listening')
 @ApiBearerAuth()
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, RolesGuard)
 @Controller('listening')
 export class ListeningController {
   constructor(private readonly listeningService: ListeningService) {}
 
   @Post('assignments')
-  @ApiOperation({ summary: 'Create listening assignment' })
+  @Roles('ADMIN', 'TEACHER')
+  @ApiOperation({ summary: 'Create listening assignment (ADMIN/TEACHER only)' })
   @ApiResponse({ status: HttpStatus.CREATED })
   async create(@Body() dto: CreateAssignmentDto, @Req() req: any) {
     const data = await this.listeningService.createAssignment({
@@ -53,7 +56,8 @@ export class ListeningController {
   }
 
   @Patch('assignments/:id')
-  @ApiOperation({ summary: 'Update listening assignment' })
+  @Roles('ADMIN', 'TEACHER')
+  @ApiOperation({ summary: 'Update listening assignment (ADMIN/TEACHER only)' })
   @ApiResponse({ status: HttpStatus.OK })
   async update(@Param('id') id: string, @Body() dto: UpdateAssignmentDto) {
     const data = await this.listeningService.update(id, dto);
@@ -61,7 +65,8 @@ export class ListeningController {
   }
 
   @Delete('assignments/:id')
-  @ApiOperation({ summary: 'Delete listening assignment' })
+  @Roles('ADMIN', 'TEACHER')
+  @ApiOperation({ summary: 'Delete listening assignment (ADMIN/TEACHER only)' })
   @ApiResponse({ status: HttpStatus.OK })
   async remove(@Param('id') id: string) {
     const data = await this.listeningService.remove(id);

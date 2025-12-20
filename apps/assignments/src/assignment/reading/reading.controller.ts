@@ -5,18 +5,21 @@ import { CreateAssignmentDto } from '../dto/create-assignment.dto';
 import { UpdateAssignmentDto } from '../dto/update-assignment.dto';
 import { SubmitAssignmentDto } from '../dto/submit-assignment.dto';
 import { JwtAuthGuard } from '../../guards/jwt-auth.guard';
+import { RolesGuard } from '../../guards/role.guard';
+import { Roles } from '../../decorators/role.decorator';
 import { PaginationDto } from '../dto/pagination.dto';
 
 @ApiTags('reading')
 @ApiBearerAuth()
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, RolesGuard)
 @Controller('reading')
 export class ReadingController {
   constructor(private readonly readingService: ReadingService) {}
 
 
   @Post('assignments')
-  @ApiOperation({ summary: 'Create reading assignment' })
+  @Roles('ADMIN', 'TEACHER')
+  @ApiOperation({ summary: 'Create reading assignment (ADMIN/TEACHER only)' })
   @ApiResponse({ status: HttpStatus.CREATED })
   async create(@Body() dto: CreateAssignmentDto, @Req() req: any) {
     const data = await this.readingService.createAssignment({
@@ -53,7 +56,8 @@ export class ReadingController {
   }
 
   @Patch('assignments/:id')
-  @ApiOperation({ summary: 'Update reading assignment' })
+  @Roles('ADMIN', 'TEACHER')
+  @ApiOperation({ summary: 'Update reading assignment (ADMIN/TEACHER only)' })
   @ApiResponse({ status: HttpStatus.OK })
   async update(@Param('id') id: string, @Body() dto: UpdateAssignmentDto) {
     const data = await this.readingService.update(id, dto);
@@ -61,7 +65,8 @@ export class ReadingController {
   }
 
   @Delete('assignments/:id')
-  @ApiOperation({ summary: 'Delete reading assignment' })
+  @Roles('ADMIN', 'TEACHER')
+  @ApiOperation({ summary: 'Delete reading assignment (ADMIN/TEACHER only)' })
   @ApiResponse({ status: HttpStatus.OK })
   async remove(@Param('id') id: string) {
     const data = await this.readingService.remove(id);

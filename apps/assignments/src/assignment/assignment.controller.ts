@@ -1,12 +1,14 @@
 import { Controller, Get, Delete, Param, UseGuards, Query, Req } from '@nestjs/common';
 import { AssignmentService } from './assignment.service';
 import { JwtAuthGuard } from '../guards/jwt-auth.guard';
+import { RolesGuard } from '../guards/role.guard';
+import { Roles } from '../decorators/role.decorator';
 import { ApiBearerAuth, ApiOperation, ApiQuery } from '@nestjs/swagger';
 import { PaginationDto } from './dto/pagination.dto';
 
 @Controller('assignments')
 @ApiBearerAuth()
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, RolesGuard)
 export class AssignmentController {
   constructor(private readonly assignmentService: AssignmentService) {}
 
@@ -37,7 +39,8 @@ export class AssignmentController {
   }
 
   @Get('submissions')
-  @ApiOperation({ summary: 'Get all submissions across all skills' })
+  @Roles('ADMIN', 'TEACHER')
+  @ApiOperation({ summary: 'Get all submissions across all skills (ADMIN/TEACHER only)' })
   getAllSubmissions() {
     return this.assignmentService.getAllSubmissions();
   }
@@ -62,6 +65,8 @@ export class AssignmentController {
   }
 
   @Delete(':id')
+  @Roles('ADMIN', 'TEACHER')
+  @ApiOperation({ summary: 'Delete assignment (ADMIN/TEACHER only)' })
   remove(@Param('id') id: string) {
     return this.assignmentService.remove(id);
   }

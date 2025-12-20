@@ -5,17 +5,20 @@ import { CreateWritingAssignmentDto } from './dto/create-writing-assignment.dto'
 import { UpdateWritingAssignmentDto } from './dto/update-writing-assignment.dto';
 import { CreateWritingSubmissionDto } from './dto/create-writing-submission.dto';
 import { JwtAuthGuard } from '../../guards/jwt-auth.guard';
+import { RolesGuard } from '../../guards/role.guard';
+import { Roles } from '../../decorators/role.decorator';
 import { PaginationDto } from '../dto/pagination.dto';
 
 @ApiTags('writing')
 @ApiBearerAuth()
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, RolesGuard)
 @Controller('writing')
 export class WritingController {
   constructor(private readonly writingService: WritingService) {}
 
   @Post('assignments')
-  @ApiOperation({ summary: 'Create writing assignment' })
+  @Roles('ADMIN', 'TEACHER')
+  @ApiOperation({ summary: 'Create writing assignment (ADMIN/TEACHER only)' })
   @ApiResponse({ status: HttpStatus.CREATED })
   async create(@Body() dto: CreateWritingAssignmentDto) {
     const data = await this.writingService.createAssignment(dto);
@@ -41,7 +44,8 @@ export class WritingController {
   }
 
   @Patch('assignments/:id')
-  @ApiOperation({ summary: 'Update writing assignment' })
+  @Roles('ADMIN', 'TEACHER')
+  @ApiOperation({ summary: 'Update writing assignment (ADMIN/TEACHER only)' })
   @ApiResponse({ status: HttpStatus.OK })
   async update(@Param('id') id: string, @Body() dto: UpdateWritingAssignmentDto) {
     const data = await this.writingService.update(id, dto);
@@ -49,7 +53,8 @@ export class WritingController {
   }
 
   @Delete('assignments/:id')
-  @ApiOperation({ summary: 'Delete writing assignment' })
+  @Roles('ADMIN', 'TEACHER')
+  @ApiOperation({ summary: 'Delete writing assignment (ADMIN/TEACHER only)' })
   @ApiResponse({ status: HttpStatus.OK })
   async remove(@Param('id') id: string) {
     const data = await this.writingService.remove(id);
