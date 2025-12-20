@@ -47,6 +47,13 @@ async function bootstrap() {
       target: process.env.ASSIGNMENT_URL, // assignment service
       changeOrigin: true,
       pathRewrite: { '^/hehe': '' },
+      // Ensure Authorization header is forwarded
+      onProxyReq: (proxyReq, req, res) => {
+        // Forward authorization header if present
+        if (req.headers.authorization) {
+          proxyReq.setHeader('authorization', req.headers.authorization);
+        }
+      },
     }),
   );
 
