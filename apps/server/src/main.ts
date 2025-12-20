@@ -10,10 +10,13 @@ import { SwaggerModule } from '@nestjs/swagger';
 import { DocumentBuilder } from '@nestjs/swagger';
 import { Reflector } from '@nestjs/core';
 import { createProxyMiddleware } from 'http-proxy-middleware';
+import { PrismaClient } from '@prisma/client';
+import { decode, JwtPayload } from 'jsonwebtoken';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
   const config = app.get(ConfigService);
+  const prisma = new PrismaClient();
 
   const requiredEnv = ['DATABASE_URL', 'JWT_SECRET'];
   const missing = requiredEnv.filter((k) => !config.get<string>(k));
@@ -40,6 +43,34 @@ async function bootstrap() {
   );
   app.useGlobalFilters(new AllExceptionFilter());
   app.useGlobalInterceptors(new SuccessEnvelopeInterceptor(app.get(Reflector)));
+
+  // Enrich proxied requests to the assignment service with the user's app-role.
+  // The assignment microservice can't read our Prisma-backed role from Supabase JWT claims,
+  // so we forward it in a trusted header.
+  app.use('/hehe', async (req: any, _res: any, next: any) => {
+    try {
+      const auth = req.headers?.authorization;
+      if (typeof auth === 'string' && auth.startsWith('Bearer ')) {
+        const token = auth.split(' ')[1];
+        const decoded = decode(token, { complete: false }) as JwtPayload | null;
+        const userId = decoded?.sub;
+        if (userId) {
+          const user = await prisma.user.findUnique({
+            where: { id: userId },
+            select: { role: true, is_active: true },
+          });
+          if (user?.is_active) {
+            req.headers['x-user-role'] = user.role;
+          }
+        }
+      }
+    } catch (e) {
+      // Don't block proxy traffic if enrichment fails; the microservice will enforce its own auth.
+      console.error('Failed to enrich /hehe proxy request:', e);
+    }
+    next();
+  });
+
   app.use(
     '/hehe',
     createProxyMiddleware({
@@ -49,6 +80,9 @@ async function bootstrap() {
       onProxyReq: (proxyReq: any, req: any) => {
         if (req.headers?.authorization) {
           proxyReq.setHeader('authorization', req.headers.authorization);
+        }
+        if (req.headers?.['x-user-role']) {
+          proxyReq.setHeader('x-user-role', req.headers['x-user-role']);
         }
       },
     } as any),

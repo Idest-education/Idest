@@ -114,6 +114,40 @@ export class UserService {
         include: {
           StudentProfile: true,
           TeacherProfile: true,
+          ClassesCreated: {
+            select: {
+              id: true,
+              name: true,
+              slug: true,
+              invite_code: true,
+            },
+          },
+          ClassTeachers: {
+            select: {
+              id: true,
+              class: {
+                select: {
+                  id: true,
+                  name: true,
+                  slug: true,
+                  invite_code: true,
+                },
+              },
+            },
+          },
+          ClassMembers: {
+            select: {
+              id: true,
+              class: {
+                select: {
+                  id: true,
+                  name: true,
+                  slug: true,
+                  invite_code: true,
+                },
+              },
+            },
+          },
         },
       });
       if (!user) {

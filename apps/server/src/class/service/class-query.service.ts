@@ -24,6 +24,14 @@ import {
 export class ClassQueryService {
   constructor(private readonly prisma: PrismaService) {}
 
+  private async isAdmin(userId: string): Promise<boolean> {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { role: true },
+    });
+    return user?.role === 'ADMIN';
+  }
+
   /**
    * Get class by slug with full details
    */
@@ -92,7 +100,7 @@ export class ClassQueryService {
         throw new NotFoundException('Class not found');
       }
 
-      const hasAccess = checkClassAccess(classData, userId);
+      const hasAccess = (await this.isAdmin(userId)) || checkClassAccess(classData, userId);
       if (!hasAccess) {
         throw new ForbiddenException('Access denied to this class');
       }
@@ -365,7 +373,7 @@ export class ClassQueryService {
       }
 
       // Check if user has access to this class
-      const hasAccess = checkClassAccess(classData, userId);
+      const hasAccess = (await this.isAdmin(userId)) || checkClassAccess(classData, userId);
       if (!hasAccess) {
         throw new ForbiddenException('Access denied to this class');
       }
@@ -391,11 +399,9 @@ export class ClassQueryService {
     userId: string,
   ): Promise<UserSummaryDto[]> {
     try {
-      const hasAccess = await checkClassAccessById(
-        classId,
-        userId,
-        this.prisma,
-      );
+      const hasAccess =
+        (await this.isAdmin(userId)) ||
+        (await checkClassAccessById(classId, userId, this.prisma));
       if (!hasAccess)
         throw new ForbiddenException('Access denied to this class');
 
@@ -433,11 +439,9 @@ export class ClassQueryService {
     userId: string,
   ): Promise<UserSummaryDto[]> {
     try {
-      const hasAccess = await checkClassAccessById(
-        classId,
-        userId,
-        this.prisma,
-      );
+      const hasAccess =
+        (await this.isAdmin(userId)) ||
+        (await checkClassAccessById(classId, userId, this.prisma));
       if (!hasAccess)
         throw new ForbiddenException('Access denied to this class');
 
@@ -474,11 +478,9 @@ export class ClassQueryService {
     userId: string,
   ): Promise<ClassCountDto> {
     try {
-      const hasAccess = await checkClassAccessById(
-        classId,
-        userId,
-        this.prisma,
-      );
+      const hasAccess =
+        (await this.isAdmin(userId)) ||
+        (await checkClassAccessById(classId, userId, this.prisma));
       if (!hasAccess)
         throw new ForbiddenException('Access denied to this class');
 
