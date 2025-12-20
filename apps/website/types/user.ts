@@ -7,6 +7,18 @@ export interface UserProfile {
   isActive: boolean;
   createdAt: string;
   studentProfile?: StudentProfile | null;
+  classes?: {
+    created: UserClassSummary[];
+    teaching: UserClassSummary[];
+    enrolled: UserClassSummary[];
+  };
+}
+
+export interface UserClassSummary {
+  id: string;
+  name: string;
+  slug?: string;
+  inviteCode?: string;
 }
 
 export interface StudentProfile {

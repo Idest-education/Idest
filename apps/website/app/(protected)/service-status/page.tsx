@@ -245,7 +245,7 @@ export default function ServiceStatusPage() {
   const totalCount = services.length;
 
   return (
-    <div className="max-w-7xl mx-auto">
+    <div className="px-6">
       <div className="border-b border-gray-200 pb-6 mb-8">
         <div className="flex items-center justify-between">
           <div>

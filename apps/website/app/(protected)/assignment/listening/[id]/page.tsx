@@ -189,7 +189,7 @@ export default function ListeningAssignmentPage(props: Props) {
             </div>
 
             {/* RIGHT SIDEBAR */}
-            <div className="mmb-10 mt-10 ml-3 mr-3">
+            <div className="mb-10 mt-10 ml-3 mr-3">
                 <SidebarListening
                     assignment={assignment!}
                     flatSubquestions={flatSubquestions}

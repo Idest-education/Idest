@@ -146,7 +146,7 @@ export default function ReadingAssignmentPage(props: ReadingAssignmentPageProps)
             </div>
 
             {/* RIGHT - Navigation Sidebar */}
-            <div className="mmb-10 mt-10 ml-3 mr-3">
+            <div className="mb-10 mt-10 ml-3 mr-3">
                 <SidebarNavigation
                     assignment={assignment}
                     activePassage={activePassage}

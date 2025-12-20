@@ -120,7 +120,7 @@ export default function AssignmentsPage() {
   const showingTo = Math.min(currentPage * ITEMS_PER_PAGE, totalItems);
 
   return (
-    <div className="max-w-7xl mx-auto px-6 py-10">
+    <div className="px-6 py-10">
       {/* Header */}
       <div className="mb-8 animate-in fade-in slide-in-from-top-4">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-center">

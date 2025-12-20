@@ -190,7 +190,7 @@ export default function ClassShowcaseClient() {
   const hasClasses = allClasses.length > 0;
 
   return (
-    <section className="max-w-7xl mx-auto px-6 py-16">
+    <section className="px-6 py-16">
       {/* Global success/error message banner */}
       {successMessage && (
         <div className="mb-6 p-4 bg-emerald-50 border border-emerald-200 rounded-lg text-emerald-800 flex items-center justify-between">

@@ -8,7 +8,7 @@ export default function DevInfoLayout({
   return (
     <main className="min-h-screen bg-white">
       <nav className="border-b border-gray-200">
-        <div className="max-w-7xl mx-auto px-6 py-4 flex justify-between items-center">
+        <div className="px-6 py-4 flex justify-between items-center">
           <Link href="/" className="text-2xl font-semibold text-gray-900">
             Idest
           </Link>
@@ -17,7 +17,7 @@ export default function DevInfoLayout({
           </div>
         </div>
       </nav>
-      <div className="w-full max-w-7xl mx-auto p-6">
+      <div className="w-full px-6 py-6">
         {children}
       </div>
     </main>

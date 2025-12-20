@@ -61,7 +61,7 @@ export default function AssignmentShowcaseClient() {
   }
 
   return (
-    <section className="max-w-7xl mx-auto px-6 py-24 border-t border-gray-200">
+    <section className="px-6 py-24 border-t border-gray-200">
       {/* Header */}
       <div className="mb-10 text-center">
         <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-gradient-to-r from-amber-100 via-orange-100 to-orange-100 text-xs font-medium text-gray-800 shadow-sm mb-4">

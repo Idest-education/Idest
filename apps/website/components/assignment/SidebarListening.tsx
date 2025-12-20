@@ -76,10 +76,15 @@ export default function SidebarListening({
 
                 {/* SUBMIT BUTTON */}
                 <button
-                    onClick={onSubmit}
+                    type="button"
+                    onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        onSubmit();
+                    }}
                     className="w-full mt-4 bg-gradient-to-r from-blue-600 to-blue-700 text-white py-3 rounded-lg font-semibold 
                         hover:from-blue-700 hover:to-indigo-800 active:scale-95 transition-all duration-200 
-                        shadow-md hover:shadow-lg"
+                        shadow-md hover:shadow-lg cursor-pointer"
                 >
                     NỘP BÀI
                 </button>

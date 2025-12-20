@@ -21,7 +21,7 @@ export default function ProtectedLayoutWrapper({ children, navbar }: ProtectedLa
       <NavbarWrapper>{navbar}</NavbarWrapper>
 
       {/* Content - Full screen for meeting pages */}
-      <div className={isMeetingPage || isReadingPage || isWritingPage || isSpeakingPage || isListeningPage ? "flex-1 w-full" : "flex-1 w-full max-w-7xl mx-auto p-6"}>
+      <div className={isMeetingPage || isReadingPage || isWritingPage || isSpeakingPage || isListeningPage ? "flex-1 w-full" : "flex-1 w-full "}>
         {children}
       </div>
     </main>

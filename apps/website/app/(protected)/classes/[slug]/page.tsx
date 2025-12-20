@@ -239,7 +239,7 @@ export default function ClassDetailPage() {
 
   return (
     <div className="min-h-screen bg-white">
-      <div className="max-w-7xl mx-auto p-6 md:p-8 space-y-8">
+      <div className="px-6 py-6 md:py-8 space-y-8">
 
         {/* Header */}
         <div className="border-b border-gray-200 pb-6">

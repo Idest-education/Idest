@@ -20,3 +20,17 @@ http.interceptors.request.use(async (config) => {
 
   return config;
 });
+
+/**
+ * Unwraps the backend response envelope.
+ * Backend wraps all responses in { status, message, data, statusCode } via SuccessEnvelopeInterceptor.
+ * This helper extracts the `data` field consistently.
+ */
+export function unwrapResponse<T>(response: any): T {
+  // Check if response is wrapped in envelope: { status, message, data, statusCode }
+  if (response && typeof response === 'object' && 'status' in response && 'statusCode' in response && 'data' in response) {
+    return response.data as T;
+  }
+  // If already unwrapped or different structure, return as-is
+  return response as T;
+}

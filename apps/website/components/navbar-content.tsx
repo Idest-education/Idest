@@ -25,7 +25,7 @@ export default function Navbar() {
 
   return (
     <nav className="sticky top-0 z-50 w-full border-b border-gray-200 h-16 bg-white backdrop-blur-sm flex items-center shadow-sm">
-      <div className="w-full max-w-7xl mx-auto flex justify-between items-center px-6 relative">
+      <div className="w-full flex justify-between items-center px-6 relative">
         {/* Left side: logo + menu */}
         <div className="flex items-center gap-3 lg:gap-8">
           <button

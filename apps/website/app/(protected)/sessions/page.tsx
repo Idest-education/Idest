@@ -85,7 +85,7 @@ export default function SessionsPage() {
 
   return (
     <div className="min-h-screen bg-white">
-      <div className="max-w-7xl mx-auto p-6 md:p-8 space-y-8">
+      <div className="px-6 py-6 md:py-8 space-y-8">
         <div className="border-b border-gray-200 pb-6">
           <h1 className="text-3xl font-semibold text-gray-900 mb-2">Buổi học của tôi</h1>
           <p className="text-gray-600">Xem và quản lý các buổi học sắp tới và đã qua của bạn.</p>

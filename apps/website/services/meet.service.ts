@@ -1,4 +1,4 @@
-import { http } from "./http";
+import { http, unwrapResponse } from "./http";
 import { LiveKitCredentials } from "@/types/meet";
 
 interface LivekitTokenResponse {
@@ -7,8 +7,8 @@ interface LivekitTokenResponse {
 }
 
 export async function getLivekitToken(sessionId: string): Promise<LivekitTokenResponse> {
-  const response = await http.get<LivekitTokenResponse>(`/meet/${sessionId}/livekit-token`);
-  return response.data;
+  const response = await http.get(`/meet/${sessionId}/livekit-token`);
+  return unwrapResponse<LivekitTokenResponse>(response.data);
 }
 
 export interface MeetRecordingListItem {
@@ -31,13 +31,23 @@ export interface MeetRecordingUrlResponse {
 }
 
 export async function listSessionRecordings(sessionId: string): Promise<MeetRecordingListResponse> {
-  const response = await http.get<MeetRecordingListResponse>(`/meet/${sessionId}/recordings`);
-  return response.data;
+  const response = await http.get(`/meet/${sessionId}/recordings`);
+  return unwrapResponse<MeetRecordingListResponse>(response.data);
 }
 
 export async function getRecordingUrl(recordingId: string): Promise<MeetRecordingUrlResponse> {
-  const response = await http.get<MeetRecordingUrlResponse>(`/meet/recordings/${recordingId}/url`);
-  return response.data;
+  const response = await http.get(`/meet/recordings/${recordingId}/url`);
+  return unwrapResponse<MeetRecordingUrlResponse>(response.data);
+}
+
+export async function startRecording(sessionId: string): Promise<{ sessionId: string; egressId: string }> {
+  const response = await http.post(`/meet/${sessionId}/recordings/start`);
+  return unwrapResponse<{ sessionId: string; egressId: string }>(response.data);
+}
+
+export async function stopRecording(sessionId: string): Promise<{ sessionId: string; stopped: boolean }> {
+  const response = await http.post(`/meet/${sessionId}/recordings/stop`);
+  return unwrapResponse<{ sessionId: string; stopped: boolean }>(response.data);
 }
 
 
