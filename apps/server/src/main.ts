@@ -23,7 +23,6 @@ async function bootstrap() {
     );
   }
 
-  // Capture raw request bodies for webhook signature verification (Stripe, LiveKit, etc.)
   app.use(
     json({
       verify: (req: any, _res, buf) => {
@@ -47,14 +46,12 @@ async function bootstrap() {
       target: process.env.ASSIGNMENT_URL, // assignment service
       changeOrigin: true,
       pathRewrite: { '^/hehe': '' },
-      // Ensure Authorization header is forwarded
-      onProxyReq: (proxyReq, req, res) => {
-        // Forward authorization header if present
-        if (req.headers.authorization) {
+      onProxyReq: (proxyReq: any, req: any) => {
+        if (req.headers?.authorization) {
           proxyReq.setHeader('authorization', req.headers.authorization);
         }
       },
-    }),
+    } as any),
   );
 
   const corsOrigins = (
