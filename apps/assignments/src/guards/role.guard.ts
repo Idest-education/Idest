@@ -37,8 +37,17 @@ export class RolesGuard implements CanActivate {
           ? headerRole[0]
           : undefined;
 
-    // Check role from JWT payload (user_metadata.role or role field)
-    const userRole = normalizedHeaderRole || user.role || user.user_metadata?.role;
+    // Check role from JWT payload (prioritize user_metadata.role over top-level role)
+    // Top-level 'role' is often "authenticated" in Supabase tokens, so we check user_metadata.role first
+    let userRole = normalizedHeaderRole;
+    if (!userRole) {
+      // Prefer user_metadata.role as it contains the actual user role (ADMIN, TEACHER, etc.)
+      userRole = user.user_metadata?.role;
+    }
+    if (!userRole && user.role && user.role !== 'authenticated') {
+      // Fallback to top-level role only if it's not the default "authenticated" value
+      userRole = user.role;
+    }
 
     if (!userRole || !requiredRoles.includes(userRole)) {
       throw new ForbiddenException('Access denied: insufficient role');

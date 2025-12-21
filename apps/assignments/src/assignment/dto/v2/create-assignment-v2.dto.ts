@@ -1,4 +1,4 @@
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional, ApiExtraModels } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 import {
   IsArray,
@@ -251,9 +251,14 @@ export class SectionDto {
   order_index: number;
 
   @ApiProperty({
-    oneOf: [{ $ref: '#/components/schemas/ReadingSectionMaterialDto' }, { $ref: '#/components/schemas/ListeningSectionMaterialDto' }],
-    description: 'Discriminated by `type`',
+    description: 'Discriminated by `type`: reading or listening',
+    oneOf: [
+      { $ref: '#/components/schemas/ReadingSectionMaterialDto' },
+      { $ref: '#/components/schemas/ListeningSectionMaterialDto' },
+    ],
   })
+  @ValidateNested()
+  @Type(() => Object)
   material: ReadingSectionMaterialDto | ListeningSectionMaterialDto;
 
   @ApiProperty({ type: [QuestionGroupDto] })

@@ -1,7 +1,7 @@
 import { Controller, Get, Post, Patch, Delete, Param, Body, HttpStatus, UseGuards, Req, Query } from '@nestjs/common';
-import { ApiTags, ApiBearerAuth, ApiOperation, ApiResponse, ApiQuery } from '@nestjs/swagger';
+import { ApiTags, ApiBearerAuth, ApiOperation, ApiResponse, ApiQuery, ApiExtraModels } from '@nestjs/swagger';
 import { ListeningService } from './listening.service';
-import { CreateAssignmentV2Dto } from '../dto/v2/create-assignment-v2.dto';
+import { CreateAssignmentV2Dto, ReadingSectionMaterialDto, ListeningSectionMaterialDto } from '../dto/v2/create-assignment-v2.dto';
 import { UpdateAssignmentV2Dto } from '../dto/v2/update-assignment-v2.dto';
 import { SubmitAssignmentV2Dto } from '../dto/v2/submit-assignment-v2.dto';
 import { JwtAuthGuard } from '../../guards/jwt-auth.guard';
@@ -11,6 +11,7 @@ import { PaginationDto } from '../dto/pagination.dto';
 
 @ApiTags('listening')
 @ApiBearerAuth()
+@ApiExtraModels(ReadingSectionMaterialDto, ListeningSectionMaterialDto)
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Controller('listening')
 export class ListeningController {
