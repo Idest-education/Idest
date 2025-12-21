@@ -1,9 +1,9 @@
 import { Controller, Get, Post, Patch, Delete, Param, Body, HttpStatus, UseGuards, Req, Query } from '@nestjs/common';
 import { ApiTags, ApiBearerAuth, ApiOperation, ApiResponse, ApiQuery } from '@nestjs/swagger';
 import { ListeningService } from './listening.service';
-import { CreateAssignmentDto } from '../dto/create-assignment.dto';
-import { UpdateAssignmentDto } from '../dto/update-assignment.dto';
-import { SubmitAssignmentDto } from '../dto/submit-assignment.dto';
+import { CreateAssignmentV2Dto } from '../dto/v2/create-assignment-v2.dto';
+import { UpdateAssignmentV2Dto } from '../dto/v2/update-assignment-v2.dto';
+import { SubmitAssignmentV2Dto } from '../dto/v2/submit-assignment-v2.dto';
 import { JwtAuthGuard } from '../../guards/jwt-auth.guard';
 import { RolesGuard } from '../../guards/role.guard';
 import { Roles } from '../../decorators/role.decorator';
@@ -20,7 +20,7 @@ export class ListeningController {
   @Roles('ADMIN', 'TEACHER')
   @ApiOperation({ summary: 'Create listening assignment (ADMIN/TEACHER only)' })
   @ApiResponse({ status: HttpStatus.CREATED })
-  async create(@Body() dto: CreateAssignmentDto, @Req() req: any) {
+  async create(@Body() dto: CreateAssignmentV2Dto, @Req() req: any) {
     const data = await this.listeningService.createAssignment({
       ...dto,
       created_by: req.user?.sub || req.user?.userId,
@@ -59,7 +59,7 @@ export class ListeningController {
   @Roles('ADMIN', 'TEACHER')
   @ApiOperation({ summary: 'Update listening assignment (ADMIN/TEACHER only)' })
   @ApiResponse({ status: HttpStatus.OK })
-  async update(@Param('id') id: string, @Body() dto: UpdateAssignmentDto) {
+  async update(@Param('id') id: string, @Body() dto: UpdateAssignmentV2Dto) {
     const data = await this.listeningService.update(id, dto);
     return { status: true, message: 'Updated', data, statusCode: HttpStatus.OK };
   }
@@ -82,7 +82,7 @@ export class ListeningController {
     status: HttpStatus.OK,
     description: 'Assignment graded and saved successfully',
     })
-  async submit(@Body() dto: SubmitAssignmentDto, @Req() req: any) {
+  async submit(@Body() dto: SubmitAssignmentV2Dto, @Req() req: any) {
     const data = await this.listeningService.gradeSubmission({
       ...dto,
       submitted_by: dto.submitted_by || req.user?.sub || req.user?.userId,

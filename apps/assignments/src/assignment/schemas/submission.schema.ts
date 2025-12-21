@@ -57,6 +57,13 @@ export class Submission {
   })
   skill: string;
 
+  /**
+   * V2 answer payload (raw submission), stored for later review/regrade.
+   * Shape: SubmitAssignmentV2Dto.section_answers
+   */
+  @Prop({ type: SchemaTypes.Mixed })
+  answers_v2?: any;
+
   @Prop({ required: true, min: 0, max: 9 })
   score: number;
 
@@ -73,7 +80,7 @@ export class Submission {
   percentage: number;
 
   @Prop({ type: [SectionResultSchema], default: [] })
-  details: SectionResult[];
+  details: SectionResult[] | any;
 }
 export const SubmissionSchema = SchemaFactory.createForClass(Submission);
 

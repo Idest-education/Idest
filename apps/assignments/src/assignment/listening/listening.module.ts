@@ -3,7 +3,7 @@ import { MongooseModule } from '@nestjs/mongoose';
 import { JwtModule } from '@nestjs/jwt';
 import { ListeningService } from './listening.service';
 import { ListeningController } from './listening.controller';
-import { Assignment, AssignmentSchema } from '../schemas/assignment.schema';
+import { Assignment, AssignmentSchema } from '../schemas/assignment-v2.schema';
 import { Submission, SubmissionSchema } from '../schemas/submission.schema';
 import { JwtAuthGuard } from '../../guards/jwt-auth.guard';
 

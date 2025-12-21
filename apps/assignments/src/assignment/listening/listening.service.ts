@@ -1,13 +1,13 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
-import { Assignment, AssignmentDocument } from '../schemas/assignment.schema';
+import { Assignment, AssignmentDocument } from '../schemas/assignment-v2.schema';
 import { Submission, SubmissionDocument } from '../schemas/submission.schema';
-import { CreateAssignmentDto } from '../dto/create-assignment.dto';
-import { UpdateAssignmentDto } from '../dto/update-assignment.dto';
-import { SubmitAssignmentDto } from '../dto/submit-assignment.dto';
+import { CreateAssignmentV2Dto } from '../dto/v2/create-assignment-v2.dto';
+import { UpdateAssignmentV2Dto } from '../dto/v2/update-assignment-v2.dto';
+import { SubmitAssignmentV2Dto } from '../dto/v2/submit-assignment-v2.dto';
 import { generateUniqueSlug } from '../utils/slug.util';
-import { gradeAssignment, GradingResult } from '../utils/grading.util';
+import { gradeAssignmentV2, GradingResultV2 } from '../utils/grading-v2.util';
 import { PaginationDto, PaginatedResponse } from '../dto/pagination.dto';
 
 @Injectable()
@@ -19,14 +19,13 @@ export class ListeningService {
     private submissionModel: Model<SubmissionDocument>,
   ) {}
 
-  private assertListeningSections(sections: CreateAssignmentDto['sections']) {
+  private assertListeningSections(sections: CreateAssignmentV2Dto['sections']) {
     for (const s of sections) {
-      if (!s.listening_material) throw new BadRequestException('listening_material is required for listening sections');
-      if (s.reading_material) throw new BadRequestException('reading_material is not allowed for listening sections');
+      if ((s as any)?.material?.type !== 'listening') throw new BadRequestException('material.type must be listening for listening sections');
     }
   }
 
-  async createAssignment(dto: CreateAssignmentDto) {
+  async createAssignment(dto: CreateAssignmentV2Dto) {
     if (dto.skill && dto.skill !== 'listening') throw new BadRequestException('skill must be listening');
     this.assertListeningSections(dto.sections);
     const data = {
@@ -71,7 +70,7 @@ export class ListeningService {
     return this.assignmentModel.findOne({ _id: id, skill: 'listening' }).exec();
   }
 
-  async update(id: string, dto: UpdateAssignmentDto) {
+  async update(id: string, dto: UpdateAssignmentV2Dto) {
     if (dto.skill && dto.skill !== 'listening') throw new BadRequestException('skill must be listening');
     if (dto.sections) this.assertListeningSections(dto.sections as any);
     return this.assignmentModel
@@ -83,7 +82,7 @@ export class ListeningService {
     return this.assignmentModel.findOneAndDelete({ _id: id, skill: 'listening' }).exec();
   }
 
-  async gradeSubmission(submission: SubmitAssignmentDto): Promise<Submission> {
+  async gradeSubmission(submission: SubmitAssignmentV2Dto): Promise<Submission> {
     const assignment = await this.assignmentModel
       .findOne({ _id: submission.assignment_id, skill: 'listening' })
       .exec();
@@ -92,12 +91,13 @@ export class ListeningService {
       throw new NotFoundException('Listening assignment not found');
     }
 
-    const gradingResult = gradeAssignment(assignment, submission);
+    const gradingResult = gradeAssignmentV2(assignment as any, submission as any);
 
     const submissionData = {
       assignment_id: submission.assignment_id,
       submitted_by: submission.submitted_by,
       skill: 'listening',
+      answers_v2: submission.section_answers,
       ...gradingResult,
     };
 

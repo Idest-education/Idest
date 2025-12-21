@@ -1,7 +1,7 @@
 import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
 import { JwtModule } from '@nestjs/jwt';
-import { Assignment, AssignmentSchema } from './schemas/assignment.schema';
+import { Assignment, AssignmentSchema } from './schemas/assignment-v2.schema';
 import { Submission, SubmissionSchema } from './schemas/submission.schema';
 import { WritingAssignment, WritingAssignmentSchema } from './schemas/writing-assignment.schema';
 import { SpeakingAssignment, SpeakingAssignmentSchema } from './schemas/speaking-assignment.schema';

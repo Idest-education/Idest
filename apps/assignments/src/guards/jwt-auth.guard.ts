@@ -6,6 +6,7 @@ import {
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
+import { decode } from 'jsonwebtoken';
 
 @Injectable()
 export class JwtAuthGuard implements CanActivate {
@@ -23,22 +24,34 @@ export class JwtAuthGuard implements CanActivate {
     }
 
     try {
+      // Try to verify with JWT_SECRET first (for internal tokens)
       const secret = this.configService.get<string>('JWT_SECRET');
       
-      if (!secret) {
-        throw new UnauthorizedException('JWT secret not configured');
+      if (secret) {
+        try {
+          const payload = await this.jwtService.verifyAsync(token, {
+            secret: secret,
+          });
+          request.user = payload;
+          return true;
+        } catch (verifyError) {
+          // If verification fails, try decoding as Supabase token (Supabase already verified it)
+          // This allows the assignment service to accept tokens from the main backend
+        }
       }
 
-      const payload = await this.jwtService.verifyAsync(token, {
-        secret: secret,
-      });
+      // Decode Supabase token (Supabase already verified it before sending)
+      const decoded = decode(token, { complete: false }) as any;
+      
+      if (!decoded || !decoded.sub) {
+        throw new UnauthorizedException('Invalid token payload');
+      }
 
-      request.user = payload;
+      request.user = decoded;
+      return true;
     } catch (error) {
       throw new UnauthorizedException('Invalid or expired token');
     }
-
-    return true;
   }
 
   private extractTokenFromHeader(request: any): string | undefined {

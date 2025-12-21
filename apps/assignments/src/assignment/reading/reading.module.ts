@@ -3,7 +3,7 @@ import { MongooseModule } from '@nestjs/mongoose';
 import { JwtModule } from '@nestjs/jwt';
 import { ReadingService } from './reading.service';
 import { ReadingController } from './reading.controller';
-import { Assignment, AssignmentSchema } from '../schemas/assignment.schema';
+import { Assignment, AssignmentSchema } from '../schemas/assignment-v2.schema';
 import { Submission, SubmissionSchema } from '../schemas/submission.schema';
 import { JwtAuthGuard } from '../../guards/jwt-auth.guard';
 

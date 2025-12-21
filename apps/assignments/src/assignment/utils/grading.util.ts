@@ -1,5 +1,9 @@
-import { Assignment } from '../schemas/assignment.schema';
-import { SubmitAssignmentDto } from '../dto/submit-assignment.dto';
+/**
+ * Legacy grading util (v1). Kept temporarily for reference.
+ * The service layer uses `grading-v2.util.ts` for Schema v2.
+ */
+import { Assignment } from '../schemas/assignment-v2.schema';
+import { SubmitAssignmentV2Dto } from '../dto/v2/submit-assignment-v2.dto';
 
 export interface GradingResult {
   score: number;
@@ -50,7 +54,7 @@ function roundToHalf(score: number): number {
 
 export function gradeAssignment(
   assignment: Assignment,
-  submission: SubmitAssignmentDto,
+  submission: SubmitAssignmentV2Dto,
 ): GradingResult {
   let totalSubquestions = 0;
   let correctCount = 0;

@@ -1,7 +1,7 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
-import { Assignment, AssignmentDocument } from './schemas/assignment.schema';
+import { Assignment, AssignmentDocument } from './schemas/assignment-v2.schema';
 import { Submission, SubmissionDocument } from './schemas/submission.schema';
 import { WritingAssignment, WritingAssignmentDocument } from './schemas/writing-assignment.schema';
 import { SpeakingAssignment, SpeakingAssignmentDocument } from './schemas/speaking-assignment.schema';
