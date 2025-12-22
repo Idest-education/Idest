@@ -296,13 +296,24 @@ export class LiveKitService {
    */
   async getEgressInfo(egressId: string): Promise<any | null> {
     try {
-      const list = await (this.egressServiceClient as any).listEgress({
+      // Try filtering server-side if supported by the SDK version
+      const listDirect = await (this.egressServiceClient as any).listEgress({
         egressId,
       });
-      const items: any[] = Array.isArray(list) ? list : list?.items;
-      if (Array.isArray(items) && items.length > 0) {
-        return items[0];
+      const directItems: any[] = Array.isArray(listDirect)
+        ? listDirect
+        : listDirect?.items;
+      if (Array.isArray(directItems) && directItems.length > 0) {
+        return directItems[0];
       }
+
+      // Fall back to listing all and filtering client-side
+      const listAll = await (this.egressServiceClient as any).listEgress({});
+      const allItems: any[] = Array.isArray(listAll) ? listAll : listAll?.items;
+      if (Array.isArray(allItems) && allItems.length > 0) {
+        return allItems.find((it) => it?.egressId === egressId) || null;
+      }
+
       return null;
     } catch (error) {
       this.logger.error(

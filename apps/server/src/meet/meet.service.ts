@@ -1293,28 +1293,76 @@ export class MeetService {
     });
 
     const publicBaseUrl = process.env.RECORDING_PUBLIC_BASE_URL || '';
-    const resolveUrl = (fileLocation: string | null): string | null => {
+    const buildUrlFromLocation = (fileLocation: string | null): string | null => {
       if (!fileLocation) return null;
-      if (fileLocation.startsWith('http://') || fileLocation.startsWith('https://')) {
+      if (
+        fileLocation.startsWith('http://') ||
+        fileLocation.startsWith('https://')
+      ) {
         return fileLocation;
       }
       if (fileLocation.startsWith('s3://')) {
         const withoutScheme = fileLocation.slice('s3://'.length);
         const firstSlash = withoutScheme.indexOf('/');
-        const key = firstSlash >= 0 ? withoutScheme.slice(firstSlash + 1) : '';
-        if (!key || !publicBaseUrl) return null;
-        return `${publicBaseUrl.replace(/\/$/, '')}/${key}`;
+        const bucket =
+          firstSlash >= 0 ? withoutScheme.slice(0, firstSlash) : '';
+        const key =
+          firstSlash >= 0 ? withoutScheme.slice(firstSlash + 1) : '';
+
+        return (
+          (bucket && key
+            ? this.presignS3GetUrl({
+                bucket,
+                key,
+                expiresSeconds: Number(
+                  process.env.RECORDING_URL_EXPIRES_SECONDS || 3600,
+                ),
+              })
+            : null) ||
+          (key && publicBaseUrl
+            ? `${publicBaseUrl.replace(/\/$/, '')}/${key}`
+            : null)
+        );
       }
       return null;
     };
 
-    const items = recordings.map((r) => ({
-      recordingId: r.id,
-      egressId: r.egressId,
-      url: resolveUrl(r.fileLocation) || (r.status === 'COMPLETE' ? session?.recording_url || null : null),
-      startedAt: r.startedAt ? r.startedAt.toISOString() : null,
-      stoppedAt: r.endedAt ? r.endedAt.toISOString() : null,
-    }));
+    const items = await Promise.all(
+      recordings.map(async (r) => {
+        // Backfill fileLocation best-effort (handles missing/failed webhook ingestion)
+        if (!r.fileLocation && r.egressId) {
+          const info = await this.liveKitService.getEgressInfo(r.egressId);
+          const file0 =
+            info && Array.isArray(info.fileResults)
+              ? info.fileResults[0]
+              : undefined;
+          const inferredLocation: string | undefined =
+            file0?.location || undefined;
+          const inferredFilename: string | undefined =
+            file0?.filename || undefined;
+          if (inferredLocation) {
+            await prismaAny.recording.update({
+              where: { id: r.id },
+              data: {
+                fileLocation: inferredLocation,
+                ...(inferredFilename ? { filename: inferredFilename } : {}),
+              },
+            });
+            r.fileLocation = inferredLocation;
+          }
+        }
+
+        return {
+          recordingId: r.id,
+          egressId: r.egressId,
+          url:
+            buildUrlFromLocation(r.fileLocation) ||
+            (r.status === 'COMPLETE' ? session?.recording_url || null : null),
+          startedAt: r.startedAt ? r.startedAt.toISOString() : null,
+          stoppedAt: r.endedAt ? r.endedAt.toISOString() : null,
+        };
+      }),
+    );
 
     // Back-compat: if we have no Recording rows yet but the session has a recording_url, return it.
     if (items.length === 0 && session?.recording_url) {
