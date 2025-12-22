@@ -1072,7 +1072,7 @@ export class MeetGateway
       );
     } catch (error) {
       this.logger.error(`Failed to start recording: ${error.message}`);
-      let errorMessage = 'Failed to start recording';
+      let errorMessage = 'Failed to start recording, ' + error.message;
       if (error instanceof ForbiddenException) {
         errorMessage = 'Permission denied';
       } else if (error instanceof NotFoundException) {

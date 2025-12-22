@@ -152,12 +152,10 @@ export class LiveKitWebhookController {
     // If we have a public URL, mirror it into Session.recording_url for backwards compatibility
     const publicBaseUrl = this.configService.get<string>('RECORDING_PUBLIC_BASE_URL') || null;
     const url = resolvePublicUrl(fileLocation, publicBaseUrl);
-    if (url && (status === 'COMPLETE' || status === 'ACTIVE')) {
+    if (url && status === 'COMPLETE') {
       await this.prisma.session.update({
         where: { id: sessionId },
-        data: {
-          recording_url: url,
-        },
+        data: { recording_url: url },
       });
     }
 
