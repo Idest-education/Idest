@@ -18,9 +18,33 @@ export class SubquestionResult {
 export const SubquestionResultSchema = SchemaFactory.createForClass(SubquestionResult);
 
 @Schema()
+export class PartResult {
+  @Prop({ required: true })
+  key: string;
+
+  @Prop({ required: true })
+  correct: boolean;
+
+  @Prop({ type: SchemaTypes.Mixed })
+  submitted_answer: any;
+
+  @Prop({ type: SchemaTypes.Mixed })
+  correct_answer: any;
+}
+export const PartResultSchema = SchemaFactory.createForClass(PartResult);
+
+@Schema()
 export class QuestionResult {
   @Prop({ required: true })
   question_id: string;
+
+  // Overall correctness flag for the question
+  @Prop({ default: false })
+  correct?: boolean;
+
+  // Detailed grading parts (V2 grading)
+  @Prop({ type: [PartResultSchema], default: [] })
+  parts?: PartResult[];
 
   @Prop({ type: [SubquestionResultSchema], default: [] })
   subquestions: SubquestionResult[];
