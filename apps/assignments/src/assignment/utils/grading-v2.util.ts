@@ -56,9 +56,11 @@ function roundToHalf(score: number): number {
   return Math.max(0, Math.min(9, rounded));
 }
 
-function indexAnswers(submission: SubmitAssignmentV2Dto) {
+function indexAnswers(submission: SubmitAssignmentV2Dto | any) {
   const bySection = new Map<string, Map<string, any>>();
-  for (const sec of submission.section_answers ?? []) {
+  // Support both DTO submissions (section_answers) and stored submissions (answers_v2)
+  const sections = submission?.section_answers ?? submission?.answers_v2 ?? [];
+  for (const sec of sections) {
     const byQuestion = new Map<string, any>();
     for (const qa of sec.answers ?? []) {
       byQuestion.set(qa.question_id, qa.answer);
@@ -68,8 +70,13 @@ function indexAnswers(submission: SubmitAssignmentV2Dto) {
   return bySection;
 }
 
-export function gradeAssignmentV2(assignment: any, submission: SubmitAssignmentV2Dto): GradingResultV2 {
-  const submittedIndex = indexAnswers(submission);
+export function gradeAssignmentV2(assignment: any, submission: SubmitAssignmentV2Dto | any): GradingResultV2 {
+  // Accept either DTO shape (section_answers) or stored submissions (answers_v2)
+  const normalizedSubmission = submission?.section_answers
+    ? submission
+    : { ...submission, section_answers: submission?.answers_v2 ?? [] };
+
+  const submittedIndex = indexAnswers(normalizedSubmission);
 
   let total = 0;
   let correctCount = 0;

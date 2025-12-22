@@ -141,7 +141,12 @@ export class ReadingService {
       !submission.details ||
       !Array.isArray(submission.details) ||
       submission.details.every((sec: any) =>
-        (sec.questions ?? []).every((q: any) => !q.parts || q.parts.length === 0),
+        (sec.questions ?? []).every((q: any) => {
+          const noParts = !q.parts || q.parts.length === 0;
+          const missingSubmitted =
+            Array.isArray(q.parts) && q.parts.some((p: any) => p.submitted_answer === undefined);
+          return noParts || missingSubmitted;
+        }),
       );
 
     if (!needsDetailHydration) {
@@ -158,7 +163,12 @@ export class ReadingService {
     }
 
     // Re-grade to populate parts and correct answers for UI rendering
-    const regraded = gradeAssignmentV2(assignment as any, submission as any);
+    const normalizedSubmission = {
+      assignment_id: submission.assignment_id,
+      submitted_by: submission.submitted_by,
+      section_answers: (submission as any).answers_v2 ?? (submission as any).section_answers ?? [],
+    };
+    const regraded = gradeAssignmentV2(assignment as any, normalizedSubmission as any);
     return {
       ...submission,
       ...regraded,
