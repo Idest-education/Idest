@@ -2,7 +2,7 @@
 
 import { use, useEffect, useState } from "react";
 import { getListeningAssignment, getListeningSubmissionResult } from "@/services/assignment.service";
-import { ListeningAssignmentDetail, ListeningSubmissionResult } from "@/types/assignment";
+import { ListeningAssignmentDetail, SubmissionResultV2 } from "@/types/assignment";
 import LoadingScreen from "@/components/loading-screen";
 
 interface Props {
@@ -13,7 +13,7 @@ export default function ListeningResultPage(props: Props) {
     const { id, submissionId } = use(props.params);
 
     const [assignment, setAssignment] = useState<ListeningAssignmentDetail | null>(null);
-    const [result, setResult] = useState<ListeningSubmissionResult | null>(null);
+    const [result, setResult] = useState<SubmissionResultV2 | null>(null);
     const [activeSectionIndex, setActiveSectionIndex] = useState<number>(0);
     const [loading, setLoading] = useState(true);
 
@@ -86,18 +86,18 @@ export default function ListeningResultPage(props: Props) {
                                 </p>
                                 <audio
                                     controls
-                                    src={section.listening_material.audio_url}
+                                    src={(section as any).material?.type === "listening" ? (section as any).material.audio?.url : ""}
                                     className="w-full"
                                 />
                             </div>
                         </div>
 
                         {/* TRANSCRIPT (show on result page) */}
-                        {section.listening_material.transcript && (
+                        {(section as any).material?.type === "listening" && (section as any).material.transcript_md && (
                             <div className="mt-6 bg-white rounded-xl border border-gray-200 p-4">
                                 <p className="text-sm font-semibold text-gray-800 mb-2">Transcript</p>
                                 <p className="whitespace-pre-line text-gray-700 leading-relaxed">
-                                    {section.listening_material.transcript}
+                                    {(section as any).material.transcript_md}
                                 </p>
                             </div>
                         )}
@@ -162,77 +162,40 @@ export default function ListeningResultPage(props: Props) {
                             </h3>
                         </div>
 
-                        {/* Questions Review */}
+                        {/* Questions Review (v2) */}
                         <div className="space-y-6">
-                            {section.questions.map((q, qIndex) => {
-                                const qResult = sectionResult?.questions?.[qIndex];
-                                return (
-                                    <div key={q.id} className="bg-white rounded-xl shadow-md border border-gray-200 overflow-hidden">
-                                        <div className="bg-gradient-to-r from-gray-50 to-gray-100 px-5 py-4 border-b border-gray-200">
-                                            <p className="text-sm font-semibold text-gray-800">{q.prompt}</p>
-                                        </div>
-
-                                        <div className="text-sm p-5 space-y-4">
-                                            {q.subquestions.map((sub, sIndex) => {
-                                                const subResult = qResult?.subquestions?.[sIndex];
-                                                const isCorrect = Boolean(subResult?.correct);
-                                                const submitted = subResult?.submitted_answer;
-                                                const correct = subResult?.correct_answer;
-
-                                                return (
-                                                    <div
-                                                        key={sub.id}
-                                                        className={`rounded-xl border-2 p-4 transition-all duration-200 ${isCorrect
-                                                            ? "bg-gradient-to-br from-green-50 to-emerald-50 border-green-300"
-                                                            : "bg-gradient-to-br from-red-50 to-rose-50 border-red-300"
-                                                            }`}
-                                                    >
-                                                        <div className="flex items-start gap-3">
-                                                            <div className={`w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5 ${isCorrect ? "bg-green-500" : "bg-red-500"
-                                                                }`}>
-                                                                {isCorrect ? (
-                                                                    <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
-                                                                    </svg>
-                                                                ) : (
-                                                                    <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" />
-                                                                    </svg>
-                                                                )}
-                                                            </div>
-                                                            <div className="flex-1">
-                                                                <p className="text-sm text-gray-800 font-medium mb-3">
-                                                                    {sub.subprompt}
-                                                                </p>
-
-                                                                <div className="space-y-2">
-                                                                    <div className={`rounded-lg p-3 ${isCorrect ? "bg-white/50" : "bg-white/60"
-                                                                        }`}>
-                                                                        <p className="text-sm text-gray-600 mb-1">Trả lời của bạn:</p>
-                                                                        <p className={`font-semibold ${isCorrect ? "text-green-700" : "text-red-700"
-                                                                            }`}>
-                                                                            {formatTextAnswer(submitted)}
-                                                                        </p>
-                                                                    </div>
-
-                                                                    {!isCorrect && (
-                                                                        <div className="rounded-lg p-3 bg-green-100/60 border border-green-300">
-                                                                            <p className="text-sm text-gray-600 mb-1">Đáp án đúng:</p>
-                                                                            <p className="text-sm font-semibold text-green-700">
-                                                                                {formatTextAnswer(correct)}
-                                                                            </p>
-                                                                        </div>
-                                                                    )}
-                                                                </div>
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                );
-                                            })}
-                                        </div>
+                            {sectionResult?.questions?.map((q) => (
+                                <div key={q.question_id} className="bg-white rounded-xl shadow-md border border-gray-200 overflow-hidden">
+                                    <div className="bg-gradient-to-r from-gray-50 to-gray-100 px-5 py-4 border-b border-gray-200 flex items-center justify-between">
+                                        <p className="text-sm font-semibold text-gray-800">Question {q.question_id}</p>
+                                        <span className={`text-xs font-semibold ${q.correct ? "text-green-700" : "text-red-700"}`}>
+                                            {q.correct ? "Correct" : "Incorrect"}
+                                        </span>
                                     </div>
-                                );
-                            })}
+                                    <div className="text-sm p-5 space-y-3">
+                                        {(q.parts ?? []).map((p) => (
+                                            <div key={p.key} className="rounded-lg border border-gray-200 p-3">
+                                                <div className="flex items-center justify-between">
+                                                    <div className="font-medium text-gray-800">{p.key}</div>
+                                                    <div className={`text-xs font-semibold ${p.correct ? "text-green-700" : "text-red-700"}`}>
+                                                        {p.correct ? "OK" : "Wrong"}
+                                                    </div>
+                                                </div>
+                                                <div className="mt-2 grid grid-cols-1 md:grid-cols-2 gap-2">
+                                                    <div className="bg-gray-50 rounded p-2">
+                                                        <div className="text-xs text-gray-500">Your answer</div>
+                                                        <div className="text-sm text-gray-800 break-words">{String(p.submitted_answer ?? "")}</div>
+                                                    </div>
+                                                    <div className="bg-green-50 rounded p-2 border border-green-200">
+                                                        <div className="text-xs text-gray-500">Correct</div>
+                                                        <div className="text-sm text-gray-800 break-words">{String(p.correct_answer ?? "")}</div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            ))}
                         </div>
                     </div>
                 </div>

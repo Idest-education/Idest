@@ -1,10 +1,10 @@
 import { http, unwrapResponse } from "./http";
-import { ReadingAssignmentDetail,ReadingSubmissionPayload,ReadingSubmissionResult, } from "@/types/assignment";
+import { ReadingAssignmentDetail, SubmitAssignmentV2Payload, SubmissionResultV2 } from "@/types/assignment";
 import { WritingAssignmentDetail, WritingSubmissionPayload, WritingSubmissionResult, AssignmentResponse, AssignmentOverview, SpeakingAssignmentDetail,
   SpeakingSubmissionPayload,
   ListeningAssignmentDetail,
-  ListeningSubmissionPayload,
-  ListeningSubmissionResult,
+  SubmitAssignmentV2Payload,
+  SubmissionResultV2,
   PaginationDto,
   PaginatedAssignmentResponse,} from "@/types/assignment";
 import type {
@@ -108,8 +108,8 @@ export async function getReadingAssignment(
 }
 
 export async function submitReading(
-  payload: ReadingSubmissionPayload
-): Promise<{ status: boolean; message: string; data: ReadingSubmissionResult }> {
+  payload: SubmitAssignmentV2Payload
+): Promise<{ status: boolean; message: string; data: SubmissionResultV2 }> {
   const res = await http.post(`${getAssignmentBaseUrl()}/reading/submissions`, payload);
   return res.data;
 }
@@ -196,11 +196,11 @@ export async function getListeningAssignment(id: string): Promise<{
 }
 
 export async function submitListening(
-  payload: ListeningSubmissionPayload
+  payload: SubmitAssignmentV2Payload
 ): Promise<{
   status: boolean;
   message: string;
-  data: ListeningSubmissionResult;
+  data: SubmissionResultV2;
 }> {
   const res = await http.post(`${getAssignmentBaseUrl()}/listening/submissions`, payload);
   return res.data;

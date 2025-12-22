@@ -4,7 +4,7 @@ import { NextResponse, type NextRequest } from "next/server";
 export async function GET(request: NextRequest) {
   const { searchParams, origin } = new URL(request.url);
   const code = searchParams.get("code");
-  const next = searchParams.get("next") ?? "/classes";
+  const next = searchParams.get("next") ?? "/";
   const error_description = searchParams.get("error_description");
 
   // Handle OAuth errors
@@ -43,6 +43,8 @@ export async function GET(request: NextRequest) {
     `${origin}/auth/error?error=${encodeURIComponent("No authorization code provided")}`
   );
 }
+
+
 
 
 

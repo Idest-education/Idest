@@ -37,8 +37,98 @@ export interface AssignmentResponse {
 }
 
 // =======================
-// READING ASSIGNMENT DETAIL
+// ASSIGNMENT SCHEMA V2 (READING/LISTENING)
 // =======================
+
+export type MediaKindV2 = "image" | "audio" | "file";
+
+export interface MediaAssetV2 {
+  id: string;
+  kind: MediaKindV2;
+  url: string;
+  mime?: string;
+  title?: string;
+  alt?: string;
+  width?: number;
+  height?: number;
+  duration_seconds?: number;
+}
+
+export interface StimulusTemplateBlankV2 {
+  blank_id: string;
+  placeholder_label?: string;
+}
+
+export interface StimulusTemplateV2 {
+  format: "text";
+  body: string; // placeholders like {{blank:1}}
+  blanks: StimulusTemplateBlankV2[];
+}
+
+export interface StimulusV2 {
+  instructions_md?: string;
+  content_md?: string;
+  media?: MediaAssetV2[];
+  template?: StimulusTemplateV2;
+}
+
+export type QuestionTypeV2 =
+  | "gap_fill_template"
+  | "multiple_choice_single"
+  | "multiple_choice_multi"
+  | "true_false_not_given"
+  | "matching"
+  | "diagram_labeling"
+  | "short_answer";
+
+export type InteractionPayloadV2 = Record<string, unknown>;
+export type AnswerKeyPayloadV2 = Record<string, unknown>;
+
+export interface QuestionV2Client {
+  id: string;
+  order_index: number;
+  type: QuestionTypeV2;
+  prompt_md?: string;
+  stimulus: StimulusV2;
+  interaction: InteractionPayloadV2;
+  // NOTE: answer_key intentionally not present on client exam fetch.
+}
+
+export interface QuestionV2Authoring extends QuestionV2Client {
+  answer_key: AnswerKeyPayloadV2;
+}
+
+export interface QuestionGroupV2Client {
+  id: string;
+  order_index: number;
+  title?: string;
+  instructions_md?: string;
+  questions: QuestionV2Client[];
+}
+
+export interface ReadingSectionMaterialV2 {
+  type: "reading";
+  document_md: string;
+  images?: MediaAssetV2[];
+}
+
+export interface ListeningSectionMaterialV2 {
+  type: "listening";
+  audio: MediaAssetV2;
+  transcript_md?: string;
+  images?: MediaAssetV2[];
+}
+
+export type SectionMaterialV2 = ReadingSectionMaterialV2 | ListeningSectionMaterialV2;
+
+export interface SectionV2Client {
+  id: string;
+  title: string;
+  order_index: number;
+  material: SectionMaterialV2;
+  question_groups: QuestionGroupV2Client[];
+}
+
 export interface ReadingAssignmentDetail {
   id: string;
   _id: string;
@@ -49,77 +139,59 @@ export interface ReadingAssignmentDetail {
   created_by: string;
   is_public: boolean;
   created_at: string;
-  sections: ReadingSection[];
+  sections: SectionV2Client[];
 }
 
-export interface ReadingSection {
+export interface ListeningAssignmentDetail {
   id: string;
+  _id?: string;
   title: string;
-  order_index: number;
-  reading_material: {
-    id: string;
-    document: string;
-    image_url?: string;
-  };
-  questions: ReadingQuestion[];
+  description: string;
+  skill: "listening";
+  slug?: string;
+  created_by?: string;
+  is_public?: boolean;
+  created_at: string;
+  sections: SectionV2Client[];
 }
 
-export interface ReadingQuestion {
-  id: string;
-  type: "multiple_choice" | "true_false" | "fill_blank" | "matching";
-  prompt: string;
-  subquestions: ReadingSubquestion[];
-}
-
-export interface ReadingSubquestion {
-  id: string;
-  subprompt: string;
-  options: string[];
-  answer: string | number;
-}
-
-export interface ReadingSubmissionPayload {
+export interface SubmitAssignmentV2Payload {
   assignment_id: string;
   submitted_by: string;
-  section_answers: {
-    id: string; // section id
-    question_answers: {
-      id: string; // question id
-      subquestion_answers: {
-        answer: string | number;
-      }[];
-    }[];
-  }[];
+  section_answers: Array<{
+    section_id: string;
+    answers: Array<{
+      question_id: string;
+      answer: unknown;
+    }>;
+  }>;
 }
 
-export interface ReadingSubmissionResult {
+export interface SubmissionResultV2 {
   id: string;
   assignment_id: string;
   submitted_by: string;
-  skill: "reading";
+  skill: "reading" | "listening";
   score: number;
   total_questions: number;
   correct_answers: number;
   incorrect_answers: number;
   percentage: number;
   created_at: string;
-  details: ReadingSubmissionSectionResult[];
-}
-
-export interface ReadingSubmissionSectionResult {
-  section_id: string;
-  section_title: string;
-  questions: ReadingSubmissionQuestionResult[];
-}
-
-export interface ReadingSubmissionQuestionResult {
-  question_id: string;
-  subquestions: {
-    id: string;
-    correct: boolean;
-    submitted_answer?: number;
-    correct_answer: string | number;
-  }[];
+  details: Array<{
+    section_id: string;
+    section_title: string;
+    questions: Array<{
+      question_id: string;
+      correct: boolean;
+      parts?: Array<{
+        key: string;
+        correct: boolean;
+        submitted_answer: unknown;
+        correct_answer: unknown;
+      }>;
+    }>;
+  }>;
 }
 
 // =======================
@@ -215,83 +287,7 @@ export interface SpeakingSubmissionResult {
 }
 
 
-// =======================
-// SPEAKING ASSIGNMENT DETAIL
-// =======================
-export interface ListeningSubquestion {
-  id: string;
-  subprompt: string;
-  options: string[];
-  answer: string; // correct answer (server-side)
-}
-
-export interface ListeningQuestion {
-  id: string;
-  type: "multiple_choice" | "fill_blank" | "true_false";
-  prompt: string;
-  subquestions: ListeningSubquestion[];
-}
-
-export interface ListeningMaterial {
-  id: string;
-  audio_url: string;
-  transcript: string;
-}
-
-export interface ListeningSection {
-  id: string;
-  title: string;
-  order_index: number;
-  listening_material: ListeningMaterial;
-  questions: ListeningQuestion[];
-}
-
-export interface ListeningAssignmentDetail {
-  id: string;
-  title: string;
-  description: string;
-  sections: ListeningSection[];
-  skill: "listening";
-  created_at: string;
-}
-
-export interface ListeningSubmissionPayload {
-  assignment_id: string;
-  submitted_by: string;
-  section_answers: {
-    id: string;
-    question_answers: {
-      id: string;
-      subquestion_answers: { answer: string }[];
-    }[];
-  }[];
-}
-
-export interface ListeningSubmissionResultDetail {
-  section_id: string;
-  section_title: string;
-  questions: {
-    question_id: string;
-    subquestions: {
-      correct: boolean;
-      submitted_answer: string;
-      correct_answer: string;
-      id: string;
-    }[];
-  }[];
-}
-
-export interface ListeningSubmissionResult {
-  id: string;
-  assignment_id: string;
-  submitted_by: string;
-  score: number;
-  total_questions: number;
-  correct_answers: number;
-  incorrect_answers: number;
-  percentage: number;
-  details: ListeningSubmissionResultDetail[];
-}
+// (listening v1 detail/payload/result removed; use v2 types above)
 
 // =======================
 // CREATE ASSIGNMENT PAYLOADS (ADMIN/TEACHER)
@@ -311,18 +307,13 @@ export interface CreateReadingOrListeningAssignmentPayload {
     id: string; // uuid
     title: string;
     order_index: number;
-    material_url?: string;
-    reading_material?: { document: string; image_url?: string };
-    listening_material?: { audio_url: string; transcript?: string; image_url?: string };
-    questions: Array<{
-      id: string; // uuid
-      type: "fill_blank" | "multiple_choice" | "matching" | "map_labeling" | "true_false";
-      prompt: string;
-      subquestions: Array<{
-        subprompt?: string;
-        options: string[];
-        answer: string | number | string[] | number[] | boolean;
-      }>;
+    material: SectionMaterialV2;
+    question_groups: Array<{
+      id: string;
+      order_index: number;
+      title?: string;
+      instructions_md?: string;
+      questions: QuestionV2Authoring[];
     }>;
   }>;
 }

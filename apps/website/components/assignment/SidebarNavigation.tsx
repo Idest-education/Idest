@@ -1,40 +1,25 @@
-import { useEffect, useState } from "react";
-import { Clock, CheckCircle2 } from "lucide-react";
-
-// Mock types for preview
-interface SubQuestion {
-    id: string;
-}
-
-interface Question {
-    subquestions: SubQuestion[];
-}
-
-interface Section {
-    questions: Question[];
-}
-
-interface ReadingAssignmentDetail {
-    skill: string;
-    sections: Section[];
-}
+import { useEffect, useState, useRef } from "react";
+import { Clock, X } from "lucide-react";
+import { ReadingAssignmentDetail } from "@/types/assignment";
 
 interface Props {
     assignment: ReadingAssignmentDetail;
     activePassage: number;
     setActivePassage: (value: number) => void;
-    answers: Record<string, string | number>;
+    answers: Record<string, unknown>;
     setCurrentQuestionIndex: (value: number) => void;
     onSubmit: () => void;
+    onExit?: () => void;
 }
 
 export default function SidebarNavigation({
     assignment,
-    activePassage,
+    activePassage, // eslint-disable-line @typescript-eslint/no-unused-vars
     setActivePassage,
     answers,
     setCurrentQuestionIndex,
-    onSubmit
+    onSubmit,
+    onExit
 }: Props) {
 
     // TIMER (theo skill)
@@ -47,6 +32,7 @@ export default function SidebarNavigation({
 
     const totalMinutes = skillTime[assignment.skill] ?? 60;
     const [secondsLeft, setSecondsLeft] = useState(totalMinutes * 60);
+    const submittedRef = useRef(false);
 
     useEffect(() => {
         const timer = setInterval(() => {
@@ -55,32 +41,38 @@ export default function SidebarNavigation({
         return () => clearInterval(timer);
     }, []);
 
+    useEffect(() => {
+        if (secondsLeft === 0 && !submittedRef.current) {
+            submittedRef.current = true;
+            onSubmit();
+        }
+    }, [secondsLeft, onSubmit]);
+
     const minutes = Math.floor(secondsLeft / 60);
     const seconds = secondsLeft % 60;
 
-    // ==== FLATTEN ALL PASSAGES ====
+    // ==== FLATTEN ALL PASSAGES (V2) ====
     const allPassages = assignment.sections.map((section, passageIndex) => {
-        const subList = section.questions.flatMap((q, qIndex) =>
-            q.subquestions.map((sub, subIndex) => ({
+        const questionList = (section.question_groups ?? []).flatMap((group) =>
+            group.questions.map((q, qIndex) => ({
                 globalIndex: 0,
                 passageIndex,
                 questionIndex: qIndex,
-                subIndex,
-                subId: sub.id
+                questionId: q.id
             }))
         );
 
         return {
             passageIndex,
             section,
-            subList
+            questionList
         };
     });
 
     // Assign global numbering
     let counter = 1;
     allPassages.forEach((p) => {
-        p.subList.forEach((item) => {
+        p.questionList.forEach((item) => {
             item.globalIndex = counter++;
         });
     });
@@ -123,13 +115,36 @@ export default function SidebarNavigation({
                 >
                     NỘP BÀI
                 </button>
+
+                {/* EXIT BUTTON */}
+                {onExit && (
+                    <button
+                        type="button"
+                        onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            if (window.confirm("Bạn có chắc chắn muốn thoát? Tất cả bài làm của bạn sẽ bị mất!")) {
+                                onExit();
+                            }
+                        }}
+                        className="w-full mt-3 bg-red-500 hover:bg-red-600 text-white py-2 rounded-lg font-medium 
+                                 active:scale-95 transition-all duration-200 shadow-md hover:shadow-lg 
+                                 flex items-center justify-center gap-2 cursor-pointer"
+                    >
+                        <X className="w-4 h-4" />
+                        Thoát
+                    </button>
+                )}
             </div>
 
             {/* PASSAGES SECTION */}
             <div className="flex-1 overflow-y-auto p-4 space-y-4">
                 {allPassages.map((p) => {
-                    const passageAnswered = p.subList.filter(item => answers[item.subId] !== undefined).length;
-                    const passageTotal = p.subList.length;
+                    const passageAnswered = p.questionList.filter(item => {
+                        const answer = answers[item.questionId];
+                        return answer !== undefined && answer !== null && answer !== "";
+                    }).length;
+                    const passageTotal = p.questionList.length;
 
                     return (
                         <div key={p.passageIndex} className="bg-white rounded-lg p-4 border border-slate-200 shadow-sm">
@@ -143,16 +158,16 @@ export default function SidebarNavigation({
                             </div>
 
                             <div className="grid grid-cols-5 gap-2">
-                                {p.subList.map((item) => {
-                                    const answered = answers[item.subId] !== undefined;
-                                    const isActive = item.passageIndex === activePassage;
+                                {p.questionList.map((item) => {
+                                    const answer = answers[item.questionId];
+                                    const answered = answer !== undefined && answer !== null && answer !== "";
 
                                     return (
                                         <button
-                                            key={item.subId}
+                                            key={item.questionId}
                                             onClick={() => {
                                                 setActivePassage(item.passageIndex);
-                                                setCurrentQuestionIndex(item.subIndex);
+                                                setCurrentQuestionIndex(item.questionIndex);
                                             }}
                                             className={`
                                                 w-9 h-9 flex items-center justify-center rounded-lg text-sm font-medium

@@ -1,15 +1,16 @@
 "use client";
 
 import { useEffect, useState, useRef } from "react";
-import { Clock, CheckCircle2 } from "lucide-react";
+import { Clock, CheckCircle2, X } from "lucide-react";
 
 interface Props {
     onSubmit: () => void;
     activePart: 1 | 2;
     setActivePart: (t: 1 | 2) => void;
+    onExit?: () => void;
 }
 
-export default function SidebarSpeaking({ activePart, setActivePart, onSubmit }: Props) {
+export default function SidebarSpeaking({ activePart, setActivePart, onSubmit, onExit }: Props) {
     const TOTAL_SECONDS = 15 * 60;
     const [seconds, setSeconds] = useState(TOTAL_SECONDS);
     const hasSubmittedRef = useRef(false);
@@ -94,6 +95,26 @@ export default function SidebarSpeaking({ activePart, setActivePart, onSubmit }:
                 >
                     NỘP BÀI
                 </button>
+
+                {/* EXIT BUTTON */}
+                {onExit && (
+                    <button
+                        type="button"
+                        onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            if (window.confirm("Bạn có chắc chắn muốn thoát? Tất cả bài làm của bạn sẽ bị mất!")) {
+                                onExit();
+                            }
+                        }}
+                        className="w-full mt-3 bg-red-500 hover:bg-red-600 text-white py-2 rounded-lg font-medium 
+                                 active:scale-95 transition-all duration-200 shadow-md hover:shadow-lg 
+                                 flex items-center justify-center gap-2 cursor-pointer"
+                    >
+                        <X className="w-4 h-4" />
+                        Thoát
+                    </button>
+                )}
             </div>
 
         </div>

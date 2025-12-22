@@ -62,7 +62,7 @@ export function LoginForm({
       }
 
       // Chuyển hướng sau khi login thành công
-      router.push("/classes");
+      router.push("/");
     } catch (error: unknown) {
       setError(error instanceof Error ? error.message : "Đã xảy ra lỗi");
     } finally {

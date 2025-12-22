@@ -15,13 +15,14 @@ export default function ProtectedLayoutWrapper({ children, navbar }: ProtectedLa
   const isWritingPage = pathname?.includes("/assignment/writing");
   const isSpeakingPage = pathname?.includes("/assignment/speaking");
   const isListeningPage = pathname?.includes("/assignment/listening");
+  const isAssignmentPage = isReadingPage || isWritingPage || isSpeakingPage || isListeningPage;
 
   return (
     <main className="min-h-screen flex flex-col">
-      <NavbarWrapper>{navbar}</NavbarWrapper>
+      {!isAssignmentPage && <NavbarWrapper>{navbar}</NavbarWrapper>}
 
       {/* Content - Full screen for meeting pages */}
-      <div className={isMeetingPage || isReadingPage || isWritingPage || isSpeakingPage || isListeningPage ? "flex-1 w-full" : "flex-1 w-full "}>
+      <div className={isMeetingPage || isAssignmentPage ? "flex-1 w-full" : "flex-1 w-full "}>
         {children}
       </div>
     </main>

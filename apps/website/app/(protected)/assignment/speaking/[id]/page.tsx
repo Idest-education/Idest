@@ -162,12 +162,11 @@ export default function SpeakingAssignmentPage(props: Props) {
     const part3 = assignment.parts.find(p => p.part_number === 3);
 
     return (
-        <div className="flex w-full h-[900px] overflow-hidden bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 border border-gray-300 rounded-lg shadow-md">
+        <div className="flex w-full h-screen overflow-hidden bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
             {/* LEFT GROUP — Passage + Questions */}
 
             <div
-                className="flex flex-1 border-gray-200 rounded-3xl mb-20 mt-10 ml-3 
-             transition-all duration-300 hover:rounded-[40px]"
+                className="flex flex-1 mb-20 mt-10 ml-3"
             >
 
                 {/* LEFT CONTENT */}
@@ -484,6 +483,7 @@ export default function SpeakingAssignmentPage(props: Props) {
                     activePart={activePart}
                     setActivePart={setActivePart}
                     onSubmit={handleSubmit}
+                    onExit={() => router.push("/assignment")}
                 />
             </div>
         </div>

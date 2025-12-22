@@ -12,7 +12,7 @@ import {
   createSpeakingAssignment,
   createWritingAssignment,
 } from "@/services/assignment.service";
-import type { CreateReadingOrListeningAssignmentPayload, CreateSpeakingAssignmentPayload, CreateWritingAssignmentPayload } from "@/types/assignment";
+import type { CreateReadingOrListeningAssignmentPayload, CreateSpeakingAssignmentPayload, CreateWritingAssignmentPayload, MediaAssetV2, QuestionV2Authoring } from "@/types/assignment";
 
 type Skill = "reading" | "listening" | "writing" | "speaking";
 
@@ -95,6 +95,31 @@ function parseMixedAnswer(input: string): any {
   }
 
   return trimmed;
+}
+
+function makeMedia(kind: MediaAssetV2["kind"], url: string, meta?: Partial<MediaAssetV2>): MediaAssetV2 {
+  return {
+    id: uuid(),
+    kind,
+    url,
+    ...(meta || {}),
+  };
+}
+
+function letterToIndex(letter: string): number | null {
+  const c = letter.trim().toUpperCase();
+  if (!c) return null;
+  const code = c.charCodeAt(0);
+  if (code >= 65 && code <= 90) return code - 65;
+  return null;
+}
+
+function normalizeTFNG(input: unknown): "TRUE" | "FALSE" | "NOT_GIVEN" | null {
+  const v = String(input ?? "").trim().toUpperCase();
+  if (v === "TRUE") return "TRUE";
+  if (v === "FALSE") return "FALSE";
+  if (v === "NOT GIVEN" || v === "NOT_GIVEN" || v === "NG") return "NOT_GIVEN";
+  return null;
 }
 
 function makeEmptySubquestion(): SubquestionForm {
@@ -200,37 +225,156 @@ export default function CreateAssignmentPage() {
       title: assignmentTitle,
       description: description || undefined,
       is_public: isPublic,
-      sections: sections.map((s, idx) => ({
-        id: s.id,
-        title: s.title,
-        order_index: idx + 1,
-        material_url: s.material_url || undefined,
-        reading_material:
+      sections: sections.map((s, idx) => {
+        const material =
           skill === "reading"
             ? {
-                document: s.reading_document || "",
-                image_url: s.reading_image_url || undefined,
+                type: "reading" as const,
+                document_md: s.reading_document || "",
+                images: s.reading_image_url ? [makeMedia("image", s.reading_image_url)] : [],
               }
-            : undefined,
-        listening_material:
-          skill === "listening"
-            ? {
-                audio_url: s.listening_audio_url || "",
-                transcript: s.listening_transcript || undefined,
-                image_url: s.listening_image_url || undefined,
+            : {
+                type: "listening" as const,
+                audio: makeMedia("audio", s.listening_audio_url || ""),
+                transcript_md: s.listening_transcript || undefined,
+                images: s.listening_image_url ? [makeMedia("image", s.listening_image_url)] : [],
+              };
+
+        // Flatten legacy questions/subquestions into v2 questions (authoring includes answer_key)
+        const v2Questions: QuestionV2Authoring[] = [];
+        let order = 1;
+
+        for (const q of s.questions) {
+          if (q.type === "fill_blank") {
+            const blanks: Record<string, unknown> = {};
+            const blankDefs = q.subquestions.map((sq, i) => {
+              const blankId = String(i + 1);
+              blanks[blankId] = parseMixedAnswer(sq.answerText);
+              return { blank_id: blankId, placeholder_label: sq.subprompt || undefined };
+            });
+
+            v2Questions.push({
+              id: uuid(),
+              order_index: order++,
+              type: "gap_fill_template",
+              prompt_md: q.prompt || undefined,
+              stimulus: {
+                instructions_md: undefined,
+                content_md: q.prompt || undefined,
+                template: {
+                  format: "text",
+                  body: blankDefs.map((b) => `{{blank:${b.blank_id}}}`).join("\n"),
+                  blanks: blankDefs,
+                },
+              },
+              interaction: {},
+              answer_key: { blanks },
+            });
+            continue;
+          }
+
+          if (q.type === "true_false") {
+            for (const sq of q.subquestions) {
+              const normalized = normalizeTFNG(parseMixedAnswer(sq.answerText));
+              v2Questions.push({
+                id: uuid(),
+                order_index: order++,
+                type: "true_false_not_given",
+                prompt_md: q.prompt || undefined,
+                stimulus: { content_md: sq.subprompt || "" },
+                interaction: {
+                  options: [
+                    { id: "true", label_md: "TRUE" },
+                    { id: "false", label_md: "FALSE" },
+                    { id: "not_given", label_md: "NOT GIVEN" },
+                  ],
+                },
+                answer_key: { choice: normalized ?? "NOT_GIVEN" },
+              });
+            }
+            continue;
+          }
+
+          if (q.type === "multiple_choice") {
+            for (const sq of q.subquestions) {
+              const opts = normalizeOptions(q.type, sq.optionsText);
+              const options = opts.map((label, i) => ({ id: `opt${i + 1}`, label_md: label }));
+
+              const parsed = parseMixedAnswer(sq.answerText);
+              let choiceId: string | null = null;
+              if (typeof parsed === "number") {
+                choiceId = options[parsed]?.id ?? null;
+              } else {
+                const idx = letterToIndex(String(parsed));
+                if (idx !== null) choiceId = options[idx]?.id ?? null;
+                if (!choiceId) {
+                  const matchIdx = options.findIndex((o) => String(o.label_md).trim() === String(parsed).trim());
+                  if (matchIdx >= 0) choiceId = options[matchIdx].id;
+                }
               }
-            : undefined,
-        questions: s.questions.map((q) => ({
-          id: q.id,
-          type: q.type,
-          prompt: q.prompt,
-          subquestions: q.subquestions.map((sq) => ({
-            subprompt: sq.subprompt || undefined,
-            options: normalizeOptions(q.type, sq.optionsText),
-            answer: parseMixedAnswer(sq.answerText),
-          })),
-        })),
-      })),
+
+              v2Questions.push({
+                id: uuid(),
+                order_index: order++,
+                type: "multiple_choice_single",
+                prompt_md: q.prompt || undefined,
+                stimulus: { content_md: sq.subprompt || "" },
+                interaction: { options },
+                answer_key: { choice: choiceId ?? "" },
+              });
+            }
+            continue;
+          }
+
+          if (q.type === "matching") {
+            const rightLabels = Array.from(
+              new Set(q.subquestions.flatMap((sq) => normalizeOptions(q.type, sq.optionsText))),
+            );
+            const right = rightLabels.map((label, i) => ({ id: `r${i + 1}`, label_md: label }));
+            const left = q.subquestions.map((sq) => ({ id: sq.id, label_md: sq.subprompt || sq.id }));
+
+            const map: Record<string, string> = {};
+            for (const sq of q.subquestions) {
+              const ans = String(parseMixedAnswer(sq.answerText) ?? "").trim();
+              const rightIdx = right.findIndex((r) => String(r.label_md).trim().toLowerCase() === ans.toLowerCase());
+              map[sq.id] = rightIdx >= 0 ? right[rightIdx].id : "";
+            }
+
+            v2Questions.push({
+              id: uuid(),
+              order_index: order++,
+              type: "matching",
+              prompt_md: q.prompt || undefined,
+              stimulus: { content_md: q.prompt || "" },
+              interaction: { left, right },
+              answer_key: { map },
+            });
+            continue;
+          }
+
+          if (q.type === "map_labeling") {
+            // Not implemented in this builder yet (schema supports it, but editor UX needs special handling).
+            // We keep it explicit so teachers don't unknowingly publish an ungradable question.
+            throw new Error('map_labeling is not supported in the v2 builder yet. Please use matching/gap fill for now.');
+          }
+        }
+
+        return {
+          id: s.id,
+          title: s.title,
+          order_index: idx + 1,
+          material,
+          question_groups: [
+            {
+              id: uuid(),
+              order_index: 1,
+              title: undefined,
+              instructions_md: undefined,
+              questions: v2Questions,
+            },
+          ],
+        };
+      }),
     };
     return payload;
   }, [assignmentTitle, description, isPublic, sections, skill]);
@@ -1000,6 +1144,8 @@ export default function CreateAssignmentPage() {
     </div>
   );
 }
+
+
 
 
 

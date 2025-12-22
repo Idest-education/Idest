@@ -5,7 +5,8 @@ import { getReadingAssignment } from "@/services/assignment.service";
 import { submitReading } from "@/services/assignment.service";
 import PassageTabs from "@/components/assignment/passagetabs";
 import PassageContent from "@/components/assignment/passage-content";
-import QuestionsPanel from "@/components/assignment/questions-panel";
+import QuestionRenderer from "@/components/assignment/v2/QuestionRenderer";
+import MarkdownRenderer from "@/components/conversation/MarkdownRenderer";
 import SidebarNavigation from "@/components/assignment/SidebarNavigation";
 import { ReadingAssignmentDetail } from "@/types/assignment";
 import { use } from "react";
@@ -23,8 +24,9 @@ export default function ReadingAssignmentPage(props: ReadingAssignmentPageProps)
     const [loading, setLoading] = useState<boolean>(true);
     const [assignment, setAssignment] = useState<ReadingAssignmentDetail | null>(null);
     const [activePassage, setActivePassage] = useState<number>(0);
-    const [answers, setAnswers] = useState<Record<string, string | number>>({});
-    const [currentQuestionIndex, setCurrentQuestionIndex] = useState<number>(0);
+    const [answers, setAnswers] = useState<Record<string, unknown>>({});
+    const [, setCurrentQuestionIndex] = useState<number>(0);
+    const [submitting, setSubmitting] = useState(false);
 
     useEffect(() => {
         async function fetchData() {
@@ -40,7 +42,45 @@ export default function ReadingAssignmentPage(props: ReadingAssignmentPageProps)
         fetchData();
     }, [id]);
 
-    if (loading) {
+    async function handleSubmit(): Promise<void> {
+        if (!assignment || submitting) return;
+
+        try {
+            setSubmitting(true);
+            const supabase = createClient();
+            const { data: { session } } = await supabase.auth.getSession();
+            const userId = session?.user?.id || localStorage.getItem("user_id");
+            
+            if (!userId) {
+                alert("Bạn chưa đăng nhập. Vui lòng đăng nhập lại.");
+                return;
+            }
+            
+            const payload = {
+                assignment_id: assignment.id,
+                submitted_by: userId!,
+                section_answers: assignment.sections.map((section) => ({
+                    section_id: section.id,
+                    answers: (section.question_groups ?? []).flatMap((g) =>
+                        g.questions.map((q) => ({
+                            question_id: q.id,
+                            answer: answers[q.id] ?? {},
+                        })),
+                    ),
+                })),
+            };
+
+            const res = await submitReading(payload);
+            router.push(`/assignment/reading/${assignment.id}/result/${res.data.id}`);
+        } catch (err) {
+            console.error("Submit failed:", err);
+            alert("Nộp bài thất bại. Vui lòng thử lại.");
+        } finally {
+            setSubmitting(false);
+        }
+    }
+
+    if (loading || submitting) {
         return <LoadingScreen />;
     }
 
@@ -62,47 +102,10 @@ export default function ReadingAssignmentPage(props: ReadingAssignmentPageProps)
     const sections = assignment.sections;
     const currentSection = sections[activePassage];
 
-    async function handleSubmit(): Promise<void> {
-        if (!assignment) return;
-
-        try {
-            const supabase = createClient();
-            const { data: { session } } = await supabase.auth.getSession();
-            const userId = session?.user?.id || localStorage.getItem("user_id");
-            
-            if (!userId) {
-                console.error("User ID not found");
-                return;
-            }
-            
-            const section_answers = assignment.sections.map((section) => ({
-                id: section.id,
-                question_answers: section.questions.map((question) => ({
-                    id: question.id,
-                    subquestion_answers: question.subquestions.map((sub) => ({
-                        answer: answers[sub.id] ?? ""
-                    }))
-                }))
-            }));
-
-            const payload = {
-                assignment_id: assignment.id,
-                submitted_by: userId!,
-                section_answers
-            };
-
-            const res = await submitReading(payload);
-            router.push(`/assignment/reading/${assignment.id}/result/${res.data.id}`);
-        } catch (err) {
-            console.error("Submit failed:", err);
-        } finally {
-        }
-    }
-
     return (
-        <div className="flex w-full h-[900px] overflow-hidden bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 border border-gray-300 rounded-lg shadow-md">
+        <div className="flex w-full h-screen overflow-hidden bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
             {/* LEFT GROUP — Passage + Questions */}
-            <div className="flex flex-1 rounded-3xl mb-20 mt-10 ml-3">
+            <div className="flex flex-1 mb-20 mt-10 ml-3">
 
                 {/* LEFT - Passage Panel */}
                 <div className="flex-1 flex flex-col border border-gray-300 bg-white/80 backdrop-blur-sm shadow-sm rounded-l-2xl transition-all duration-300 hover:rounded-r-3x">
@@ -121,12 +124,41 @@ export default function ReadingAssignmentPage(props: ReadingAssignmentPageProps)
                 {/* MIDDLE - Questions Panel */}
                 <div className="w-[45%] flex border border-gray-300 flex-col bg-white/80 backdrop-blur-sm shadow-sm rounded-r-2xl transition-all duration-300 hover:rounded-r-3x">
                     <div className="flex-1 p-6 overflow-y-auto">
-                        <QuestionsPanel
-                            section={currentSection}
-                            answers={answers}
-                            setAnswers={setAnswers}
-                            currentQuestionIndex={currentQuestionIndex}
-                        />
+                        <div className="space-y-6">
+                            {(currentSection.question_groups ?? []).map((group) => {
+                                return (
+                                    <div key={group.id} className="space-y-4">
+                                        {/* Group Title */}
+                                        {group.title && (
+                                            <div className="text-lg font-bold text-gray-900 border-b border-gray-300 pb-2">
+                                                {group.title}
+                                            </div>
+                                        )}
+                                        
+                                        {/* Group Instructions */}
+                                        {group.instructions_md && (
+                                            <div className="bg-blue-50 border-l-4 border-blue-500 p-4 rounded-r-lg">
+                                                <MarkdownRenderer content={group.instructions_md} className="text-sm text-gray-800" />
+                                            </div>
+                                        )}
+                                        
+                                        {/* Questions in this group */}
+                                        {group.questions.map((q) => {
+                                            return (
+                                                <div key={q.id}>
+                                                    <QuestionRenderer
+                                                        question={q}
+                                                        indexLabel={`Câu hỏi ${q.order_index}`}
+                                                        answers={answers}
+                                                        onChange={(questionId, answer) => setAnswers((prev) => ({ ...prev, [questionId]: answer }))}
+                                                    />
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                );
+                            })}
+                        </div>
                     </div>
 
                     <div className="border-t border-gray-200 bg-white/90 backdrop-blur-md px-6 py-4 rounded-br-2xl transition-all duration-300 hover:rounded-r-3x">
@@ -154,6 +186,7 @@ export default function ReadingAssignmentPage(props: ReadingAssignmentPageProps)
                     setActivePassage={setActivePassage}
                     setCurrentQuestionIndex={setCurrentQuestionIndex}
                     onSubmit={handleSubmit}
+                    onExit={() => router.push("/assignment")}
                 />
             </div>
         </div>

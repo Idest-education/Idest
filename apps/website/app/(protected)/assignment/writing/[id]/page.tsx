@@ -77,10 +77,10 @@ export default function WritingAssignmentPage(props: PageProps) {
     if (!assignment) return <p className="p-4">Không tìm thấy</p>;
 
     return (
-        <div className="flex w-full h-[900px] overflow-hidden bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 border border-gray-300 rounded-lg shadow-md">
-            <div className="flex flex-1 border-gray-200 rounded-3xl mb-20 mt-10 ml-3 rounded-r-2xl transition-all duration-300 hover:rounded-r-3x">
+        <div className="flex w-full h-screen overflow-hidden bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
+            <div className="flex flex-1 mb-20 mt-10 ml-3">
                 {/* LEFT CONTENT (Task info) */}
-                <div className="flex-1 flex flex-col border border-gray-300 bg-white/80 backdrop-blur-sm shadow-sm p-4 rounded-l-2xl transition-all duration-300 hover:rounded-r-3x">
+                <div className="flex-1 flex flex-col border border-gray-300 bg-white/80 backdrop-blur-sm shadow-sm p-4 rounded-l-2xl overflow-y-auto">
                     {/* TASK SWITCH */}
                     <div className="flex gap-3 mb-4">
                         <button
@@ -103,7 +103,7 @@ export default function WritingAssignmentPage(props: PageProps) {
                             <p className="text-gray-800 whitespace-pre-line mb-4">{assignment.taskone}</p>
 
                             {assignment.img && (
-                                <img src={assignment.img} className="rounded mb-4" />
+                                <img src={assignment.img} className="rounded mb-4 max-w-full" />
                             )}
                         </div>
                     ) : (
@@ -116,11 +116,11 @@ export default function WritingAssignmentPage(props: PageProps) {
                 </div>
 
                 {/* MIDDLE — EDITOR */}
-                <div className="w-[45%] flex flex-col border border-gray-300 bg-white/80 backdrop-blur-sm shadow-sm rounded-r-2xl transition-all duration-300 hover:rounded-r-3x">
+                <div className="w-[45%] flex flex-col border-x border-y border-gray-300 bg-white/80 backdrop-blur-sm shadow-sm rounded-r-2xl overflow-hidden">
 
-                    <div className="bg-white/80 backdrop-blur-md shadow-sm flex-1 p-10 h-[600px]">
+                    <div className="flex-1 flex flex-col p-6 min-h-0">
                         <textarea
-                            className="w-full h-[70vh] p-4 border rounded resize-none focus:ring-2 focus:ring-blue-400"
+                            className="flex-1 w-full p-4 border rounded resize-none focus:ring-2 focus:ring-blue-400 min-h-0"
                             placeholder="Viết bài luận của bạn ở đây..."
                             value={activeTask === 1 ? contentOne : contentTwo}
                             onChange={(e) =>
@@ -137,8 +137,8 @@ export default function WritingAssignmentPage(props: PageProps) {
                         </div>
                     </div>
 
-                    {/* BOTTOM NEXT BUTTON — giống reading */}
-                    <div className="bg-white/80 backdrop-blur-md shadow-sm px-6 py-4 rounded-br-2xl transition-all duration-300 hover:rounded-r-3x">
+                    {/* BOTTOM NEXT BUTTON */}
+                    <div className="border-t border-gray-200 bg-white/90 backdrop-blur-md px-6 py-4">
                         {activeTask < 2 && (
                             <button
                                 onClick={() => setActiveTask(2)}
@@ -159,11 +159,12 @@ export default function WritingAssignmentPage(props: PageProps) {
             </div>
 
             {/* RIGHT — SIDEBAR */}
-            <div className="mmb-10 mt-10 ml-3 mr-3">
+            <div className="mb-10 mt-10 ml-3 mr-3">
                 <SidebarWriting
                     onSubmit={handleSubmit}
                     activeTask={activeTask}
                     setActiveTask={setActiveTask}
+                    onExit={() => router.push("/assignment")}
                 />
             </div>
         </div>

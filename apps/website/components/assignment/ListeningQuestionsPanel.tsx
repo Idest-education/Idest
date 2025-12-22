@@ -1,6 +1,7 @@
 "use client";
 
 import { ListeningSection } from "@/types/assignment";
+import MarkdownRenderer from "@/components/conversation/MarkdownRenderer";
 
 interface Props {
     section: ListeningSection;
@@ -30,8 +31,13 @@ export default function ListeningQuestionsPanel({
 
     return (
         <div className="space-y-8">
-            {section.questions.map((q) =>
-                q.subquestions.map((sub) => {
+            {section.questions.map((q) => {
+                // For matching questions, collect all unique options from all subquestions
+                const matchingOptions = q.type === "matching"
+                    ? Array.from(new Set(q.subquestions.flatMap(sub => sub.options)))
+                    : [];
+
+                return q.subquestions.map((sub) => {
                     const global = flatSubquestions.find((x) => x.subId === sub.id);
 
                     if (!global) return null;
@@ -42,7 +48,7 @@ export default function ListeningQuestionsPanel({
                             ref={(el) => {
                                 questionRefs.current[global.globalIndex - 1] = el;
                             }}
-                            className="rounded bg-white grid grid-cols-12 gap-4"
+                            className="rounded bg-white grid grid-cols-12 gap-4 p-4"
                         >
                             {/* LEFT: QUESTION TEXT */}
                             <div className="col-span-7">
@@ -50,8 +56,12 @@ export default function ListeningQuestionsPanel({
                                     Câu hỏi {global.globalIndex}
                                 </p>
 
-                                <p className="font-medium mb-2">{q.prompt}</p>
-                                <p className="text-gray-700">{sub.subprompt}</p>
+                                <div className="font-medium mb-2">
+                                    <MarkdownRenderer content={q.prompt} />
+                                </div>
+                                <div className="text-gray-700">
+                                    <MarkdownRenderer content={sub.subprompt} />
+                                </div>
                             </div>
 
                             {/* RIGHT: ANSWER INPUT */}
@@ -65,6 +75,21 @@ export default function ListeningQuestionsPanel({
                                             updateAnswer(sub.id, e.target.value)
                                         }
                                     />
+                                ) : q.type === "matching" ? (
+                                    <select
+                                        className="border p-2 w-full rounded bg-white"
+                                        value={answers[sub.id] ?? ""}
+                                        onChange={(e) =>
+                                            updateAnswer(sub.id, e.target.value)
+                                        }
+                                    >
+                                        <option value="">-- Chọn đáp án --</option>
+                                        {matchingOptions.map((opt) => (
+                                            <option key={opt} value={opt}>
+                                                {opt}
+                                            </option>
+                                        ))}
+                                    </select>
                                 ) : (
                                     <div className="space-y-2 w-full">
                                         {sub.options.map((opt) => (
@@ -83,8 +108,8 @@ export default function ListeningQuestionsPanel({
                             </div>
                         </div>
                     );
-                })
-            )}
+                });
+            })}
         </div>
     );
 }

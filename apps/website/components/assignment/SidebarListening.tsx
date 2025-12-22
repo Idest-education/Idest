@@ -2,18 +2,20 @@
 
 import { useEffect, useRef, useState } from "react";
 import { ListeningAssignmentDetail } from "@/types/assignment"
+import { X } from "lucide-react";
 
 interface Props {
     assignment: ListeningAssignmentDetail;
     flatSubquestions: {
         globalIndex: number;
         sectionIndex: number;
-        subId: string;
+        questionId: string;
     }[];
-    answers: Record<string, string>;
+    answers: Record<string, unknown>;
     setActiveSectionIndex: (i: number) => void;
     setCurrentSubIndex: (i: number) => void;
     onSubmit: () => void;
+    onExit?: () => void;
 }
 
 export default function SidebarListening({
@@ -23,6 +25,7 @@ export default function SidebarListening({
     setActiveSectionIndex,
     setCurrentSubIndex,
     onSubmit,
+    onExit,
 }: Props) {
 
     const totalMinutes = 40;
@@ -88,6 +91,26 @@ export default function SidebarListening({
                 >
                     NỘP BÀI
                 </button>
+
+                {/* EXIT BUTTON */}
+                {onExit && (
+                    <button
+                        type="button"
+                        onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            if (window.confirm("Bạn có chắc chắn muốn thoát? Tất cả bài làm của bạn sẽ bị mất!")) {
+                                onExit();
+                            }
+                        }}
+                        className="w-full mt-3 bg-red-500 hover:bg-red-600 text-white py-2 rounded-lg font-medium 
+                                 active:scale-95 transition-all duration-200 shadow-md hover:shadow-lg 
+                                 flex items-center justify-center gap-2 cursor-pointer"
+                    >
+                        <X className="w-4 h-4" />
+                        Thoát
+                    </button>
+                )}
             </div>
 
             {/* SECTION / RECORDINGS */}
@@ -113,11 +136,11 @@ export default function SidebarListening({
 
                             <div className="grid grid-cols-5 gap-2">
                                 {items.map((f) => {
-                                    const answered = answers[f.subId] !== undefined;
+                                    const answered = answers[f.questionId] !== undefined && answers[f.questionId] !== null && answers[f.questionId] !== "";
 
                                     return (
                                         <button
-                                            key={f.subId}
+                                            key={f.questionId}
                                             onClick={() => {
                                                 setActiveSectionIndex(f.sectionIndex);
                                                 setCurrentSubIndex(f.globalIndex - 1);

@@ -1,27 +1,30 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { Clock, CheckCircle2 } from "lucide-react";
+import { useEffect, useState, useRef } from "react";
+import { Clock, CheckCircle2, X } from "lucide-react";
 
 interface Props {
     onSubmit: () => void;
     activeTask: 1 | 2;
     setActiveTask: (t: 1 | 2) => void;
+    onExit?: () => void;
 }
 
-export default function SidebarWriting({ onSubmit, activeTask, setActiveTask }: Props) {
+export default function SidebarWriting({ onSubmit, activeTask, setActiveTask, onExit }: Props) {
     const TOTAL_SECONDS = 60 * 60; // 60 minutes
     const [secondsLeft, setSecondsLeft] = useState(TOTAL_SECONDS);
+    const submittedRef = useRef(false);
 
     useEffect(() => {
-        if (secondsLeft === 0) {
-            onSubmit(); // Tự động nộp bài khi hết thời gian
-            return;
-        }
-
         const timer = setInterval(() => setSecondsLeft(s => Math.max(s - 1, 0)), 1000);
-
         return () => clearInterval(timer);
+    }, []);
+
+    useEffect(() => {
+        if (secondsLeft === 0 && !submittedRef.current) {
+            submittedRef.current = true;
+            onSubmit(); // Tự động nộp bài khi hết thời gian
+        }
     }, [secondsLeft, onSubmit]);
 
     const minutes = Math.floor(secondsLeft / 60);
@@ -91,6 +94,26 @@ export default function SidebarWriting({ onSubmit, activeTask, setActiveTask }: 
                 >
                     NỘP BÀI
                 </button>
+
+                {/* EXIT BUTTON */}
+                {onExit && (
+                    <button
+                        type="button"
+                        onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            if (window.confirm("Bạn có chắc chắn muốn thoát? Tất cả bài làm của bạn sẽ bị mất!")) {
+                                onExit();
+                            }
+                        }}
+                        className="w-full mt-3 bg-red-500 hover:bg-red-600 text-white py-2 rounded-lg font-medium 
+                                 active:scale-95 transition-all duration-200 shadow-md hover:shadow-lg 
+                                 flex items-center justify-center gap-2 cursor-pointer"
+                    >
+                        <X className="w-4 h-4" />
+                        Thoát
+                    </button>
+                )}
             </div>
 
         </div>
