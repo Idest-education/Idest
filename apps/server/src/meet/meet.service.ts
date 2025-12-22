@@ -1342,11 +1342,38 @@ export class MeetService {
       where: { id: recordingId },
       select: {
         sessionId: true,
+        egressId: true,
         fileLocation: true,
       },
     });
     if (!recording) {
       throw new NotFoundException('Recording not found');
+    }
+
+    // Backfill fileLocation if webhook ingestion is delayed/misconfigured.
+    // This makes playback work even when the Recording row was created at startRecording()
+    // but never updated by LiveKit webhooks.
+    if (!recording.fileLocation && recording.egressId) {
+      const info = await this.liveKitService.getEgressInfo(recording.egressId);
+      const file0 =
+        info && Array.isArray(info.fileResults) ? info.fileResults[0] : undefined;
+      const inferredLocation: string | undefined = file0?.location || undefined;
+      const inferredFilename: string | undefined = file0?.filename || undefined;
+
+      if (inferredLocation) {
+        await prismaAny.recording.update({
+          where: { id: recordingId },
+          data: {
+            fileLocation: inferredLocation,
+            ...(inferredFilename ? { filename: inferredFilename } : {}),
+          },
+        });
+        recording.fileLocation = inferredLocation;
+      } else {
+        this.logger.warn(
+          `[getRecordingUrl] Recording ${recordingId} has no fileLocation yet (egressId=${recording.egressId}).`,
+        );
+      }
     }
 
     const publicBaseUrl = process.env.RECORDING_PUBLIC_BASE_URL || '';

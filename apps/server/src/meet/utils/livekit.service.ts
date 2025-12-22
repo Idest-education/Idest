@@ -290,6 +290,28 @@ export class LiveKitService {
     }
   }
 
+  /**
+   * Fetch egress info by egressId (best-effort).
+   * We use listEgress because the SDK surface can differ by version.
+   */
+  async getEgressInfo(egressId: string): Promise<any | null> {
+    try {
+      const list = await (this.egressServiceClient as any).listEgress({
+        egressId,
+      });
+      const items: any[] = Array.isArray(list) ? list : list?.items;
+      if (Array.isArray(items) && items.length > 0) {
+        return items[0];
+      }
+      return null;
+    } catch (error) {
+      this.logger.error(
+        `Failed to fetch egress info ${egressId}: ${error instanceof Error ? error.message : error}`,
+      );
+      return null;
+    }
+  }
+
   async listActiveRecordings(roomName: string): Promise<string[]> {
     try {
       const egressList = await this.egressServiceClient.listEgress({
