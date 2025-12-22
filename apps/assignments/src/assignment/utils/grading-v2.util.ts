@@ -99,6 +99,13 @@ export function gradeAssignmentV2(assignment: any, submission: SubmitAssignmentV
 
         const type = q.type;
         const key = q.answer_key;
+        const hasKey = key && Object.keys(key).length > 0;
+
+        // If no answer key is provided, treat as incorrect to avoid false positives
+        if (!hasKey) {
+          sectionDetail.questions.push(qDetail);
+          continue;
+        }
 
         // gap_fill_template: { blanks: { [blank_id]: string } }
         if (type === 'gap_fill_template') {
@@ -124,7 +131,7 @@ export function gradeAssignmentV2(assignment: any, submission: SubmitAssignmentV
 
         // multiple_choice_single: { choice: optionId }
         else if (type === 'multiple_choice_single') {
-          const ok = compareScalar(submitted?.choice, key?.choice);
+          const ok = key?.choice !== undefined && compareScalar(submitted?.choice, key?.choice);
           qDetail.correct = ok;
           qDetail.parts?.push({
             key: 'choice',
@@ -136,7 +143,10 @@ export function gradeAssignmentV2(assignment: any, submission: SubmitAssignmentV
 
         // multiple_choice_multi: { choices: optionId[] }
         else if (type === 'multiple_choice_multi') {
-          const ok = compareUnorderedArray(submitted?.choices, key?.choices);
+          const ok =
+            Array.isArray(key?.choices) &&
+            key?.choices.length > 0 &&
+            compareUnorderedArray(submitted?.choices, key?.choices);
           qDetail.correct = ok;
           qDetail.parts?.push({
             key: 'choices',
@@ -148,7 +158,7 @@ export function gradeAssignmentV2(assignment: any, submission: SubmitAssignmentV
 
         // true_false_not_given: { choice: 'TRUE' | 'FALSE' | 'NOT_GIVEN' }
         else if (type === 'true_false_not_given') {
-          const ok = compareScalar(submitted?.choice, key?.choice);
+          const ok = key?.choice !== undefined && compareScalar(submitted?.choice, key?.choice);
           qDetail.correct = ok;
           qDetail.parts?.push({
             key: 'choice',
@@ -183,7 +193,7 @@ export function gradeAssignmentV2(assignment: any, submission: SubmitAssignmentV
             qDetail.correct = allCorrect;
           } else {
             // Simple single-choice matching format
-            const ok = compareScalar(submitted?.choice, key?.correct_answer);
+            const ok = key?.correct_answer !== undefined && compareScalar(submitted?.choice, key?.correct_answer);
             qDetail.correct = ok;
             qDetail.parts?.push({
               key: 'choice',
@@ -196,7 +206,7 @@ export function gradeAssignmentV2(assignment: any, submission: SubmitAssignmentV
 
         // short_answer: { text: string } with key.correct_answer
         else if (type === 'short_answer') {
-          const ok = compareScalar(submitted?.text, key?.correct_answer);
+          const ok = key?.correct_answer !== undefined && compareScalar(submitted?.text, key?.correct_answer);
           qDetail.correct = ok;
           qDetail.parts?.push({
             key: 'text',
@@ -208,7 +218,7 @@ export function gradeAssignmentV2(assignment: any, submission: SubmitAssignmentV
 
         // fallback: strict equality on submitted.answer vs answer_key.answer
         else {
-          const ok = compareScalar(submitted, key);
+          const ok = hasKey && compareScalar(submitted, key);
           qDetail.correct = ok;
           qDetail.parts?.push({
             key: 'value',
