@@ -138,40 +138,43 @@ export function gradeAssignmentV2(assignment: any, submission: SubmitAssignmentV
 
         // multiple_choice_single: { choice: optionId }
         else if (type === 'multiple_choice_single') {
-          const ok = key?.choice !== undefined && compareScalar(submitted?.choice, key?.choice);
+          const expected = key?.choice ?? key?.correct_answer;
+          const ok = expected !== undefined && compareScalar(submitted?.choice, expected);
           qDetail.correct = ok;
           qDetail.parts?.push({
             key: 'choice',
             correct: ok,
             submitted_answer: submitted?.choice,
-            correct_answer: key?.choice,
+            correct_answer: expected,
           });
         }
 
         // multiple_choice_multi: { choices: optionId[] }
         else if (type === 'multiple_choice_multi') {
+          const expected = key?.choices ?? key?.correct_answer;
           const ok =
-            Array.isArray(key?.choices) &&
-            key?.choices.length > 0 &&
-            compareUnorderedArray(submitted?.choices, key?.choices);
+            Array.isArray(expected) &&
+            expected.length > 0 &&
+            compareUnorderedArray(submitted?.choices, expected);
           qDetail.correct = ok;
           qDetail.parts?.push({
             key: 'choices',
             correct: ok,
             submitted_answer: submitted?.choices,
-            correct_answer: key?.choices,
+            correct_answer: expected,
           });
         }
 
         // true_false_not_given: { choice: 'TRUE' | 'FALSE' | 'NOT_GIVEN' }
         else if (type === 'true_false_not_given') {
-          const ok = key?.choice !== undefined && compareScalar(submitted?.choice, key?.choice);
+          const expected = key?.choice ?? key?.correct_answer;
+          const ok = expected !== undefined && compareScalar(submitted?.choice, expected);
           qDetail.correct = ok;
           qDetail.parts?.push({
             key: 'choice',
             correct: ok,
             submitted_answer: submitted?.choice,
-            correct_answer: key?.choice,
+            correct_answer: expected,
           });
         }
 
