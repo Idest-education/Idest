@@ -130,13 +130,39 @@ export class ReadingService {
   async getSubmission(id: string) {
     const submission = await this.submissionModel
       .findOne({ _id: id, skill: 'reading' })
+      .lean()
       .exec();
-    
+
     if (!submission) {
       throw new NotFoundException('Submission not found');
     }
-    
-    return submission;
+
+    const needsDetailHydration =
+      !submission.details ||
+      !Array.isArray(submission.details) ||
+      submission.details.every((sec: any) =>
+        (sec.questions ?? []).every((q: any) => !q.parts || q.parts.length === 0),
+      );
+
+    if (!needsDetailHydration) {
+      return submission;
+    }
+
+    const assignment = await this.assignmentModel
+      .findOne({ _id: submission.assignment_id, skill: 'reading' })
+      .lean()
+      .exec();
+
+    if (!assignment) {
+      return submission;
+    }
+
+    // Re-grade to populate parts and correct answers for UI rendering
+    const regraded = gradeAssignmentV2(assignment as any, submission as any);
+    return {
+      ...submission,
+      ...regraded,
+    };
   }
   async debug() {
     const all = await this.submissionModel.find();
