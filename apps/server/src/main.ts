@@ -12,6 +12,7 @@ import { Reflector } from '@nestjs/core';
 import { createProxyMiddleware } from 'http-proxy-middleware';
 import { PrismaClient } from '@prisma/client';
 import { decode, JwtPayload } from 'jsonwebtoken';
+import { CorsOptions } from '@nestjs/common/interfaces/external/cors-options.interface';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
@@ -25,6 +26,24 @@ async function bootstrap() {
       `Missing required environment variables: ${missing.join(', ')}`,
     );
   }
+
+  const corsOrigins = (
+    process.env.CORS_ORIGINS || 'http://localhost:3000'
+  )
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean);
+  const allowedHeaders = ['Authorization', 'Content-Type', 'Accept', 'X-User-Role'];
+  const corsOptions: CorsOptions = {
+    origin: corsOrigins,
+    credentials: true,
+    methods: ['GET', 'HEAD', 'PUT', 'PATCH', 'POST', 'DELETE', 'OPTIONS'],
+    allowedHeaders,
+  };
+
+  // Apply CORS before any route/proxy middleware so preflight is handled here.
+  app.enableCors(corsOptions);
+  app.use(helmet());
 
   app.use(
     json({
@@ -43,6 +62,25 @@ async function bootstrap() {
   );
   app.useGlobalFilters(new AllExceptionFilter());
   app.useGlobalInterceptors(new SuccessEnvelopeInterceptor(app.get(Reflector)));
+
+  // Handle preflight for proxied requests explicitly to avoid passing OPTIONS to the target.
+  app.use('/hehe', (req: any, res: any, next: any) => {
+    if (req.method !== 'OPTIONS') {
+      return next();
+    }
+    const origin = req.headers.origin;
+    if (origin && corsOrigins.includes(origin)) {
+      res.header('Access-Control-Allow-Origin', origin);
+      res.header('Vary', 'Origin');
+    }
+    res.header('Access-Control-Allow-Credentials', 'true');
+    res.header('Access-Control-Allow-Headers', allowedHeaders.join(', '));
+    res.header(
+      'Access-Control-Allow-Methods',
+      'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
+    );
+    res.sendStatus(204);
+  });
 
   // Enrich proxied requests to the assignment service with the user's app-role.
   // The assignment microservice can't read our Prisma-backed role from Supabase JWT claims,
@@ -97,17 +135,20 @@ async function bootstrap() {
           proxyReq.write(rawBody);
         }
       },
+      onProxyRes: (proxyRes: any, req: any) => {
+        const origin = req.headers.origin;
+        if (origin && corsOrigins.includes(origin)) {
+          proxyRes.headers['access-control-allow-origin'] = origin;
+          proxyRes.headers['vary'] = 'Origin';
+        }
+        proxyRes.headers['access-control-allow-credentials'] = 'true';
+        proxyRes.headers['access-control-allow-headers'] =
+          allowedHeaders.join(', ');
+        proxyRes.headers['access-control-allow-methods'] =
+          'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS';
+      },
     } as any),
   );
-
-  const corsOrigins = (
-    process.env.CORS_ORIGINS || 'http://localhost:3000'
-  )
-    .split(',')
-    .map((s) => s.trim())
-    .filter(Boolean);
-  app.enableCors({ origin: corsOrigins, credentials: true });
-  app.use(helmet());
 
   const port = Number(process.env.PORT) || 8000;
   // Swagger config
