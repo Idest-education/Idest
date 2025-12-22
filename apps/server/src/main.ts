@@ -84,6 +84,18 @@ async function bootstrap() {
         if (req.headers?.['x-user-role']) {
           proxyReq.setHeader('x-user-role', req.headers['x-user-role']);
         }
+
+        // Because Nest/Express have already consumed the request body via json()
+        // middleware, http-proxy-middleware no longer has access to the raw
+        // stream. We captured the raw body in req.rawBody above, so we need to
+        // manually forward it to the assignment service to avoid "request aborted"
+        // errors from raw-body on the target.
+        const rawBody: Buffer | undefined = (req as any).rawBody;
+        if (rawBody && rawBody.length > 0) {
+          proxyReq.setHeader('Content-Type', 'application/json');
+          proxyReq.setHeader('Content-Length', Buffer.byteLength(rawBody));
+          proxyReq.write(rawBody);
+        }
       },
     } as any),
   );
