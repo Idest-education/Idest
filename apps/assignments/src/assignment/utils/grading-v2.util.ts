@@ -158,25 +158,52 @@ export function gradeAssignmentV2(assignment: any, submission: SubmitAssignmentV
           });
         }
 
-        // matching: { map: { [leftId]: rightId } }
+        // matching: two formats supported
+        // 1. Complex: { map: { [leftId]: rightId } } with key.map
+        // 2. Simple: { choice: "A" } with key.correct_answer
         else if (type === 'matching') {
-          const submittedMap = submitted?.map ?? {};
-          const correctMap = key?.map ?? {};
-          const leftIds = Object.keys(correctMap);
-          let allCorrect = true;
-          for (const leftId of leftIds) {
-            const sVal = submittedMap?.[leftId];
-            const cVal = correctMap?.[leftId];
-            const ok = compareScalar(sVal, cVal);
+          // Check if it's complex matching format
+          if (key?.map && typeof key.map === 'object') {
+            const submittedMap = submitted?.map ?? {};
+            const correctMap = key.map;
+            const leftIds = Object.keys(correctMap);
+            let allCorrect = true;
+            for (const leftId of leftIds) {
+              const sVal = submittedMap?.[leftId];
+              const cVal = correctMap?.[leftId];
+              const ok = compareScalar(sVal, cVal);
+              qDetail.parts?.push({
+                key: leftId,
+                correct: ok,
+                submitted_answer: sVal,
+                correct_answer: cVal,
+              });
+              if (!ok) allCorrect = false;
+            }
+            qDetail.correct = allCorrect;
+          } else {
+            // Simple single-choice matching format
+            const ok = compareScalar(submitted?.choice, key?.correct_answer);
+            qDetail.correct = ok;
             qDetail.parts?.push({
-              key: leftId,
+              key: 'choice',
               correct: ok,
-              submitted_answer: sVal,
-              correct_answer: cVal,
+              submitted_answer: submitted?.choice,
+              correct_answer: key?.correct_answer,
             });
-            if (!ok) allCorrect = false;
           }
-          qDetail.correct = allCorrect;
+        }
+
+        // short_answer: { text: string } with key.correct_answer
+        else if (type === 'short_answer') {
+          const ok = compareScalar(submitted?.text, key?.correct_answer);
+          qDetail.correct = ok;
+          qDetail.parts?.push({
+            key: 'text',
+            correct: ok,
+            submitted_answer: submitted?.text,
+            correct_answer: key?.correct_answer,
+          });
         }
 
         // fallback: strict equality on submitted.answer vs answer_key.answer
