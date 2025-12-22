@@ -56,7 +56,8 @@ export default function ReadingAssignmentPage(props: ReadingAssignmentPageProps)
                 return;
             }
             
-            const assignmentId = assignment.id || assignment._id;
+            // Use the ID from URL params first, then fallback to assignment object
+            const assignmentId = id || assignment.id || assignment._id;
             if (!assignmentId) {
                 console.error("Missing assignment ID on assignment payload", assignment);
                 alert("Không xác định được mã bài đọc. Vui lòng tải lại trang.");
