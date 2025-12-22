@@ -38,7 +38,7 @@ export class SessionService {
       );
       if (!hasPermission) {
         throw new ForbiddenException(
-          'Only class creators and teachers can create sessions',
+          'Only teachers and admins can create sessions',
         );
       }
 
@@ -607,11 +607,11 @@ export class SessionService {
 
     if (!classData) return false;
 
+    // Teachers/admins can create sessions (role-based, per controller docs)
+    if (userRole === Role.ADMIN || userRole === Role.TEACHER) return true;
+
     // Check if user is the class creator
     if (classData.created_by === userId) return true;
-
-    // Admins can create sessions in any class
-    if (userRole === Role.ADMIN) return true;
 
     // Check if user is a teacher in the class
     const isTeacher = await this.prisma.classTeacher.findFirst({
