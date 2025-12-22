@@ -10,6 +10,7 @@ interface Props {
         globalIndex: number;
         sectionIndex: number;
         questionId: string;
+        subId?: string;
     }[];
     answers: Record<string, unknown>;
     setActiveSectionIndex: (i: number) => void;
@@ -117,7 +118,7 @@ export default function SidebarListening({
             <div className="flex-1 overflow-y-auto p-4 space-y-4">
                 {assignment.sections.map((sec, secIdx) => {
                     const items = flatSubquestions.filter(f => f.sectionIndex === secIdx);
-                    const answeredCount = items.filter(i => answers[i.subId]).length;
+                    const answeredCount = items.filter(i => answers[i.subId ?? i.questionId]).length;
 
                     return (
                         <div

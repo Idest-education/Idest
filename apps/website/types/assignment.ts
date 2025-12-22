@@ -142,6 +142,27 @@ export interface ReadingAssignmentDetail {
   sections: SectionV2Client[];
 }
 
+// Legacy-friendly reading section type for UI components
+export interface ReadingSubquestion {
+  id: string;
+  subprompt: string;
+  options: string[];
+}
+
+export interface ReadingQuestion {
+  id: string;
+  prompt: string;
+  type: string;
+  subquestions: ReadingSubquestion[];
+}
+
+export interface ReadingSection {
+  id: string;
+  title: string;
+  material: SectionMaterialV2;
+  questions: ReadingQuestion[];
+}
+
 export interface ListeningAssignmentDetail {
   id: string;
   _id?: string;
@@ -153,6 +174,29 @@ export interface ListeningAssignmentDetail {
   is_public?: boolean;
   created_at: string;
   sections: SectionV2Client[];
+}
+
+// =======================
+// LEGACY LISTENING SECTION SHAPE (for UI components)
+// =======================
+
+export interface ListeningSubquestion {
+  id: string;
+  subprompt: string;
+  options: string[];
+}
+
+export interface ListeningQuestion {
+  id: string;
+  prompt: string;
+  type: string;
+  subquestions: ListeningSubquestion[];
+}
+
+export interface ListeningSection {
+  id: string;
+  title?: string;
+  questions: ListeningQuestion[];
 }
 
 export interface SubmitAssignmentV2Payload {

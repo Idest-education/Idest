@@ -38,11 +38,11 @@ export default function ClassDetailPage() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [classRes, membersRes, teachersRes] = await Promise.all([
+        const [classRes, membersRes, teachersRes] = (await Promise.all([
           getClassById(classId),
           getClassMembers(classId),
           getClassTeachers(classId),
-        ]);
+        ])) as [ClassDetail, UserSummary[], UserSummary[]];
         // Response is already unwrapped
         setClassData(classRes);
         setMembers(membersRes);

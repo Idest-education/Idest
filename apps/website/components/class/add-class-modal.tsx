@@ -101,7 +101,7 @@ export default function AddClassModal({
           : undefined,
     };
 
-    const res = await createClass(payload);
+    const res = (await createClass(payload)) as { status?: boolean; message?: string };
     setLoading(false);
 
     if (res.status) {

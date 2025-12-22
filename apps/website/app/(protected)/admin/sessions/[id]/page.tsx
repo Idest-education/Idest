@@ -34,11 +34,11 @@ export default function SessionDetailPage() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [sessionRes, attendanceRes, recordingsRes] = await Promise.all([
+        const [sessionRes, attendanceRes, recordingsRes] = (await Promise.all([
           getSessionById(sessionId),
           getSessionAttendance(sessionId),
           listSessionRecordings(sessionId).catch(() => ({ sessionId, items: [] })),
-        ]);
+        ])) as [SessionData, SessionAttendanceSummaryDto, { sessionId: string; items: MeetRecordingListItem[] }];
         // Responses are now unwrapped, so use directly
         setSession(sessionRes);
         setAttendance(attendanceRes);
@@ -56,7 +56,7 @@ export default function SessionDetailPage() {
     if (!confirm("Are you sure you want to end this session?")) return;
     try {
       await endSession(sessionId);
-      const updated = await getSessionById(sessionId);
+      const updated = (await getSessionById(sessionId)) as SessionData;
       // Response is now unwrapped
       setSession(updated);
     } catch (error) {

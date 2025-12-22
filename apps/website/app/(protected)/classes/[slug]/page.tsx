@@ -181,7 +181,7 @@ export default function ClassDetailPage() {
 
   const handleEndSession = async (sessionId: string) => {
     try {
-      const res = await endSession(sessionId);
+      const res = (await endSession(sessionId)) as { statusCode?: number; message?: string };
       if (res.statusCode === 200) {
         refreshSessions();
       } else {

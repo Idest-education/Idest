@@ -57,7 +57,7 @@ export default function ReadingResultPage(props: PageProps) {
         );
     }
 
-    const section = assignment.sections[activePassage];
+    const section = assignment.sections[activePassage] as any;
     const sectionResult = result.details[activePassage];
 
     // Convert raw correct answers to an IELTS-like band score (0.0–9.0)
@@ -73,7 +73,7 @@ export default function ReadingResultPage(props: PageProps) {
                 <div className="flex-1 flex flex-col border-r border-gray-200 bg-white/80 backdrop-blur-sm shadow-sm">
                     <div className="p-6 overflow-y-auto">
                         <PassageTabs
-                            sections={assignment.sections}
+                            sections={assignment.sections as any}
                             active={activePassage}
                             setActive={setActivePassage}
                         />

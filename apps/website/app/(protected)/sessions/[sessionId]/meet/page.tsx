@@ -279,10 +279,10 @@ export default function SessionMeetPage() {
     (async () => {
       setLoadingSession(true);
       setSessionError(null);
-      try {
-        const response = await getSessionById(sessionId);
+        try {
+        const response = (await getSessionById(sessionId)) as SessionData;
         if (!ignore) {
-          setSession(response?.data || response);
+          setSession(response);
         }
       } catch (error: unknown) {
         if (!ignore) {

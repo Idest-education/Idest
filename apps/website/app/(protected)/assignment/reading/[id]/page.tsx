@@ -99,7 +99,7 @@ export default function ReadingAssignmentPage(props: ReadingAssignmentPageProps)
         );
     }
 
-    const sections = assignment.sections;
+    const sections = assignment.sections as any; // SectionV2Client[], compatible with ReadingSection in UI
     const currentSection = sections[activePassage];
 
     return (
@@ -125,7 +125,7 @@ export default function ReadingAssignmentPage(props: ReadingAssignmentPageProps)
                 <div className="w-[45%] flex border border-gray-300 flex-col bg-white/80 backdrop-blur-sm shadow-sm rounded-r-2xl transition-all duration-300 hover:rounded-r-3x">
                     <div className="flex-1 p-6 overflow-y-auto">
                         <div className="space-y-6">
-                            {(currentSection.question_groups ?? []).map((group) => {
+                            {(currentSection.question_groups ?? []).map((group: any) => {
                                 return (
                                     <div key={group.id} className="space-y-4">
                                         {/* Group Title */}
@@ -143,7 +143,7 @@ export default function ReadingAssignmentPage(props: ReadingAssignmentPageProps)
                                         )}
                                         
                                         {/* Questions in this group */}
-                                        {group.questions.map((q) => {
+                                        {group.questions.map((q: any) => {
                                             return (
                                                 <div key={q.id}>
                                                     <QuestionRenderer
