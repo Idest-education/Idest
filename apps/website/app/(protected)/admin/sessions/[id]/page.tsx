@@ -83,7 +83,7 @@ export default function SessionDetailPage() {
       setRecordings(updated.items || []);
     } catch (error) {
       console.error("Error starting recording:", error);
-      alert("Failed to start recording");
+      alert("Failed to start recording, " + error);
     }
   };
 

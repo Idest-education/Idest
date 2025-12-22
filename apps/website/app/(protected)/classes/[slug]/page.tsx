@@ -181,12 +181,8 @@ export default function ClassDetailPage() {
 
   const handleEndSession = async (sessionId: string) => {
     try {
-      const res = (await endSession(sessionId)) as { statusCode?: number; message?: string };
-      if (res.statusCode === 200) {
-        refreshSessions();
-      } else {
-        alert(res.message || "Không thể kết thúc buổi học");
-      }
+      await endSession(sessionId);
+      refreshSessions();
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : "Đã xảy ra lỗi";
       alert(errorMessage);

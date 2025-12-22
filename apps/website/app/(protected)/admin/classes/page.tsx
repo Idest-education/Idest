@@ -24,7 +24,7 @@ export default function AdminClassesPage() {
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [showEditDialog, setShowEditDialog] = useState(false);
   const [editingClass, setEditingClass] = useState<ClassData | null>(null);
-  const [formData, setFormData] = useState({ name: "", description: "", is_group: false });
+  const [formData, setFormData] = useState({ name: "", description: "", is_group: false, price: "" });
   const [formErrors, setFormErrors] = useState<{ name?: string; description?: string }>({});
 
   const fetchClasses = async () => {
@@ -89,13 +89,20 @@ export default function AdminClassesPage() {
     setFormErrors({});
 
     try {
+      const parsedPrice =
+        formData.price && formData.price.trim() !== ""
+          ? Number(formData.price)
+          : undefined;
       await createClass({
         name: formData.name.trim(),
         description: formData.description.trim(),
         is_group: formData.is_group,
+        ...(parsedPrice !== undefined && !Number.isNaN(parsedPrice)
+          ? { price: parsedPrice }
+          : {}),
       });
       setShowCreateDialog(false);
-      setFormData({ name: "", description: "", is_group: false });
+      setFormData({ name: "", description: "", is_group: false, price: "" });
       fetchClasses();
     } catch (error) {
       console.error("Error creating class:", error);
@@ -112,6 +119,7 @@ export default function AdminClassesPage() {
         name: classDetail.name || classItem.name,
         description: classDetail.description || classItem.description || "",
         is_group: classDetail.is_group ?? false,
+        price: classDetail.price != null ? String(classDetail.price) : "",
       });
     } catch (error) {
       console.error("Error fetching class details:", error);
@@ -120,6 +128,7 @@ export default function AdminClassesPage() {
         name: classItem.name,
         description: classItem.description || "",
         is_group: false,
+        price: "",
       });
     }
     setFormErrors({});
@@ -151,7 +160,7 @@ export default function AdminClassesPage() {
       });
       setShowEditDialog(false);
       setEditingClass(null);
-      setFormData({ name: "", description: "", is_group: false });
+      setFormData({ name: "", description: "", is_group: false, price: "" });
       fetchClasses();
     } catch (error) {
       console.error("Error updating class:", error);
@@ -338,6 +347,18 @@ export default function AdminClassesPage() {
               {formErrors.description && (
                 <p className="text-sm text-red-500 mt-1">{formErrors.description}</p>
               )}
+            </div>
+            <div>
+              <Label>Price (VND) (optional)</Label>
+              <Input
+                value={formData.price}
+                inputMode="numeric"
+                onChange={(e) => setFormData({ ...formData, price: e.target.value })}
+                placeholder="e.g. 500000"
+              />
+              <p className="text-xs text-gray-500 mt-1">
+                Leave empty for free class
+              </p>
             </div>
             <div className="flex items-center space-x-2">
               <Switch

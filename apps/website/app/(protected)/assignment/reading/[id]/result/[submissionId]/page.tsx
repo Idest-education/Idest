@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { use } from "react";
 import {
     ReadingAssignmentDetail,
@@ -22,6 +22,76 @@ export default function ReadingResultPage(props: PageProps) {
     const [result, setResult] = useState<SubmissionResultV2 | null>(null);
     const [activePassage, setActivePassage] = useState<number>(0);
     const [loading, setLoading] = useState(true);
+
+    const questionsById = useMemo(() => {
+        const map = new Map<string, any>();
+        assignment?.sections?.forEach((sec) =>
+            (sec.question_groups ?? []).forEach((g) =>
+                g.questions?.forEach((q: any) => map.set(q.id, q)),
+            ),
+        );
+        return map;
+    }, [assignment]);
+
+    const questionMeta = useMemo(() => {
+        const map = new Map<
+            string,
+            { order: number | undefined; prompt: string | undefined; type: string | undefined }
+        >();
+        assignment?.sections?.forEach((sec) =>
+            (sec.question_groups ?? []).forEach((g) =>
+                g.questions?.forEach((q: any) =>
+                    map.set(q.id, {
+                        order: q.order_index,
+                        prompt: q.prompt_md || q.prompt,
+                        type: q.type,
+                    }),
+                ),
+            ),
+        );
+        return map;
+    }, [assignment]);
+
+    const submittedAnswersByQuestion = useMemo(() => {
+        const map = new Map<string, any>();
+        result?.answers_v2?.forEach((sec) =>
+            sec.answers?.forEach((qa: any) => map.set(qa.question_id, qa.answer)),
+        );
+        return map;
+    }, [result]);
+
+    const formatAnswer = (val: any): string => {
+        if (val === null || val === undefined) return "";
+        if (typeof val === "string" || typeof val === "number" || typeof val === "boolean") return String(val);
+        if (Array.isArray(val)) return val.map((v) => formatAnswer(v)).join(", ");
+        if (val.choice !== undefined) return String(val.choice);
+        if (val.choices !== undefined) return Array.isArray(val.choices) ? val.choices.join(", ") : String(val.choices);
+        if (val.text !== undefined) return String(val.text);
+        return JSON.stringify(val);
+    };
+
+    const buildFallbackParts = (questionId: string) => {
+        const question = questionsById.get(questionId);
+        const submitted = submittedAnswersByQuestion.get(questionId);
+        const key = question?.answer_key;
+
+        // Try common fields
+        const correctAnswer =
+            key?.choice ?? key?.choices ?? key?.correct_answer ?? key?.text ?? key?.map ?? key;
+
+        const submittedAnswer = submitted?.choice ?? submitted?.choices ?? submitted?.text ?? submitted;
+
+        if (submittedAnswer === undefined && correctAnswer === undefined) return [];
+
+        return [
+            {
+                key: "answer",
+                correct: correctAnswer !== undefined && formatAnswer(submittedAnswer) === formatAnswer(correctAnswer),
+                submitted_answer: submittedAnswer,
+                correct_answer: correctAnswer,
+            },
+        ];
+    };
 
     useEffect(() => {
         async function load() {
@@ -58,13 +128,17 @@ export default function ReadingResultPage(props: PageProps) {
     }
 
     const section = assignment.sections[activePassage] as any;
-    const sectionResult = result.details[activePassage];
+    const sectionResult =
+        result.details.find((sec) => sec.section_id === section.id) ?? result.details[activePassage];
 
-    // Convert raw correct answers to an IELTS-like band score (0.0–9.0)
-    // Using proportional scaling to 9 and rounding to nearest 0.5.
-    const totalQ = result.total_questions || 1;
-    const rawBand = (result.correct_answers / totalQ) * 9;
-    const bandScore = Math.max(0, Math.min(9, Math.round(rawBand * 2) / 2));
+    // Prefer API band score; fall back to recompute if absent
+    const bandScore =
+        result.score ??
+        (() => {
+            const totalQ = result.total_questions || 1;
+            const rawBand = (result.correct_answers / totalQ) * 9;
+            return Math.max(0, Math.min(9, Math.round(rawBand * 2) / 2));
+        })();
 
     return (
         <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 py-1 px-1">
@@ -144,38 +218,86 @@ export default function ReadingResultPage(props: PageProps) {
 
                         {/* Questions Review (v2) */}
                         <div className="space-y-6">
-                            {sectionResult?.questions?.map((q) => (
-                                <div key={q.question_id} className="bg-white rounded-xl shadow-md border border-gray-200 overflow-hidden">
-                                    <div className="bg-gradient-to-r from-gray-50 to-gray-100 px-5 py-4 border-b border-gray-200 flex items-center justify-between">
-                                        <p className="text-sm font-semibold text-gray-800">Question {q.question_id}</p>
-                                        <span className={`text-xs font-semibold ${q.correct ? "text-green-700" : "text-red-700"}`}>
-                                            {q.correct ? "Correct" : "Incorrect"}
-                                        </span>
-                                    </div>
-                                    <div className="text-sm p-5 space-y-3">
-                                        {(q.parts ?? []).map((p) => (
-                                            <div key={p.key} className="rounded-lg border border-gray-200 p-3">
-                                                <div className="flex items-center justify-between">
-                                                    <div className="font-medium text-gray-800">{p.key}</div>
-                                                    <div className={`text-xs font-semibold ${p.correct ? "text-green-700" : "text-red-700"}`}>
-                                                        {p.correct ? "OK" : "Wrong"}
-                                                    </div>
-                                                </div>
-                                                <div className="mt-2 grid grid-cols-1 md:grid-cols-2 gap-2">
-                                                    <div className="bg-gray-50 rounded p-2">
-                                                        <div className="text-xs text-gray-500">Your answer</div>
-                                                        <div className="text-sm text-gray-800 break-words">{String(p.submitted_answer ?? "")}</div>
-                                                    </div>
-                                                    <div className="bg-green-50 rounded p-2 border border-green-200">
-                                                        <div className="text-xs text-gray-500">Correct</div>
-                                                        <div className="text-sm text-gray-800 break-words">{String(p.correct_answer ?? "")}</div>
-                                                    </div>
-                                                </div>
+                            {sectionResult?.questions?.map((q) => {
+                                const meta = questionMeta.get(q.question_id);
+                                const label =
+                                    meta?.order !== undefined
+                                        ? `Question ${meta.order}`
+                                        : `Question ${q.question_id}`;
+                                const prompt =
+                                    (meta?.prompt || "").replace(/<[^>]+>/g, "").slice(0, 200);
+                                const detailParts =
+                                    (q.parts && q.parts.length
+                                        ? q.parts
+                                        : q.subquestions && q.subquestions.length
+                                            ? q.subquestions
+                                            : buildFallbackParts(q.question_id)) ?? [];
+                                const getSubmittedAnswer = (part: any) => {
+                                    if (part?.submitted_answer !== undefined) return part.submitted_answer;
+                                    const fromMap = submittedAnswersByQuestion.get(q.question_id);
+                                    if (
+                                        fromMap &&
+                                        part?.key &&
+                                        typeof fromMap === "object" &&
+                                        fromMap !== null &&
+                                        part.key in (fromMap as any)
+                                    ) {
+                                        return (fromMap as any)[part.key];
+                                    }
+                                    return fromMap !== undefined ? fromMap : "Not answered";
+                                };
+
+                                const getCorrectAnswer = (val: any) => {
+                                    if (val && typeof val === "object" && "correct_answer" in val) {
+                                        return (val as any).correct_answer;
+                                    }
+                                    return val;
+                                };
+
+                                return (
+                                    <div key={q.question_id} className="bg-white rounded-xl shadow-md border border-gray-200 overflow-hidden">
+                                        <div className="bg-gradient-to-r from-gray-50 to-gray-100 px-5 py-4 border-b border-gray-200 flex items-center justify-between">
+                                            <div>
+                                                <p className="text-sm font-semibold text-gray-800">{label}</p>
+                                                {prompt ? (
+                                                    <p className="text-xs text-gray-600 mt-1 line-clamp-2">{prompt}</p>
+                                                ) : null}
                                             </div>
-                                        ))}
+                                            <span className={`text-xs font-semibold ${q.correct ? "text-green-700" : "text-red-700"}`}>
+                                                {q.correct ? "Correct" : "Incorrect"}
+                                            </span>
+                                        </div>
+                                        <div className="text-sm p-5 space-y-3">
+                                            {detailParts.map((p) => {
+                                                const submittedAns = getSubmittedAnswer(p);
+                                                const correctAns = getCorrectAnswer(p.correct_answer);
+                                                const displaySubmitted = formatAnswer(submittedAns);
+                                                const displayCorrect = formatAnswer(correctAns);
+                                                return (
+                                                    <div key={p.key} className="rounded-lg border border-gray-200 p-3">
+                                                        <div className="flex items-center justify-between">
+                                                            <div className="font-medium text-gray-800">{p.key}</div>
+                                                            <div className={`text-xs font-semibold ${p.correct ? "text-green-700" : "text-red-700"}`}>
+                                                                {p.correct ? "OK" : "Wrong"}
+                                                            </div>
+                                                        </div>
+                                                        <div className="mt-2 grid grid-cols-1 md:grid-cols-2 gap-2">
+                                                            <div className="bg-gray-50 rounded p-2">
+                                                                <div className="text-xs text-gray-500">Your answer</div>
+                                                                <div className="text-sm text-gray-800 break-words">{displaySubmitted || "Not answered"}</div>
+                                                            </div>
+                                                            <div className="bg-green-50 rounded p-2 border border-green-200">
+                                                                <div className="text-xs text-gray-500">Correct</div>
+                                                                <div className="text-sm text-gray-800 break-words">{displayCorrect || "—"}</div>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
                                     </div>
-                                </div>
-                            ))}
+                                );
+                            })}
                         </div>
                     </div>
                 </div>

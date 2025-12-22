@@ -113,4 +113,6 @@ export interface CreateClassPayload {
   is_group: boolean;
   schedule?: ScheduleData;
   invite_code?: string;
+  // Price in Vietnamese đồng (VND). Null/undefined means the class is free.
+  price?: number | null;
 }

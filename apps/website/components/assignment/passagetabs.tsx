@@ -1,7 +1,7 @@
-import { ReadingSection } from "@/types/assignment";
+import { SectionV2Client } from "@/types/assignment";
 
 interface Props {
-    sections: ReadingSection[];
+    sections: SectionV2Client[];
     active: number;
     setActive: (index: number) => void;
 }

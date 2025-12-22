@@ -8,7 +8,7 @@ import PassageContent from "@/components/assignment/passage-content";
 import QuestionRenderer from "@/components/assignment/v2/QuestionRenderer";
 import MarkdownRenderer from "@/components/conversation/MarkdownRenderer";
 import SidebarNavigation from "@/components/assignment/SidebarNavigation";
-import { ReadingAssignmentDetail } from "@/types/assignment";
+import { ReadingAssignmentDetail, SectionV2Client } from "@/types/assignment";
 import { use } from "react";
 import { useRouter } from "next/navigation";
 import LoadingScreen from "@/components/loading-screen";
@@ -56,8 +56,14 @@ export default function ReadingAssignmentPage(props: ReadingAssignmentPageProps)
                 return;
             }
             
+            const assignmentId = assignment.id || assignment._id;
+            if (!assignmentId) {
+                console.error("Missing assignment ID on assignment payload", assignment);
+                alert("Không xác định được mã bài đọc. Vui lòng tải lại trang.");
+                return;
+            }
             const payload = {
-                assignment_id: assignment.id,
+                assignment_id: assignmentId,
                 submitted_by: userId!,
                 section_answers: assignment.sections.map((section) => ({
                     section_id: section.id,
@@ -71,7 +77,7 @@ export default function ReadingAssignmentPage(props: ReadingAssignmentPageProps)
             };
 
             const res = await submitReading(payload);
-            router.push(`/assignment/reading/${assignment.id}/result/${res.data.id}`);
+            router.push(`/assignment/reading/${assignmentId}/result/${res.data.id}`);
         } catch (err) {
             console.error("Submit failed:", err);
             alert("Nộp bài thất bại. Vui lòng thử lại.");
@@ -99,7 +105,7 @@ export default function ReadingAssignmentPage(props: ReadingAssignmentPageProps)
         );
     }
 
-    const sections = assignment.sections as any; // SectionV2Client[], compatible with ReadingSection in UI
+    const sections = assignment.sections as SectionV2Client[];
     const currentSection = sections[activePassage];
 
     return (
@@ -125,7 +131,7 @@ export default function ReadingAssignmentPage(props: ReadingAssignmentPageProps)
                 <div className="w-[45%] flex border border-gray-300 flex-col bg-white/80 backdrop-blur-sm shadow-sm rounded-r-2xl transition-all duration-300 hover:rounded-r-3x">
                     <div className="flex-1 p-6 overflow-y-auto">
                         <div className="space-y-6">
-                            {(currentSection.question_groups ?? []).map((group: any) => {
+                            {(currentSection.question_groups ?? []).map((group) => {
                                 return (
                                     <div key={group.id} className="space-y-4">
                                         {/* Group Title */}
@@ -143,7 +149,7 @@ export default function ReadingAssignmentPage(props: ReadingAssignmentPageProps)
                                         )}
                                         
                                         {/* Questions in this group */}
-                                        {group.questions.map((q: any) => {
+                                        {group.questions.map((q) => {
                                             return (
                                                 <div key={q.id}>
                                                     <QuestionRenderer

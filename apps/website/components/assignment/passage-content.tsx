@@ -1,8 +1,8 @@
-import { ReadingSection } from "@/types/assignment";
+import { SectionV2Client } from "@/types/assignment";
 import MarkdownRenderer from "@/components/conversation/MarkdownRenderer";
 
 interface Props {
-    section: ReadingSection;
+    section: SectionV2Client;
 }
 
 export default function PassageContent({ section }: Props) {

@@ -41,6 +41,7 @@ export default function CreateSessionModal({
     start_time: "",
     end_time: "",
     is_recorded: false,
+    no_ending: false,
   });
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -51,7 +52,7 @@ export default function CreateSessionModal({
     try {
       // Convert local datetime to ISO string
       const startTime = new Date(formData.start_time).toISOString();
-      const endTime = formData.end_time
+      const endTime = !formData.no_ending && formData.end_time
         ? new Date(formData.end_time).toISOString()
         : undefined;
 
@@ -70,11 +71,11 @@ export default function CreateSessionModal({
       const res = await createSession(payload);
 
       if (res.statusCode === 201) { // Assuming 201 Created
-        setFormData({ topic: "", start_time: "", end_time: "", is_recorded: false });
+        setFormData({ topic: "", start_time: "", end_time: "", is_recorded: false, no_ending: false });
         onCreated();
         onClose();
       } else if (res.statusCode === 200) { // Fallback for 200 OK
-         setFormData({ topic: "", start_time: "", end_time: "", is_recorded: false });
+         setFormData({ topic: "", start_time: "", end_time: "", is_recorded: false, no_ending: false });
          onCreated();
          onClose();
       } else {
@@ -88,7 +89,7 @@ export default function CreateSessionModal({
   };
 
   const handleClose = () => {
-    setFormData({ topic: "", start_time: "", end_time: "", is_recorded: false });
+    setFormData({ topic: "", start_time: "", end_time: "", is_recorded: false, no_ending: false });
     setError("");
     onClose();
   };
@@ -161,10 +162,31 @@ export default function CreateSessionModal({
                   setFormData({ ...formData, end_time: e.target.value })
                 }
                 min={formData.start_time || minDateTime}
+                disabled={formData.no_ending}
               />
               <p className="text-xs text-gray-500 mt-1">
                 Leave empty if duration is uncertain
               </p>
+            </div>
+
+            <div className="flex items-center space-x-2">
+              <Checkbox
+                id="no_ending"
+                checked={formData.no_ending}
+                onCheckedChange={(checked) =>
+                  setFormData({
+                    ...formData,
+                    no_ending: checked as boolean,
+                    ...(checked ? { end_time: "" } : {}),
+                  })
+                }
+              />
+              <Label
+                htmlFor="no_ending"
+                className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+              >
+                No ending
+              </Label>
             </div>
 
             <div className="flex items-center space-x-2">

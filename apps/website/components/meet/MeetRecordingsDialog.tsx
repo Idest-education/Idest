@@ -60,10 +60,14 @@ export function MeetRecordingsDialog({ sessionId }: { sessionId: string | null }
       toast.error("Recording URL is not available yet.");
       return;
     }
+    if (!item.stoppedAt) {
+      toast.message("Recording is still in progress or processing. Please try again in a moment.");
+      return;
+    }
     try {
       const res = await getRecordingUrl(item.recordingId);
       if (!res.url) {
-        toast.error("Recording is stored privately; no public/signed URL is configured.");
+        toast.error("Recording URL is not available yet. Please refresh and try again.");
         return;
       }
       setActiveUrl(res.url);

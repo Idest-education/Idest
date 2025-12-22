@@ -33,11 +33,12 @@ export default function AddClassModal({
 }: AddClassModalProps) {
   const [loading, setLoading] = useState(false);
 
-  const [form, setForm] = useState<CreateClassPayload>({
+  const [form, setForm] = useState<CreateClassPayload & { priceInput?: string }>({
     name: "",
     description: "",
     is_group: true,
     invite_code: "",
+    priceInput: "",
     schedule: {
       days: [],
       time: "",
@@ -89,19 +90,31 @@ export default function AddClassModal({
     e.preventDefault();
     setLoading(true);
 
+    const parsedPrice =
+      form.priceInput && form.priceInput.trim() !== ""
+        ? Number(form.priceInput)
+        : undefined;
 
     const payload: CreateClassPayload = {
       name: form.name,
       description: form.description || undefined,
       is_group: form.is_group,
       invite_code: form.invite_code || undefined,
+      ...(parsedPrice !== undefined && !Number.isNaN(parsedPrice)
+        ? { price: parsedPrice }
+        : {}),
       schedule:
         form.schedule?.days && form.schedule.days.length > 0
           ? form.schedule
           : undefined,
     };
 
-    const res = (await createClass(payload)) as { status?: boolean; message?: string };
+    const res = (await createClass(payload)) as {
+      status?: boolean;
+      message?: string;
+      statusCode?: number;
+      data?: unknown;
+    };
     setLoading(false);
 
     if (res.status) {
@@ -179,6 +192,25 @@ export default function AddClassModal({
                   rows={3}
                   className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-900 bg-white focus:outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100 resize-none"
                 />
+              </div>
+
+              {/* Price */}
+              <div className="space-y-2">
+                <Label htmlFor="price" className="text-sm font-medium text-gray-700">
+                  Giá (VND) (Tùy chọn)
+                </Label>
+                <Input
+                  id="price"
+                  name="priceInput"
+                  inputMode="numeric"
+                  placeholder="ví dụ: 500000"
+                  value={form.priceInput || ""}
+                  onChange={handleChange}
+                  className="border-gray-200 focus:border-blue-400 focus:ring-blue-400 text-gray-900"
+                />
+                <p className="text-xs text-gray-500">
+                  Để trống nếu lớp học miễn phí
+                </p>
               </div>
             </div>
 

@@ -36,9 +36,10 @@ export const getAllVisibleClasses = async (): Promise<ClassData[]> => {
 export const createClass = async (payload: CreateClassPayload) => {
   try {
     const res = await http.post("/class", payload);
-    return unwrapResponse(res.data);
+    // Keep the backend envelope so callers can read { status, message, data, statusCode }
+    return res.data;
   } catch (error: any) {
-    if (error.response?.data) return unwrapResponse(error.response.data);
+    if (error.response?.data) return error.response.data;
     throw error;
   }
 };
