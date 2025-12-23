@@ -22,13 +22,9 @@ import { RolesGuard } from 'src/common/guard/role.guard';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { Role } from 'src/common/enum/role.enum';
 import { Roles } from 'src/common/decorator/role.decorator';
-import { CreateStudentProfileDto } from './dto/createStudentProfile.dto';
-import { CreateTeacherProfileDto } from './dto/createTeacherProfile.dto';
 import { AllUsers, AllUsersDto } from './types/allUsers.type';
 import {
   UserResponseDto,
-  StudentProfileResponseDto,
-  TeacherProfileResponseDto,
 } from './dto/user-response.dto';
 import { SearchUsersResponseDto } from './dto/search-users.dto';
 import {
@@ -139,55 +135,6 @@ export class UserController {
   @ApiInternalServerErrorResponse({ description: 'Internal server error' })
   async createUserWithCredentials(@Body() credentials: CredDto) {
     return await this.userService.createUserWithCredentials(credentials);
-  }
-
-  @Post('student-profile')
-  @Roles(Role.STUDENT)
-  @ApiOperation({
-    summary: 'Create student profile',
-    description:
-      'Creates a student profile with target score and current level. Only accessible by users with STUDENT role.',
-  })
-  @ApiOkResponse({
-    description: 'Student profile successfully created',
-    type: StudentProfileResponseDto,
-  })
-  @ApiBody({ type: CreateStudentProfileDto })
-  @ApiUnprocessableEntityResponse({
-    description: 'Failed to create student profile',
-  })
-  @ApiForbiddenResponse({
-    description: 'Access denied - STUDENT role required',
-  })
-  @ApiUnauthorizedResponse({ description: 'Authentication required' })
-  @ApiInternalServerErrorResponse({ description: 'Internal server error' })
-  async createStudentProfile(
-    @CurrentUser() user: userPayload,
-    @Body() request: CreateStudentProfileDto,
-  ) {
-    return await this.userService.createStudentProfile(user, request);
-  }
-
-  @Post('teacher-profile')
-  @Roles(Role.ADMIN)
-  @ApiOperation({
-    summary: 'Create teacher profile',
-    description:
-      'Creates a teacher profile and invites the teacher via email. Only accessible by users with ADMIN role.',
-  })
-  @ApiOkResponse({
-    description: 'Teacher profile successfully created and invitation sent',
-    type: TeacherProfileResponseDto,
-  })
-  @ApiBody({ type: CreateTeacherProfileDto })
-  @ApiUnprocessableEntityResponse({
-    description: 'Failed to create teacher profile or send invitation',
-  })
-  @ApiForbiddenResponse({ description: 'Access denied - ADMIN role required' })
-  @ApiUnauthorizedResponse({ description: 'Authentication required' })
-  @ApiInternalServerErrorResponse({ description: 'Internal server error' })
-  async createTeacherProfile(@Body() request: CreateTeacherProfileDto) {
-    return await this.userService.createTeacherProfile(request);
   }
 
   @Get('search')

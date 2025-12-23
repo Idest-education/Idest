@@ -8,11 +8,9 @@ import {
 } from '@nestjs/common';
 import { CreateUserDto } from './dto/createUser.dto';
 import { userPayload } from 'src/common/types/userPayload.interface';
-import { Prisma, StudentProfile, TeacherProfile, User } from '@prisma/client';
+import { Prisma, User } from '@prisma/client';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { UpdateUserDto } from './dto/updateUser.dto';
-import { CreateStudentProfileDto } from './dto/createStudentProfile.dto';
-import { CreateTeacherProfileDto } from './dto/createTeacherProfile.dto';
 import { Role } from 'src/common/enum/role.enum';
 import { SupabaseService } from 'src/supabase/supabase.service';
 import { AllUsers } from './types/allUsers.type';
@@ -112,8 +110,6 @@ export class UserService {
       const user = await this.prisma.user.findUnique({
         where: { id },
         include: {
-          StudentProfile: true,
-          TeacherProfile: true,
           ClassesCreated: {
             select: {
               id: true,
@@ -381,10 +377,6 @@ export class UserService {
           case 'datecreated':
           case 'created':
             return { created_at: requestedOrder } as const;
-          case 'specialization':
-            return {
-              TeacherProfile: { specialization: requestedOrder },
-            } as const;
           default:
             return { created_at: 'desc' as const };
         }
@@ -395,7 +387,6 @@ export class UserService {
         if (!filter || filter.length === 0) return {};
 
         const roles: string[] = [];
-        const specializationFilters: string[] = [];
         let search: string | undefined;
         let isActive: boolean | undefined;
 
@@ -422,9 +413,6 @@ export class UserService {
               }
               break;
             }
-            case 'specialization':
-              specializationFilters.push(value);
-              break;
             default:
               break;
           }
@@ -448,17 +436,6 @@ export class UserService {
           });
         }
 
-        if (specializationFilters.length) {
-          andConditions.push({
-            TeacherProfile: {
-              is: {
-                OR: specializationFilters.map((spec) => ({
-                  specialization: { contains: spec, mode: 'insensitive' },
-                })),
-              },
-            },
-          });
-        }
         if (andConditions.length) {
           whereInput.AND = andConditions;
         }
@@ -552,116 +529,6 @@ export class UserService {
       );
     }
   }
-  async createStudentProfile(
-    user: userPayload,
-    dto: CreateStudentProfileDto,
-  ): Promise<StudentProfile> {
-    try {
-      const studentProfile = await this.prisma.studentProfile.create({
-        data: {
-          user_id: user.id,
-          target_score: dto.target_score,
-          current_level: dto.current_level,
-        },
-      });
-      if (!studentProfile) {
-        throw new UnprocessableEntityException(
-          `Failed to create student profile`,
-        );
-      }
-      return studentProfile;
-    } catch (error) {
-      if (error instanceof UnprocessableEntityException) {
-        throw error;
-      }
-      throw new InternalServerErrorException(
-        `Error creating student profile: ${error}`,
-      );
-    }
-  }
-  async createTeacherProfile(
-    dto: CreateTeacherProfileDto,
-  ): Promise<TeacherProfile> {
-    try {
-      const invitedUser = await this.supabaseService.inviteUserByEmail(
-        dto.email,
-        { fullName: dto.fullName, role: Role.TEACHER },
-      );
-
-      const supabaseUserId = invitedUser?.id;
-      if (!supabaseUserId) {
-        throw new UnprocessableEntityException(
-          `Failed to invite user by email: ${dto.email}`,
-        );
-      }
-
-      const teacherProfile = await this.prisma.$transaction(async (tx) => {
-        const user = await tx.user.create({
-          data: {
-            id: supabaseUserId,
-            full_name: dto.fullName,
-            email: dto.email,
-            role: Role.TEACHER,
-            avatar_url: dto.avatar,
-            is_active: true,
-          },
-        });
-
-        return tx.teacherProfile.create({
-          data: {
-            user_id: user.id,
-            degree: dto.degree,
-            specialization: dto.specialization.join(','),
-            bio: dto.bio,
-          },
-        });
-      });
-
-      if (!teacherProfile) {
-        throw new UnprocessableEntityException(
-          `Failed to create teacher profile`,
-        );
-      }
-
-      return teacherProfile;
-    } catch (error) {
-      if (error instanceof UnprocessableEntityException) {
-        throw error;
-      }
-      throw new InternalServerErrorException(
-        `Error creating teacher profile: ${error}`,
-      );
-    }
-  }
-  async createTeacherProfileWithAccountId(
-    teacherId: string,
-    dto: CreateTeacherProfileDto,
-  ) {
-    try {
-      const teacherProfile = await this.prisma.teacherProfile.create({
-        data: {
-          user_id: teacherId,
-          degree: dto.degree,
-          specialization: dto.specialization.join(','),
-          bio: dto.bio,
-        },
-      });
-      if (!teacherProfile) {
-        throw new UnprocessableEntityException(
-          `Failed to create teacher profile`,
-        );
-      }
-      return teacherProfile;
-    } catch (error) {
-      if (error instanceof UnprocessableEntityException) {
-        throw error;
-      }
-      throw new InternalServerErrorException(
-        `Error creating teacher profile: ${error}`,
-      );
-    }
-  }
-
   async getUserRole(userId: string): Promise<{ role: string }> {
     try {
       const user = await this.prisma.user.findUnique({

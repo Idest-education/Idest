@@ -25,25 +25,8 @@ model User {
   Messages                 Message[]
   SessionHosted            Session[]
   SessionAttendances       SessionAttendance[]
-  StudentProfile           StudentProfile?
-  TeacherProfile           TeacherProfile?
   ConversationsCreated     Conversation[]            @relation("ConversationCreatedBy")
   ConversationsOwned       Conversation[]            @relation("ConversationOwner")
-}
-
-model StudentProfile {
-  user_id       String @id
-  target_score  Int
-  current_level String
-  user          User   @relation(fields: [user_id], references: [id])
-}
-
-model TeacherProfile {
-  user_id        String @id
-  degree         String
-  specialization String
-  bio            String
-  user           User   @relation(fields: [user_id], references: [id])
 }
 
 model Class {

@@ -243,81 +243,6 @@ async function createTeacherUsers(
   return teacherIds;
 }
 
-async function createStudentProfiles(
-  userService: UserService,
-  students: StudentData[],
-): Promise<void> {
-  console.log('- Creating StudentProfile records...');
-
-  for (const student of students) {
-    try {
-      console.log(`Creating student profile for ${student.email}...`);
-
-      const userPayload = {
-        id: student.supabaseUserId,
-        full_name: student.fullName,
-        email: student.email,
-        role: Role.STUDENT,
-        avatar: '',
-      };
-
-      const studentProfileDto = {
-        target_score: student.targetScore,
-        current_level: student.currentLevel,
-      };
-
-      await userService.createStudentProfile(userPayload, studentProfileDto);
-      console.log(
-        `- Created student profile for ${student.email} (Target: ${student.targetScore}, Level: ${student.currentLevel})`,
-      );
-    } catch (error) {
-      console.error(
-        `X Error creating student profile for ${student.email}:`,
-        error,
-      );
-    }
-  }
-
-  console.log(`- Created ${students.length} StudentProfile records`);
-}
-
-async function createTeacherProfiles(
-  userService: UserService,
-  teachers: TeacherData[],
-): Promise<void> {
-  console.log('- Creating TeacherProfile records...');
-
-  for (const teacher of teachers) {
-    try {
-      console.log(`Creating teacher profile for ${teacher.email}...`);
-
-      const teacherProfileDto = {
-        email: teacher.email,
-        fullName: teacher.fullName,
-        degree: teacher.degree,
-        specialization: teacher.specialization,
-        bio: teacher.bio,
-        avatar: '',
-      };
-
-      await userService.createTeacherProfileWithAccountId(
-        teacher.supabaseUserId,
-        teacherProfileDto,
-      );
-      console.log(
-        `- Created teacher profile for ${teacher.email} (Degree: ${teacher.degree}, Specializations: ${teacher.specialization.join(', ')})`,
-      );
-    } catch (error) {
-      console.error(
-        `X Error creating teacher profile for ${teacher.email}:`,
-        error,
-      );
-    }
-  }
-
-  console.log(`- Created ${teachers.length} TeacherProfile records`);
-}
-
 async function createClasses(
   classService: ClassService,
   prismaService: PrismaService,
@@ -535,9 +460,6 @@ async function main() {
       throw new Error('No teacher users created. Aborting seeding process.');
     }
 
-    await createStudentProfiles(userService, students);
-    await createTeacherProfiles(userService, teachers);
-
     const classes = await createClasses(
       classService,
       prismaService,
@@ -560,8 +482,6 @@ async function main() {
     console.log(`   - Created ${teachers.length} teacher Supabase accounts`);
     console.log(`   - Created ${userIds.length} student User records`);
     console.log(`   - Created ${teacherUserIds.length} teacher User records`);
-    console.log(`   - Created ${students.length} StudentProfile records`);
-    console.log(`   - Created ${teachers.length} TeacherProfile records`);
     console.log(`   - Created ${classes.length} classes`);
     console.log(`   - Assigned teachers and students to classes`);
   } catch (error) {
