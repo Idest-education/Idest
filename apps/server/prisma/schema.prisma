@@ -17,7 +17,6 @@ model User {
   created_at               DateTime                  @default(now())
   updated_at               DateTime                  @updatedAt
   purchases                String[]                  @default([])
-  Assignments              Assignment[]
   ClassesCreated           Class[]                   @relation("CreatedClasses")
   ClassMembers             ClassMember[]
   ClassTeachers            ClassTeacher[]
@@ -43,7 +42,6 @@ model Class {
   created_by    String
   created_at    DateTime       @default(now())
   updated_at    DateTime       @updatedAt
-  assignments   Assignment[]
   creator       User           @relation("CreatedClasses", fields: [created_by], references: [id])
   members       ClassMember[]
   teachers      ClassTeacher[]
@@ -115,21 +113,6 @@ model Recording {
 
   @@index([sessionId, created_at])
 }
-
-model Assignment {
-  id          String   @id @default(uuid())
-  created_by  String
-  class_id    String?
-  skill       String
-  title       String
-  slug        String   @unique
-  description String
-  is_public   Boolean
-  created_at  DateTime @default(now())
-  class       Class?   @relation(fields: [class_id], references: [id])
-  creator     User     @relation(fields: [created_by], references: [id])
-}
-
 model Conversation {
   id            String                    @id @default(uuid())
   isGroup       Boolean                   @default(false)

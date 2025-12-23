@@ -484,12 +484,11 @@ export class ClassQueryService {
       if (!hasAccess)
         throw new ForbiddenException('Access denied to this class');
 
-      const [memberCount, teacherCount, sessionCount, assignmentCount] =
+      const [memberCount, teacherCount, sessionCount] =
         await Promise.all([
           this.prisma.classMember.count({ where: { class_id: classId } }),
           this.prisma.classTeacher.count({ where: { class_id: classId } }),
           this.prisma.session.count({ where: { class_id: classId } }),
-          this.prisma.assignment.count({ where: { class_id: classId } }),
         ]);
 
       return {
