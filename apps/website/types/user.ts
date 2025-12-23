@@ -6,7 +6,6 @@ export interface UserProfile {
   role: "ADMIN" | "STUDENT" | "TEACHER";
   isActive: boolean;
   createdAt: string;
-  studentProfile?: StudentProfile | null;
   classes?: {
     created: UserClassSummary[];
     teaching: UserClassSummary[];
@@ -21,23 +20,11 @@ export interface UserClassSummary {
   inviteCode?: string;
 }
 
-export interface StudentProfile {
-  id: string;
-  targetScore: number;
-  currentLevel: string;
-  createdAt: string;
-}
-
 export interface AllUserProfilesResponse {
   users: UserProfile[];
   total: number;
   page: number;
   limit: number;
-}
-
-export interface CreateStudentProfileRequest {
-  targetScore: number;
-  currentLevel: string;
 }
 
 export interface UpdateUserProfileRequest {

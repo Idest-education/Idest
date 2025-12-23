@@ -1,18 +1,9 @@
 import { http } from "./http";
 import type {
   UserProfile,
-  StudentProfile,
-  CreateStudentProfileRequest,
   UpdateUserProfileRequest,
   UserClassSummary,
 } from "@/types/user";
-
-interface StudentProfileApi {
-  id: string;
-  target_score: number;
-  current_level: string;
-  created_at: string;
-}
 
 interface UserApiData {
   id: string;
@@ -23,7 +14,6 @@ interface UserApiData {
   is_active: boolean;
   created_at: string;
   updated_at: string;
-  StudentProfile?: StudentProfileApi | null;
 
   // Optional class relations for admin user detail
   ClassesCreated?: Array<{
@@ -59,15 +49,6 @@ interface UserApiResponse {
   statusCode: number;
 }
 
-function mapStudentProfile(api: StudentProfileApi): StudentProfile {
-  return {
-    id: api.id,
-    targetScore: api.target_score,
-    currentLevel: api.current_level,
-    createdAt: api.created_at,
-  };
-}
-
 function mapUser(api: UserApiData): UserProfile {
   const created: UserClassSummary[] =
     api.ClassesCreated?.map((c) => ({
@@ -101,7 +82,6 @@ function mapUser(api: UserApiData): UserProfile {
     role: api.role,
     isActive: api.is_active,
     createdAt: api.created_at,
-    studentProfile: api.StudentProfile ? mapStudentProfile(api.StudentProfile) : null,
     classes: { created, teaching, enrolled },
   };
 }
@@ -121,13 +101,6 @@ export async function updateUserProfile(
 
 export async function deleteOwnAccount(): Promise<boolean> {
   const response = await http.delete<boolean>("/user/me");
-  return response.data;
-}
-
-export async function createStudentProfile(
-  payload: CreateStudentProfileRequest,
-): Promise<StudentProfile> {
-  const response = await http.post<StudentProfile>("/user/student-profile", payload);
   return response.data;
 }
 
@@ -211,20 +184,6 @@ export async function banUser(id: string): Promise<boolean> {
 
 export async function unbanUser(id: string): Promise<boolean> {
   const res = await http.post<boolean>(`/user/unban/${id}`);
-  return res.data;
-}
-
-export interface CreateTeacherProfileRequest {
-  email: string;
-  fullName: string;
-  degree: string;
-  specialization: string[];
-  bio: string;
-  avatar?: string | null;
-}
-
-export async function inviteTeacher(payload: CreateTeacherProfileRequest) {
-  const res = await http.post("/user/teacher-profile", payload);
   return res.data;
 }
 

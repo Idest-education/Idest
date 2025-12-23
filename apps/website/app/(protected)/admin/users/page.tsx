@@ -7,11 +7,9 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Search, Ban, CheckCircle, Eye, UserPlus } from "lucide-react";
+import { Search, Ban, CheckCircle, Eye } from "lucide-react";
 import Link from "next/link";
 import LoadingScreen from "@/components/loading-screen";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Label } from "@/components/ui/label";
 
 export default function AdminUsersPage() {
   const [users, setUsers] = useState<AllUsersResponse | null>(null);
@@ -21,14 +19,6 @@ export default function AdminUsersPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [roleFilter, setRoleFilter] = useState<string>("all");
   const [activeFilter, setActiveFilter] = useState<string>("all");
-  const [showInviteDialog, setShowInviteDialog] = useState(false);
-  const [inviteForm, setInviteForm] = useState({
-    email: "",
-    fullName: "",
-    degree: "",
-    specialization: "",
-    bio: "",
-  });
 
   const fetchUsers = async () => {
     setLoading(true);
@@ -105,25 +95,6 @@ export default function AdminUsersPage() {
     }
   };
 
-  const handleInviteTeacher = async () => {
-    try {
-      const { inviteTeacher } = await import("@/services/user.service");
-      await inviteTeacher({
-        email: inviteForm.email,
-        fullName: inviteForm.fullName,
-        degree: inviteForm.degree,
-        specialization: inviteForm.specialization.split(",").map(s => s.trim()),
-        bio: inviteForm.bio,
-      });
-      setShowInviteDialog(false);
-      setInviteForm({ email: "", fullName: "", degree: "", specialization: "", bio: "" });
-      fetchUsers();
-    } catch (error) {
-      console.error("Error inviting teacher:", error);
-      alert("Failed to invite teacher");
-    }
-  };
-
   if (loading && !users) return <LoadingScreen />;
 
   return (
@@ -133,10 +104,6 @@ export default function AdminUsersPage() {
           <h1 className="text-3xl font-bold text-gray-900">Users Management</h1>
           <p className="text-gray-600 mt-2">Manage users, roles, and permissions</p>
         </div>
-        <Button onClick={() => setShowInviteDialog(true)}>
-          <UserPlus className="w-4 h-4 mr-2" />
-          Invite Teacher
-        </Button>
       </div>
 
       <Card>
@@ -282,66 +249,6 @@ export default function AdminUsersPage() {
           )}
         </CardContent>
       </Card>
-
-      <Dialog open={showInviteDialog} onOpenChange={setShowInviteDialog}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Invite Teacher</DialogTitle>
-            <DialogDescription>
-              Create a new teacher account and send an invitation email.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div>
-              <Label>Email</Label>
-              <Input
-                type="email"
-                value={inviteForm.email}
-                onChange={(e) => setInviteForm({ ...inviteForm, email: e.target.value })}
-                placeholder="teacher@example.com"
-              />
-            </div>
-            <div>
-              <Label>Full Name</Label>
-              <Input
-                value={inviteForm.fullName}
-                onChange={(e) => setInviteForm({ ...inviteForm, fullName: e.target.value })}
-                placeholder="John Doe"
-              />
-            </div>
-            <div>
-              <Label>Degree</Label>
-              <Input
-                value={inviteForm.degree}
-                onChange={(e) => setInviteForm({ ...inviteForm, degree: e.target.value })}
-                placeholder="Ph.D. in English"
-              />
-            </div>
-            <div>
-              <Label>Specialization (comma-separated)</Label>
-              <Input
-                value={inviteForm.specialization}
-                onChange={(e) => setInviteForm({ ...inviteForm, specialization: e.target.value })}
-                placeholder="IELTS, TOEFL, Business English"
-              />
-            </div>
-            <div>
-              <Label>Bio</Label>
-              <Input
-                value={inviteForm.bio}
-                onChange={(e) => setInviteForm({ ...inviteForm, bio: e.target.value })}
-                placeholder="Teacher bio..."
-              />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowInviteDialog(false)}>
-              Cancel
-            </Button>
-            <Button onClick={handleInviteTeacher}>Invite</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }

@@ -3,16 +3,9 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
-import {
-  getCurrentUser,
-  updateUserProfile,
-  deleteOwnAccount,
-  createStudentProfile,
-} from "@/services/user.service";
+import { getCurrentUser, updateUserProfile, deleteOwnAccount } from "@/services/user.service";
 import type {
   UserProfile,
-  StudentProfile,
-  CreateStudentProfileRequest,
 } from "@/types/user";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -22,18 +15,12 @@ import { toast } from "sonner";
 
 export default function ProfileSettingsPage() {
   const [user, setUser] = useState<UserProfile | null>(null);
-  const [studentProfile, setStudentProfile] = useState<StudentProfile | null>(null);
   const [name, setName] = useState("");
   const [isEditingProfile, setIsEditingProfile] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
-  const [isCreatingStudent, setIsCreatingStudent] = useState(false);
-  const [studentForm, setStudentForm] = useState<CreateStudentProfileRequest>({
-    targetScore: 0,
-    currentLevel: "",
-  });
 
   const router = useRouter();
   const supabase = createClient();
@@ -44,7 +31,6 @@ export default function ProfileSettingsPage() {
         const profile = await getCurrentUser();
         setUser(profile);
         setName(profile.fullName || "");
-        setStudentProfile(profile.studentProfile ?? null);
       } catch (error) {
         console.error(error);
         toast.error("Không thể tải hồ sơ");
@@ -123,25 +109,6 @@ export default function ProfileSettingsPage() {
       toast.error("Không thể xóa tài khoản");
     } finally {
       setIsDeleting(false);
-    }
-  };
-
-  const handleCreateStudentProfile = async () => {
-    if (!studentForm.currentLevel || !studentForm.targetScore) {
-      toast.error("Vui lòng điền điểm mục tiêu và trình độ hiện tại");
-      return;
-    }
-
-    try {
-      setIsCreatingStudent(true);
-      const profile = await createStudentProfile(studentForm);
-      setStudentProfile(profile);
-      toast.success("Hồ sơ học sinh đã được tạo");
-    } catch (error) {
-      console.error(error);
-      toast.error("Không thể tạo hồ sơ học sinh");
-    } finally {
-      setIsCreatingStudent(false);
     }
   };
 
@@ -265,66 +232,6 @@ export default function ProfileSettingsPage() {
           </div>
         </CardContent>
       </Card>
-
-      {user.role === "STUDENT" && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Hồ sơ học sinh</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {studentProfile && (
-              <div className="grid gap-4 md:grid-cols-2">
-                <div className="space-y-1 text-sm">
-                  <p className="font-medium">Điểm mục tiêu</p>
-                  <p>{studentProfile.targetScore}</p>
-                </div>
-                <div className="space-y-1 text-sm">
-                  <p className="font-medium">Trình độ hiện tại</p>
-                  <p>{studentProfile.currentLevel}</p>
-                </div>
-              </div>
-            )}
-
-            <div className="grid gap-4 md:grid-cols-2">
-              <div className="space-y-2">
-                <Label htmlFor="targetScore">Điểm mục tiêu</Label>
-                <Input
-                  id="targetScore"
-                  type="number"
-                  value={studentForm.targetScore || ""}
-                  onChange={(e) =>
-                    setStudentForm((prev) => ({
-                      ...prev,
-                      targetScore: Number(e.target.value),
-                    }))
-                  }
-                  placeholder="ví dụ: 7.5"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="currentLevel">Trình độ hiện tại</Label>
-                <Input
-                  id="currentLevel"
-                  value={studentForm.currentLevel}
-                  onChange={(e) =>
-                    setStudentForm((prev) => ({
-                      ...prev,
-                      currentLevel: e.target.value,
-                    }))
-                  }
-                  placeholder="ví dụ: B2"
-                />
-              </div>
-            </div>
-
-            <div className="flex justify-end">
-              <Button onClick={handleCreateStudentProfile} disabled={isCreatingStudent}>
-                {isCreatingStudent ? "Đang tạo..." : "Tạo hồ sơ học sinh"}
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-      )}
 
       <Card>
         <CardHeader>
