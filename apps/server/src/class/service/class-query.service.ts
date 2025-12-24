@@ -552,7 +552,6 @@ export class ClassQueryService {
           _count: { select: { members: true, teachers: true, sessions: true } },
         },
         orderBy: { updated_at: 'desc' },
-        take: 10,
       });
 
       return results;
