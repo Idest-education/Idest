@@ -5,6 +5,7 @@ import {
   UnprocessableEntityException,
   InternalServerErrorException,
 } from '@nestjs/common';
+import { Cron, CronExpression } from '@nestjs/schedule';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { userPayload } from 'src/common/types/userPayload.interface';
 import { Role } from 'src/common/enum/role.enum';
@@ -22,6 +23,57 @@ import {
 @Injectable()
 export class SessionService {
   constructor(private readonly prisma: PrismaService) {}
+
+  /**
+   * Cron job: periodically end overdue sessions and delete old sessions.
+   *
+   * - Any session that has started in the past and still has no end_time
+   *   will be auto-ended (end_time set to now).
+   * - Any session whose end_time (or start_time if no end_time) is older than 7 days
+   *   will be deleted.
+   */
+  @Cron(CronExpression.EVERY_MINUTE)
+  async handleSessionLifecycleMaintenance(): Promise<void> {
+    const now = new Date();
+    const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+
+    try {
+      await this.prisma.$transaction([
+        // Auto-end sessions that have started but don't have an end_time yet
+        this.prisma.session.updateMany({
+          where: {
+            start_time: { lte: now },
+            end_time: null,
+          },
+          data: {
+            end_time: now,
+          },
+        }),
+        // Delete sessions that ended more than a week ago,
+        // or (for safety) sessions older than a week with no end_time
+        this.prisma.session.deleteMany({
+          where: {
+            OR: [
+              {
+                end_time: {
+                  lte: weekAgo,
+                },
+              },
+              {
+                end_time: null,
+                start_time: {
+                  lte: weekAgo,
+                },
+              },
+            ],
+          },
+        }),
+      ]);
+    } catch (error) {
+      // Log but do not crash the app – maintenance is best-effort
+      console.error('Error running session lifecycle maintenance cron:', error);
+    }
+  }
 
   /**
    * Create a new session
