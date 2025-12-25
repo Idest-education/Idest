@@ -138,22 +138,37 @@ export default function CreateSessionModal({
               />
             </div>
 
-            <div>
+            <div className="space-y-2">
               <Label htmlFor="start_time">Giờ bắt đầu (Giờ địa phương của bạn) *</Label>
-              <Input
-                id="start_time"
-                type="datetime-local"
-                value={formData.start_time}
-                onChange={(e) =>
-                  setFormData({ ...formData, start_time: e.target.value })
-                }
-                min={minDateTime}
-                required
-              />
+              <div className="flex gap-2">
+                <Input
+                  id="start_time"
+                  type="datetime-local"
+                  value={formData.start_time}
+                  onChange={(e) =>
+                    setFormData({ ...formData, start_time: e.target.value })
+                  }
+                  min={minDateTime}
+                  required
+                  className="flex-1"
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() =>
+                    setFormData({
+                      ...formData,
+                      start_time: getLocalDateTimeString(),
+                    })
+                  }
+                >
+                  Now
+                </Button>
+              </div>
             </div>
 
             <div>
-              <Label htmlFor="end_time">End Time (Your Local Time) - Optional</Label>
+              <Label htmlFor="end_time">Giờ kết thúc (Giờ địa phương của bạn) - Tùy chọn</Label>
               <Input
                 id="end_time"
                 type="datetime-local"
@@ -165,7 +180,7 @@ export default function CreateSessionModal({
                 disabled={formData.no_ending}
               />
               <p className="text-xs text-gray-500 mt-1">
-                Leave empty if duration is uncertain
+                Ấn &quot;Không dừng&quot; để không đặt giờ kết thúc
               </p>
             </div>
 
@@ -185,7 +200,7 @@ export default function CreateSessionModal({
                 htmlFor="no_ending"
                 className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
               >
-                No ending
+                Không dừng
               </Label>
             </div>
 

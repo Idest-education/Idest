@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { getAssignments } from "@/services/assignment.service";
-import type { AssignmentOverview, AssignmentResponse } from "@/types/assignment";
+import type { AssignmentOverview } from "@/types/assignment";
 import AssignmentCard from "./assignment-card";
 import { Button } from "@/components/ui/button";
 import { ArrowRight, Sparkles } from "lucide-react";
@@ -16,25 +16,62 @@ export default function AssignmentShowcaseClient() {
     async function load() {
       try {
         const response = await getAssignments({ page: 1, limit: 6 });
-        
-        // Combine all skills into a single array
-        const allAssignments: AssignmentOverview[] = [];
-        
-        const addAssignments = (skillData: AssignmentOverview[] | any) => {
-          if (Array.isArray(skillData)) {
-            allAssignments.push(...skillData);
-          } else if (skillData && typeof skillData === 'object' && 'data' in skillData) {
-            allAssignments.push(...skillData.data);
+
+        // Normalize API shapes (array or { data: [] }) to flat arrays
+        const normalize = (
+          skillData: AssignmentOverview[] | { data?: AssignmentOverview[] } | null | undefined,
+        ): AssignmentOverview[] => {
+          if (Array.isArray(skillData)) return skillData;
+          if (
+            skillData &&
+            typeof skillData === "object" &&
+            "data" in skillData &&
+            Array.isArray(skillData.data)
+          ) {
+            return skillData.data;
+          }
+          return [];
+        };
+
+        const reading = normalize(response.reading);
+        const listening = normalize(response.listening);
+        const writing = normalize(response.writing);
+        const speaking = normalize(response.speaking);
+
+        const picked: AssignmentOverview[] = [];
+        const MAX_ITEMS = 6;
+
+        // Ensure at least one assignment from each skill if available
+        const ensureOne = (list: AssignmentOverview[]) => {
+          if (list.length > 0) {
+            const first = list[0];
+            if (!picked.find((p) => p.id === first.id)) {
+              picked.push(first);
+            }
           }
         };
 
-        addAssignments(response.reading);
-        addAssignments(response.listening);
-        addAssignments(response.writing);
-        addAssignments(response.speaking);
+        ensureOne(reading);
+        ensureOne(listening);
+        ensureOne(writing);
+        ensureOne(speaking);
 
-        // Take first 6 assignments
-        setAssignments(allAssignments.slice(0, 6));
+        // Fill remaining slots with the rest of all assignments, avoiding duplicates
+        const allAssignments: AssignmentOverview[] = [
+          ...reading,
+          ...listening,
+          ...writing,
+          ...speaking,
+        ];
+
+        for (const item of allAssignments) {
+          if (picked.length >= MAX_ITEMS) break;
+          if (!picked.find((p) => p.id === item.id)) {
+            picked.push(item);
+          }
+        }
+
+        setAssignments(picked);
       } catch (error) {
         console.error("Failed to load assignments:", error);
         setAssignments([]);

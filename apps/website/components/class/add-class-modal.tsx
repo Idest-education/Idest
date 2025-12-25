@@ -11,11 +11,10 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Switch } from "@/components/ui/switch";
 import { cn } from "@/lib/utils";
 import { createClass } from "@/services/class.service";
 import type { CreateClassPayload, ScheduleData } from "@/types/class";
-import { BookOpen, Users, Clock, Calendar } from "lucide-react";
+import { BookOpen, Clock, Calendar } from "lucide-react";
 import { toast } from "sonner";
 import { DialogClose } from "@/components/ui/dialog";
 import { X } from "lucide-react";
@@ -98,7 +97,7 @@ export default function AddClassModal({
     const payload: CreateClassPayload = {
       name: form.name,
       description: form.description || undefined,
-      is_group: form.is_group,
+      is_group: true,
       invite_code: form.invite_code || undefined,
       ...(parsedPrice !== undefined && !Number.isNaN(parsedPrice)
         ? { price: parsedPrice }
@@ -130,19 +129,19 @@ export default function AddClassModal({
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="max-w-4xl max-h-[90vh] bg-gradient-to-br from-blue-50 via-white to-indigo-50 [&>button:last-child]:hidden overflow-hidden flex flex-col">
+      <DialogContent className="max-w-4xl max-h-[90vh] bg-gradient-to-br from-gray-50 via-white to-orange-50 [&>button:last-child]:hidden overflow-hidden flex flex-col">
         <DialogClose asChild>
-          <button className="absolute right-4 top-4 rounded-full p-2 text-gray-600 hover:text-white hover:bg-indigo-600 transition-colors z-10">
+          <button className="absolute right-4 top-4 rounded-full p-2 text-gray-500 hover:text-white hover:bg-orange-500 transition-colors z-10 shadow-sm">
             <X className="w-5 h-5" />
           </button>
         </DialogClose>
-        <DialogHeader className="space-y-3 pb-4 border-b border-blue-100 flex-shrink-0">
+        <DialogHeader className="space-y-3 pb-4 border-b border-orange-100 flex-shrink-0">
           <div className="flex items-center gap-3">
-            <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-indigo-600 to-purple-600 flex items-center justify-center shadow-lg">
+            <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-gray-900 via-orange-700 to-orange-500 flex items-center justify-center shadow-lg">
               <BookOpen className="w-6 h-6 text-white" />
             </div>
             <div>
-              <DialogTitle className="text-2xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
+              <DialogTitle className="text-2xl font-bold bg-gradient-to-r from-gray-900 via-orange-900 to-orange-500 bg-clip-text text-transparent">
                 Tạo lớp học mới
               </DialogTitle>
               <p className="text-sm text-gray-500 mt-1">
@@ -156,7 +155,7 @@ export default function AddClassModal({
           {/* Left Column */}
           <div className="space-y-6">
             {/* Basic Information Section */}
-            <div className="bg-white rounded-xl p-5 shadow-sm border border-blue-100 space-y-4">
+            <div className="bg-white rounded-xl p-5 shadow-sm border border-orange-100 space-y-4">
               <h3 className="text-sm font-semibold text-gray-700 uppercase tracking-wide flex items-center gap-2">
                 <div className="w-1 h-4 bg-indigo-600 rounded-full"></div>
                 Thông tin cơ bản
@@ -215,31 +214,11 @@ export default function AddClassModal({
             </div>
 
             {/* Class Settings Section */}
-            <div className="bg-white rounded-xl p-5 shadow-sm border border-blue-100 space-y-4">
+            <div className="bg-white rounded-xl p-5 shadow-sm border border-orange-100 space-y-4">
               <h3 className="text-sm font-semibold text-gray-700 uppercase tracking-wide flex items-center gap-2">
                 <div className="w-1 h-4 bg-indigo-600 rounded-full"></div>
                 Cài đặt lớp học
               </h3>
-
-              {/* Group toggle */}
-              <div className="flex items-center justify-between bg-gradient-to-r from-indigo-60 to-purple-60 rounded-lg px-4 py-3 border border-blue-100">
-                <div className="flex items-center gap-3">
-                  <Users className="w-5 h-5 text-blue-600" />
-                  <div>
-                    <Label htmlFor="is_group" className="text-sm font-medium text-gray-800 cursor-pointer">
-                      Lớp nhóm
-                    </Label>
-                    <p className="text-xs text-gray-500">Bật cho nhiều học sinh</p>
-                  </div>
-                </div>
-                <Switch
-                  id="is_group"
-                  checked={form.is_group}
-                  onCheckedChange={(checked: boolean) =>
-                    setForm((f) => ({ ...f, is_group: checked }))
-                  }
-                />
-              </div>
 
               {/* Invite code */}
               <div className="space-y-2">
@@ -262,9 +241,9 @@ export default function AddClassModal({
           </div>
 
           {/* Right Column - Schedule Section */}
-          <div className="bg-white rounded-xl p-5 shadow-sm border border-blue-100 space-y-4">
+          <div className="bg-white rounded-xl p-5 shadow-sm border border-orange-100 space-y-4">
             <h3 className="text-sm font-semibold text-gray-700 uppercase tracking-wide flex items-center gap-2">
-              <Calendar className="w-4 h-4 text-purple-500" />
+              <Calendar className="w-4 h-4 text-orange-500" />
               Lịch học
             </h3>
 
@@ -282,8 +261,8 @@ export default function AddClassModal({
                     className={cn(
                       "px-4 py-2.5 rounded-lg border-2 text-sm font-medium transition-all duration-200",
                       form.schedule?.days.includes(day.key)
-                        ? "bg-gradient-to-r from-blue-500 to-indigo-600 text-white border-transparent shadow-md scale-105"
-                        : "bg-white hover:bg-blue-50 border-gray-200 text-gray-700 hover:border-blue-300"
+                        ? "bg-gradient-to-r from-gray-900 to-orange-600 text-white border-transparent shadow-md scale-105"
+                        : "bg-white hover:bg-orange-50 border-gray-200 text-gray-700 hover:border-orange-300"
                     )}
                   >
                     {day.label}
@@ -296,7 +275,7 @@ export default function AddClassModal({
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-3">
                 <Label htmlFor="time" className="text-sm font-medium text-gray-700 flex items-center gap-2">
-                  <Clock className="w-4 h-4 text-blue-500" />
+                  <Clock className="w-4 h-4 text-orange-500" />
                   Giờ bắt đầu
                 </Label>
                 <Input
@@ -330,7 +309,7 @@ export default function AddClassModal({
           </div>
         </div>
         {/* Footer */}
-        <DialogFooter className="gap-2 pt-4 border-t border-blue-100 flex-shrink-0 mt-4">
+        <DialogFooter className="gap-2 pt-4 border-t border-orange-100 flex-shrink-0 mt-4 bg-gradient-to-r from-white via-orange-50 to-amber-50">
           <Button
             type="button"
             onClick={onClose}
@@ -343,7 +322,7 @@ export default function AddClassModal({
             type="button"
             onClick={handleSubmit}
             disabled={loading}
-            className="bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-blue-600 hover:to-indigo-700 text-white shadow-lg hover:shadow-xl transition-all duration-200"
+            className="bg-gradient-to-r from-gray-900 via-orange-700 to-orange-500 hover:from-gray-900 hover:via-orange-600 hover:to-orange-400 text-white shadow-lg hover:shadow-xl transition-all duration-200"
           >
             {loading ? (
               <span className="flex items-center gap-2">
