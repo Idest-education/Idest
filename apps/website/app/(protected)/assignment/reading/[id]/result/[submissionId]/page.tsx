@@ -54,8 +54,17 @@ export default function ReadingResultPage(props: PageProps) {
 
     const submittedAnswersByQuestion = useMemo(() => {
         const map = new Map<string, any>();
-        result?.answers_v2?.forEach((sec) =>
-            sec.answers?.forEach((qa: any) => map.set(qa.question_id, qa.answer)),
+        result?.details?.forEach((sec) =>
+            sec.questions?.forEach((q: any) => {
+                // Extract answer from parts if available, otherwise use a default
+                if (q.parts && q.parts.length > 0) {
+                    // For questions with parts, store the first part's submitted_answer
+                    map.set(q.question_id, q.parts[0]?.submitted_answer);
+                } else {
+                    // Fallback: try to get answer from question directly if available
+                    map.set(q.question_id, (q as any).answer);
+                }
+            }),
         );
         return map;
     }, [result]);
@@ -229,9 +238,7 @@ export default function ReadingResultPage(props: PageProps) {
                                 const detailParts =
                                     (q.parts && q.parts.length
                                         ? q.parts
-                                        : q.subquestions && q.subquestions.length
-                                            ? q.subquestions
-                                            : buildFallbackParts(q.question_id)) ?? [];
+                                        : buildFallbackParts(q.question_id)) ?? [];
                                 const getSubmittedAnswer = (part: any) => {
                                     if (part?.submitted_answer !== undefined) return part.submitted_answer;
                                     const fromMap = submittedAnswersByQuestion.get(q.question_id);

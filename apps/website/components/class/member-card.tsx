@@ -53,10 +53,10 @@ export default function MemberCard({ member, onConversationCreated }: MemberCard
     }, [showMenu]);
 
     return (
-        <div className="relative" ref={menuRef}>
+        <div className="relative aspect-square" ref={menuRef}>
             {/* Card */}
             <div
-                className="bg-gradient-to-br from-blue-50 to-indigo-50 p-4 rounded-xl text-center border border-blue-200 hover:shadow-md hover:scale-105 transition-all cursor-pointer"
+                className="bg-gradient-to-br from-blue-50 to-indigo-50 p-4 rounded-xl text-center border border-blue-200 hover:shadow-md hover:scale-105 transition-all cursor-pointer h-full flex flex-col items-center justify-center"
                 onClick={() => setShowMenu((prev) => !prev)}
             >
                 {/* Use a regular img so we can support any avatar domain without Next image config */}
@@ -68,9 +68,9 @@ export default function MemberCard({ member, onConversationCreated }: MemberCard
                         (typeof DefaultAvatar === "string" ? DefaultAvatar : (DefaultAvatar as { src: string }).src)
                     }
                     alt={member.full_name}
-                    width={60}
-                    height={60}
-                    className="mx-auto rounded-full ring-4 ring-white shadow-md object-cover"
+                    width={100}
+                    height={100}
+                    className="mx-auto rounded-lg ring-4 ring-white shadow-md object-cover w-[100px] h-[100px]"
                 />
                 <p className="mt-3 text-sm font-semibold text-gray-800 line-clamp-2">
                     {member.full_name}

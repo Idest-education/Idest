@@ -15,7 +15,7 @@ import {
 import { ClassDetail } from "@/types/class";
 import { SessionData, PaginatedResponse } from "@/types/session";
 import DefaultAvatar from "@/assets/default-avatar.png";
-import { BookOpen, Users, Clock, Award, Copy, CheckCircle2, PlusCircle } from "lucide-react";
+import { BookOpen, Users, Clock, Award, Copy, CheckCircle2, PlusCircle, ChevronDown, ChevronUp } from "lucide-react";
 import LoadingScreen from "@/components/loading-screen";
 import MemberCard from "@/components/class/member-card";
 import ConversationPopup from "@/components/conversation/ConversationPopup";
@@ -40,6 +40,7 @@ export default function ClassDetailPage() {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [currentUserId, setCurrentUserId] = useState<string>("");
   const [userRole, setUserRole] = useState<string | null>(null);
+  const [membersExpanded, setMembersExpanded] = useState(false);
 
   useEffect(() => {
     setMounted(true);
@@ -353,17 +354,41 @@ export default function ClassDetailPage() {
 
         {/* Members Section */}
         <div className="border border-gray-200 rounded-lg p-6 relative">
-          <h2 className="text-xl font-semibold text-gray-900 mb-4">Thành viên</h2>
-
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
-            {members.map((m) => (
-              <MemberCard
-                key={m.id}
-                member={m}
-                onConversationCreated={handleOpenConversation} // 👈 truyền callback
-              />
-            ))}
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-xl font-semibold text-gray-900">Thành viên</h2>
+            {Array.isArray(members) && members.length > 6 && (
+              <button
+                onClick={() => setMembersExpanded(!membersExpanded)}
+                className="flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:text-gray-900 hover:bg-gray-50 rounded-lg transition-colors"
+              >
+                {membersExpanded ? (
+                  <>
+                    <ChevronUp className="w-4 h-4" />
+                    Thu gọn
+                  </>
+                ) : (
+                  <>
+                    <ChevronDown className="w-4 h-4" />
+                    Xem thêm ({members.length })
+                  </>
+                )}
+              </button>
+            )}
           </div>
+
+          {Array.isArray(members) && members.length > 0 ? (
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
+              {(membersExpanded ? members : members.slice(0, 6)).map((m) => (
+                <MemberCard
+                  key={m.id}
+                  member={m}
+                  onConversationCreated={handleOpenConversation} // 👈 truyền callback
+                />
+              ))}
+            </div>
+          ) : (
+            <p className="text-sm text-gray-500">Chưa có thành viên nào.</p>
+          )}
 
           {/* Chat Drawer - hiển thị sau khi tạo hội thoại */}
           {mounted && showChatDrawer &&
