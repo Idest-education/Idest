@@ -4,6 +4,7 @@ import {
   ForbiddenException,
   UnprocessableEntityException,
   InternalServerErrorException,
+  HttpException,
 } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { PrismaService } from 'src/prisma/prisma.service';
@@ -152,9 +153,8 @@ export class SessionService {
       return session;
     } catch (error) {
       console.error('Error creating session:', error);
-      if (error instanceof ForbiddenException) {
-        throw error;
-      }
+      // Preserve intended HTTP status codes (422 validation/conflict, 403 auth, 404 not found, etc.)
+      if (error instanceof HttpException) throw error;
       throw new InternalServerErrorException('Failed to create session');
     }
   }

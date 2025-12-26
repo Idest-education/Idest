@@ -9,6 +9,14 @@ export class AllExceptionFilter implements ExceptionFilter {
     const response = ctx.getResponse<Response>();
     const request = ctx.getRequest<Request>();
     const status = exception instanceof HttpException ? exception.getStatus() : HttpStatus.INTERNAL_SERVER_ERROR;
+    const details =
+      exception instanceof Error
+        ? exception.message
+        : typeof exception === 'string'
+          ? exception
+          : exception
+            ? JSON.stringify(exception)
+            : '';
     const message = exception instanceof HttpException ? exception.message : `Internal server error in path ${request.url}`;
 
     response
@@ -16,6 +24,7 @@ export class AllExceptionFilter implements ExceptionFilter {
       .json({
         status: false,
         message: message,
+        ...(status >= 500 ? { details } : {}),
         data: null,
         statusCode: status,
       });
