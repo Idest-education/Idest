@@ -145,6 +145,68 @@ export class MeetService {
 
     return finalUrl.toString();
   }
+
+  private mapEgressStatusToRecordingStatus(status: unknown): string {
+    // livekit.EgressStatus is numeric; tolerate string/undefined from SDK differences
+    const n =
+      typeof status === 'number'
+        ? status
+        : typeof status === 'string'
+          ? Number(status)
+          : NaN;
+    switch (n) {
+      case 0:
+        return 'STARTING';
+      case 1:
+        return 'ACTIVE';
+      case 2:
+        return 'ENDING';
+      case 3:
+        return 'COMPLETE';
+      case 4:
+        return 'FAILED';
+      case 5:
+        return 'ABORTED';
+      case 6:
+        return 'LIMIT_REACHED';
+      default:
+        return 'UNKNOWN';
+    }
+  }
+
+  private normalizeEpochToDate(epoch: unknown): Date | null {
+    if (epoch === null || epoch === undefined) return null;
+    const n =
+      typeof epoch === 'bigint'
+        ? Number(epoch)
+        : typeof epoch === 'number'
+          ? epoch
+          : typeof epoch === 'string'
+            ? Number(epoch)
+            : NaN;
+    if (!Number.isFinite(n) || n <= 0) return null;
+    // Heuristic: if it's bigger than ~2001-09-09 in ms, treat as ms; otherwise seconds.
+    const ms = n > 1_000_000_000_000 ? n : n * 1000;
+    return new Date(ms);
+  }
+
+  private resolvePublicUrl(
+    fileLocation: string | null | undefined,
+    publicBaseUrl: string | null | undefined,
+  ): string | null {
+    if (!fileLocation) return null;
+    if (fileLocation.startsWith('http://') || fileLocation.startsWith('https://')) {
+      return fileLocation;
+    }
+    if (fileLocation.startsWith('s3://')) {
+      const withoutScheme = fileLocation.slice('s3://'.length);
+      const firstSlash = withoutScheme.indexOf('/');
+      const key = firstSlash >= 0 ? withoutScheme.slice(firstSlash + 1) : '';
+      if (!key || !publicBaseUrl) return null;
+      return `${publicBaseUrl.replace(/\/$/, '')}/${key}`;
+    }
+    return null;
+  }
   /**
    * Validate JWT token
    */
@@ -1329,8 +1391,10 @@ export class MeetService {
 
     const items = await Promise.all(
       recordings.map(async (r) => {
-        // Backfill fileLocation best-effort (handles missing/failed webhook ingestion)
-        if (!r.fileLocation && r.egressId) {
+        // Backfill recording details best-effort (handles missing/failed webhook ingestion)
+        // - fileLocation may be missing if webhooks aren't delivered
+        // - endedAt/status may be missing until egress is COMPLETE
+        if ((!(r as any).fileLocation || !(r as any).endedAt) && r.egressId) {
           const info = await this.liveKitService.getEgressInfo(r.egressId);
           const file0 =
             info && Array.isArray(info.fileResults)
@@ -1340,15 +1404,43 @@ export class MeetService {
             file0?.location || undefined;
           const inferredFilename: string | undefined =
             file0?.filename || undefined;
+          const inferredStatus = this.mapEgressStatusToRecordingStatus(info?.status);
+          const inferredStartedAt =
+            this.normalizeEpochToDate(info?.startedAt) || undefined;
+          const inferredEndedAt =
+            this.normalizeEpochToDate(info?.endedAt) || undefined;
+
           if (inferredLocation) {
             await prismaAny.recording.update({
               where: { id: r.id },
               data: {
                 fileLocation: inferredLocation,
+                ...(inferredStatus ? { status: inferredStatus } : {}),
+                ...(inferredStartedAt ? { startedAt: inferredStartedAt } : {}),
+                ...(inferredEndedAt ? { endedAt: inferredEndedAt } : {}),
                 ...(inferredFilename ? { filename: inferredFilename } : {}),
               },
             });
             r.fileLocation = inferredLocation;
+            if (inferredStartedAt) (r as any).startedAt = inferredStartedAt;
+            if (inferredEndedAt) (r as any).endedAt = inferredEndedAt;
+            if (inferredStatus) (r as any).status = inferredStatus;
+
+            // Mirror into Session.recording_url for back-compat once complete
+            if (
+              inferredStatus === 'COMPLETE' &&
+              !session?.recording_url
+            ) {
+              const publicBaseUrl = process.env.RECORDING_PUBLIC_BASE_URL || null;
+              const url = this.resolvePublicUrl(inferredLocation, publicBaseUrl);
+              if (url) {
+                await this.prisma.session.update({
+                  where: { id: sessionId },
+                  data: { recording_url: url },
+                });
+                (session as any).recording_url = url;
+              }
+            }
           }
         }
 
@@ -1401,18 +1493,27 @@ export class MeetService {
     // Backfill fileLocation if webhook ingestion is delayed/misconfigured.
     // This makes playback work even when the Recording row was created at startRecording()
     // but never updated by LiveKit webhooks.
+    let inferredStatus: string | undefined;
     if (!recording.fileLocation && recording.egressId) {
       const info = await this.liveKitService.getEgressInfo(recording.egressId);
       const file0 =
         info && Array.isArray(info.fileResults) ? info.fileResults[0] : undefined;
       const inferredLocation: string | undefined = file0?.location || undefined;
       const inferredFilename: string | undefined = file0?.filename || undefined;
+      inferredStatus = this.mapEgressStatusToRecordingStatus(info?.status);
+      const inferredStartedAt =
+        this.normalizeEpochToDate(info?.startedAt) || undefined;
+      const inferredEndedAt =
+        this.normalizeEpochToDate(info?.endedAt) || undefined;
 
       if (inferredLocation) {
         await prismaAny.recording.update({
           where: { id: recordingId },
           data: {
             fileLocation: inferredLocation,
+            ...(inferredStatus ? { status: inferredStatus } : {}),
+            ...(inferredStartedAt ? { startedAt: inferredStartedAt } : {}),
+            ...(inferredEndedAt ? { endedAt: inferredEndedAt } : {}),
             ...(inferredFilename ? { filename: inferredFilename } : {}),
           },
         });
@@ -1446,6 +1547,19 @@ export class MeetService {
               })
             : null) ||
           (key && publicBaseUrl ? `${publicBaseUrl.replace(/\/$/, '')}/${key}` : null);
+      }
+    }
+
+    // Back-compat mirror: if we successfully computed a public URL and the egress is complete,
+    // keep Session.recording_url in sync so legacy clients can see it.
+    if (url && inferredStatus === 'COMPLETE') {
+      try {
+        await this.prisma.session.update({
+          where: { id: recording.sessionId },
+          data: { recording_url: url },
+        });
+      } catch {
+        // don't fail playback url response if session update fails
       }
     }
 
