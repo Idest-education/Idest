@@ -25,12 +25,14 @@ export class SessionService {
   constructor(private readonly prisma: PrismaService) {}
 
   /**
-   * Cron job: periodically end overdue sessions and delete old sessions.
+   * Cron job: cleanup old sessions.
    *
-   * - Any session that has started in the past and still has no end_time
-   *   will be auto-ended (end_time set to now).
    * - Any session whose end_time (or start_time if no end_time) is older than 7 days
    *   will be deleted.
+   *
+   * Note: `end_time = null` represents an ongoing session. We must NOT auto-end those
+   * just because `start_time <= now`, otherwise sessions will be ended immediately
+   * after they start.
    */
   @Cron(CronExpression.EVERY_MINUTE)
   async handleSessionLifecycleMaintenance(): Promise<void> {
@@ -39,16 +41,6 @@ export class SessionService {
 
     try {
       await this.prisma.$transaction([
-        // Auto-end sessions that have started but don't have an end_time yet
-        this.prisma.session.updateMany({
-          where: {
-            start_time: { lte: now },
-            end_time: null,
-          },
-          data: {
-            end_time: now,
-          },
-        }),
         // Delete sessions that ended more than a week ago,
         // or (for safety) sessions older than a week with no end_time
         this.prisma.session.deleteMany({
