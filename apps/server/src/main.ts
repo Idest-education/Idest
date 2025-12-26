@@ -3,6 +3,7 @@ import { AppModule } from './app.module';
 import { ConfigService } from '@nestjs/config';
 import { InternalServerErrorException, ValidationPipe } from '@nestjs/common';
 import helmet from 'helmet';
+import * as bodyParser from 'body-parser';
 import { AllExceptionFilter } from './common/filters/exception.filter';
 import { SuccessEnvelopeInterceptor } from './common/interceptors/response.interceptor';
 import { SwaggerModule } from '@nestjs/swagger';
@@ -13,6 +14,23 @@ import { createProxyMiddleware } from 'http-proxy-middleware';
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
   const config = app.get(ConfigService);
+
+  // Preserve rawBody for webhook signature verification (Stripe, LiveKit, etc.)
+  app.use(
+    bodyParser.json({
+      verify: (req: any, _res, buf: Buffer) => {
+        req.rawBody = buf;
+      },
+    }),
+  );
+  app.use(
+    bodyParser.urlencoded({
+      extended: true,
+      verify: (req: any, _res, buf: Buffer) => {
+        req.rawBody = buf;
+      },
+    }),
+  );
 
   const requiredEnv = ['DATABASE_URL', 'JWT_SECRET'];
   const missing = requiredEnv.filter((k) => !config.get<string>(k));

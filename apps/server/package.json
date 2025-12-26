@@ -50,6 +50,7 @@
     "amqplib": "^0.10.9",
     "axios": "^1.10.0",
     "bcrypt": "^6.0.0",
+    "body-parser": "^2.2.1",
     "buffer-to-stream": "^1.0.0",
     "cache-manager": "^7.0.0",
     "class-transformer": "^0.5.1",
