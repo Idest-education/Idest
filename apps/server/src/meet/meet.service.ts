@@ -4,6 +4,7 @@ import {
   NotFoundException,
   ForbiddenException,
   BadRequestException,
+  InternalServerErrorException,
   Logger,
 } from '@nestjs/common';
 import * as crypto from 'node:crypto';
@@ -1297,7 +1298,18 @@ export class MeetService {
       throw new NotFoundException('No active recording found for this session');
     }
 
-    await this.liveKitService.stopRecording(egressId);
+    try {
+      await this.liveKitService.stopRecording(egressId);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      this.logger.error(
+        `[stopRecording] Failed to stop LiveKit egressId=${egressId} sessionId=${sessionId}: ${msg}`,
+      );
+      // Surface the real reason to clients (otherwise AllExceptionFilter returns a generic 500).
+      throw new InternalServerErrorException(
+        `Failed to stop recording (LiveKit): ${msg}`,
+      );
+    }
 
     await prismaAny.recording.updateMany({
       where: {
@@ -1410,18 +1422,18 @@ export class MeetService {
           const inferredEndedAt =
             this.normalizeEpochToDate(info?.endedAt) || undefined;
 
-          if (inferredLocation) {
+          if (inferredLocation || inferredStatus || inferredStartedAt || inferredEndedAt) {
             await prismaAny.recording.update({
               where: { id: r.id },
               data: {
-                fileLocation: inferredLocation,
+                ...(inferredLocation ? { fileLocation: inferredLocation } : {}),
                 ...(inferredStatus ? { status: inferredStatus } : {}),
                 ...(inferredStartedAt ? { startedAt: inferredStartedAt } : {}),
                 ...(inferredEndedAt ? { endedAt: inferredEndedAt } : {}),
                 ...(inferredFilename ? { filename: inferredFilename } : {}),
               },
             });
-            r.fileLocation = inferredLocation;
+            if (inferredLocation) r.fileLocation = inferredLocation;
             if (inferredStartedAt) (r as any).startedAt = inferredStartedAt;
             if (inferredEndedAt) (r as any).endedAt = inferredEndedAt;
             if (inferredStatus) (r as any).status = inferredStatus;
@@ -1506,18 +1518,18 @@ export class MeetService {
       const inferredEndedAt =
         this.normalizeEpochToDate(info?.endedAt) || undefined;
 
-      if (inferredLocation) {
+      if (inferredLocation || inferredStatus || inferredStartedAt || inferredEndedAt) {
         await prismaAny.recording.update({
           where: { id: recordingId },
           data: {
-            fileLocation: inferredLocation,
+            ...(inferredLocation ? { fileLocation: inferredLocation } : {}),
             ...(inferredStatus ? { status: inferredStatus } : {}),
             ...(inferredStartedAt ? { startedAt: inferredStartedAt } : {}),
             ...(inferredEndedAt ? { endedAt: inferredEndedAt } : {}),
             ...(inferredFilename ? { filename: inferredFilename } : {}),
           },
         });
-        recording.fileLocation = inferredLocation;
+        if (inferredLocation) recording.fileLocation = inferredLocation;
       } else {
         this.logger.warn(
           `[getRecordingUrl] Recording ${recordingId} has no fileLocation yet (egressId=${recording.egressId}).`,
