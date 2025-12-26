@@ -16,6 +16,7 @@ import {
   listSessionRecordings,
   type MeetRecordingListItem,
 } from "@/services/meet.service";
+import { CopyButton } from "@/components/copy-button";
 
 export function MeetRecordingsDialog({ sessionId }: { sessionId: string | null }) {
   const [open, setOpen] = useState(false);
@@ -138,6 +139,18 @@ export function MeetRecordingsDialog({ sessionId }: { sessionId: string | null }
                           ? `Ended: ${new Date(it.stoppedAt).toLocaleString()}`
                           : "In progress or processing"}
                       </div>
+                      {!it.url && it.recordingId && (
+                        <div className="mt-2 text-xs text-muted-foreground">
+                          <div>
+                            If server is down, contact admin with this id to get recording:
+                          </div>
+                          <div className="mt-1 flex flex-wrap items-center gap-2">
+                            <span className="font-mono">{it.recordingId}</span>
+                            <CopyButton text={it.recordingId} label="recording id" />
+                            {it.egressId && <CopyButton text={it.egressId} label="egress id" />}
+                          </div>
+                        </div>
+                      )}
                     </div>
                     <div className="flex items-center gap-2">
                       <Button variant="secondary" size="sm" onClick={() => play(it)}>

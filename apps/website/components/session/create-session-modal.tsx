@@ -95,8 +95,8 @@ export default function CreateSessionModal({
   };
 
   // Get current datetime in local timezone for datetime-local input
-  const getLocalDateTimeString = () => {
-    const now = new Date();
+  const getLocalDateTimeString = (addMinutes = 0) => {
+    const now = new Date(Date.now() + addMinutes * 60_000);
     const year = now.getFullYear();
     const month = String(now.getMonth() + 1).padStart(2, '0');
     const day = String(now.getDate()).padStart(2, '0');
@@ -158,7 +158,8 @@ export default function CreateSessionModal({
                   onClick={() =>
                     setFormData({
                       ...formData,
-                      start_time: getLocalDateTimeString(),
+                      // "Now" defaults to +1 minute to avoid edge-case conflict checks on the backend.
+                      start_time: getLocalDateTimeString(1),
                     })
                   }
                 >

@@ -21,6 +21,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ArrowLeft, Square, Trash2, Play, Square as StopIcon, Video } from "lucide-react";
 import LoadingScreen from "@/components/loading-screen";
+import { CopyButton } from "@/components/copy-button";
 
 export default function SessionDetailPage() {
   const params = useParams();
@@ -261,6 +262,18 @@ export default function SessionDetailPage() {
                       {recording.startedAt && `Started: ${new Date(recording.startedAt).toLocaleString()}`}
                       {recording.stoppedAt && ` | Stopped: ${new Date(recording.stoppedAt).toLocaleString()}`}
                     </div>
+                    {!recording.url && recording.recordingId && (
+                      <div className="mt-2 text-xs text-gray-500">
+                        <div>If server is down, contact admin with this id to get recording:</div>
+                        <div className="mt-1 flex flex-wrap items-center gap-2">
+                          <span className="font-mono">{recording.recordingId}</span>
+                          <CopyButton text={recording.recordingId} label="recording id" />
+                          {recording.egressId && (
+                            <CopyButton text={recording.egressId} label="egress id" />
+                          )}
+                        </div>
+                      </div>
+                    )}
                   </div>
                   {recording.recordingId && (
                     <Button
