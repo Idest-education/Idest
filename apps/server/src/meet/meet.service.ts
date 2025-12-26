@@ -59,7 +59,13 @@ export class MeetService {
 
     if (!accessKey || !secret || !region || !endpoint) return null;
 
-    const url = new URL(endpoint);
+    let url: URL;
+    try {
+      url = new URL(endpoint);
+    } catch {
+      // Misconfigured endpoint (common in prod envs). Don't crash listRecordings/getRecordingUrl.
+      return null;
+    }
     const host = forcePathStyle ? url.host : `${args.bucket}.${url.host}`;
 
     const now = new Date();
@@ -149,6 +155,17 @@ export class MeetService {
 
   private mapEgressStatusToRecordingStatus(status: unknown): string {
     // livekit.EgressStatus is numeric; tolerate string/undefined from SDK differences
+    if (typeof status === 'string') {
+      const s = status.toUpperCase();
+      if (s.includes('COMPLETE')) return 'COMPLETE';
+      if (s.includes('ACTIVE')) return 'ACTIVE';
+      if (s.includes('START')) return 'STARTING';
+      if (s.includes('END')) return 'ENDING';
+      if (s.includes('FAIL')) return 'FAILED';
+      if (s.includes('ABORT')) return 'ABORTED';
+      if (s.includes('LIMIT')) return 'LIMIT_REACHED';
+      // fall through to numeric parse attempt for weird values
+    }
     const n =
       typeof status === 'number'
         ? status
@@ -1302,13 +1319,19 @@ export class MeetService {
       await this.liveKitService.stopRecording(egressId);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
-      this.logger.error(
-        `[stopRecording] Failed to stop LiveKit egressId=${egressId} sessionId=${sessionId}: ${msg}`,
-      );
-      // Surface the real reason to clients (otherwise AllExceptionFilter returns a generic 500).
-      throw new InternalServerErrorException(
-        `Failed to stop recording (LiveKit): ${msg}`,
-      );
+      // Idempotency: LiveKit returns an error if the egress is already COMPLETE.
+      // In that case, treat stop as successful and proceed to sync metadata/DB.
+      const isAlreadyStopped =
+        /cannot be stopped/i.test(msg) || /EGRESS_COMPLETE/i.test(msg);
+      if (!isAlreadyStopped) {
+        this.logger.error(
+          `[stopRecording] Failed to stop LiveKit egressId=${egressId} sessionId=${sessionId}: ${msg}`,
+        );
+        // Surface the real reason to clients (otherwise AllExceptionFilter returns a generic 500).
+        throw new InternalServerErrorException(
+          `Failed to stop recording (LiveKit): ${msg}`,
+        );
+      }
     }
 
     await prismaAny.recording.updateMany({
@@ -1320,6 +1343,48 @@ export class MeetService {
         status: 'ENDING',
       },
     });
+
+    // Best-effort: sync final egress info immediately (status/endedAt/fileLocation) so UI stops showing "stuck".
+    try {
+      const info = await this.liveKitService.getEgressInfo(egressId);
+      const file0 =
+        info && Array.isArray(info.fileResults) ? info.fileResults[0] : undefined;
+      const inferredLocation: string | undefined = file0?.location || undefined;
+      const inferredFilename: string | undefined = file0?.filename || undefined;
+      const inferredStatus = this.mapEgressStatusToRecordingStatus(info?.status);
+      const inferredStartedAt = this.normalizeEpochToDate(info?.startedAt) || undefined;
+      const inferredEndedAt = this.normalizeEpochToDate(info?.endedAt) || undefined;
+
+      if (inferredLocation || inferredStatus || inferredStartedAt || inferredEndedAt) {
+        await prismaAny.recording.updateMany({
+          where: { sessionId, egressId },
+          data: {
+            ...(inferredLocation ? { fileLocation: inferredLocation } : {}),
+            ...(inferredStatus ? { status: inferredStatus } : {}),
+            ...(inferredStartedAt ? { startedAt: inferredStartedAt } : {}),
+            ...(inferredEndedAt ? { endedAt: inferredEndedAt } : {}),
+            ...(inferredFilename ? { filename: inferredFilename } : {}),
+          },
+        });
+
+        if (inferredStatus === 'COMPLETE') {
+          const publicBaseUrl = process.env.RECORDING_PUBLIC_BASE_URL || null;
+          const url = this.resolvePublicUrl(inferredLocation, publicBaseUrl);
+          if (url) {
+            await this.prisma.session.update({
+              where: { id: sessionId },
+              data: { recording_url: url },
+            });
+          }
+        }
+      }
+    } catch (e) {
+      // Never fail stop() because sync failed; user can refresh later.
+      const msg = e instanceof Error ? e.message : String(e);
+      this.logger.warn(
+        `[stopRecording] Stop succeeded but egress sync failed for egressId=${egressId}: ${msg}`,
+      );
+    }
 
     // Update session metadata
     await this.prisma.session.update({
