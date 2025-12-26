@@ -13,9 +13,23 @@ function parseSessionIdFromRoomName(roomName: string): string | null {
 function normalizeEpochToDate(epoch: bigint): Date | null {
   const n = Number(epoch);
   if (!Number.isFinite(n) || n <= 0) return null;
-  // Heuristic: if it's bigger than ~2001-09-09 in ms, treat as ms; otherwise seconds.
-  const ms = n > 1_000_000_000_000 ? n : n * 1000;
-  return new Date(ms);
+  // LiveKit can return epoch timestamps in seconds, milliseconds, microseconds, or nanoseconds.
+  let ms: number;
+  if (n >= 1e17) {
+    // nanoseconds -> ms
+    ms = Math.floor(n / 1e6);
+  } else if (n >= 1e14) {
+    // microseconds -> ms
+    ms = Math.floor(n / 1e3);
+  } else if (n >= 1e11) {
+    // milliseconds
+    ms = n;
+  } else {
+    // seconds
+    ms = n * 1000;
+  }
+  const d = new Date(ms);
+  return Number.isFinite(d.getTime()) ? d : null;
 }
 
 function mapEgressStatusToRecordingStatus(status: number): string {
