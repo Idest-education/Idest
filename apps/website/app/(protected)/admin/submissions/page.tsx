@@ -89,7 +89,7 @@ export default function AdminSubmissionsPage() {
         </CardContent>
       </Card>
 
-      <Tabs value={activeSkill} onValueChange={(v) => setActiveSkill(v as Skill | "all")}>
+      <Tabs value={activeSkill} onValueChange={(v) => setActiveSkill(v as Skill)}>
         <TabsList>
           <TabsTrigger value="reading">Reading</TabsTrigger>
           <TabsTrigger value="listening">Listening</TabsTrigger>
