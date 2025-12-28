@@ -116,6 +116,11 @@ export function AuthButton() {
         <DropdownMenuItem onClick={() => router.push("/settings/password")}>
           Đổi mật khẩu
         </DropdownMenuItem>
+        {profile?.role === "ADMIN" && (
+          <DropdownMenuItem onClick={() => router.push("/admin")}>
+            Giao diện Admin
+          </DropdownMenuItem>
+        )}
         <DropdownMenuSeparator />
         <DropdownMenuItem onClick={handleLogout} className="text-red-600 focus:text-red-600">
           Đăng xuất
