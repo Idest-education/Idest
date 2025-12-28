@@ -14,7 +14,7 @@ import Link from "next/link";
 type Skill = "reading" | "listening" | "writing" | "speaking";
 
 export default function AdminSubmissionsPage() {
-  const [activeSkill, setActiveSkill] = useState<Skill | "all">("all");
+  const [activeSkill, setActiveSkill] = useState<Skill>("reading");
   const [submissions, setSubmissions] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
@@ -22,7 +22,7 @@ export default function AdminSubmissionsPage() {
   const fetchSubmissions = async () => {
     setLoading(true);
     try {
-      const data = await getAllSubmissions(activeSkill === "all" ? undefined : activeSkill);
+      const data = await getAllSubmissions(activeSkill);
       setSubmissions(data);
     } catch (error) {
       console.error("Error fetching submissions:", error);
@@ -55,14 +55,14 @@ export default function AdminSubmissionsPage() {
   // Filter by search query
   const filteredSubmissions = searchQuery.trim()
     ? submissionsList.filter((sub: any) => {
-        const query = searchQuery.toLowerCase();
-        return (
-          (sub.assignment_id && sub.assignment_id.toLowerCase().includes(query)) ||
-          (sub.user_id && sub.user_id.toLowerCase().includes(query)) ||
-          (sub.submitted_by && sub.submitted_by.toLowerCase().includes(query)) ||
-          (sub.assignmentTitle && sub.assignmentTitle.toLowerCase().includes(query))
-        );
-      })
+      const query = searchQuery.toLowerCase();
+      return (
+        (sub.assignment_id && sub.assignment_id.toLowerCase().includes(query)) ||
+        (sub.user_id && sub.user_id.toLowerCase().includes(query)) ||
+        (sub.submitted_by && sub.submitted_by.toLowerCase().includes(query)) ||
+        (sub.assignmentTitle && sub.assignmentTitle.toLowerCase().includes(query))
+      );
+    })
     : submissionsList;
 
   return (
@@ -91,7 +91,6 @@ export default function AdminSubmissionsPage() {
 
       <Tabs value={activeSkill} onValueChange={(v) => setActiveSkill(v as Skill | "all")}>
         <TabsList>
-          <TabsTrigger value="all">All</TabsTrigger>
           <TabsTrigger value="reading">Reading</TabsTrigger>
           <TabsTrigger value="listening">Listening</TabsTrigger>
           <TabsTrigger value="writing">Writing</TabsTrigger>
@@ -102,7 +101,7 @@ export default function AdminSubmissionsPage() {
           <Card>
             <CardHeader>
               <CardTitle>
-                {activeSkill === "all" ? "All" : activeSkill.charAt(0).toUpperCase() + activeSkill.slice(1)} Submissions
+                {activeSkill.charAt(0).toUpperCase() + activeSkill.slice(1)} Submissions
                 {filteredSubmissions.length > 0 && ` (${filteredSubmissions.length})`}
               </CardTitle>
             </CardHeader>
@@ -139,7 +138,7 @@ export default function AdminSubmissionsPage() {
                           </td>
                           <td className="p-3">
                             <Badge variant="outline">
-                              {submission.skill || activeSkill === "all" ? "Unknown" : activeSkill}
+                              {submission.skill || activeSkill}
                             </Badge>
                           </td>
                           <td className="p-3">
@@ -165,13 +164,13 @@ export default function AdminSubmissionsPage() {
                           <td className="p-3 text-sm text-gray-600">
                             {submission.created_at || submission.createdAt
                               ? (() => {
-                                  try {
-                                    const date = new Date(submission.created_at || submission.createdAt);
-                                    return isNaN(date.getTime()) ? "N/A" : date.toLocaleString();
-                                  } catch {
-                                    return "N/A";
-                                  }
-                                })()
+                                try {
+                                  const date = new Date(submission.created_at || submission.createdAt);
+                                  return isNaN(date.getTime()) ? "N/A" : date.toLocaleString();
+                                } catch {
+                                  return "N/A";
+                                }
+                              })()
                               : "N/A"}
                           </td>
                           <td className="p-3">
