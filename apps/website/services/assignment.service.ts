@@ -264,7 +264,7 @@ export async function getMySubmissions(params: PaginationDto & { skill?: Skill }
 
 // Admin functions
 export async function getAllSubmissions(skill?: Skill): Promise<unknown> {
-  const baseUrl = getAssignmentBaseUrl();
+  const baseUrl = getAssignmentCreateBaseUrl();
   try {
     if (skill) {
       const res = await http.get(`${baseUrl}/${skill}/submissions`);
