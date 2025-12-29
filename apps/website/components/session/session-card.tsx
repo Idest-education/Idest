@@ -1,7 +1,7 @@
 "use client";
 
 import { SessionData } from "@/types/session";
-import { Clock, Users, User, Video } from "lucide-react";
+import { Clock, Users, User, Video, Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useRouter } from "next/navigation";
 
@@ -12,6 +12,9 @@ interface SessionCardProps {
   onDelete?: (sessionId: string) => void;
   currentUserId?: string;
   showActions?: boolean;
+  canExportAttendance?: boolean;
+  onExportAttendance?: (session: SessionData) => void;
+  isExportingAttendance?: boolean;
 }
 
 export default function SessionCard({
@@ -21,6 +24,9 @@ export default function SessionCard({
   onDelete,
   currentUserId,
   showActions = true,
+  canExportAttendance = false,
+  onExportAttendance,
+  isExportingAttendance = false,
 }: SessionCardProps) {
   const router = useRouter();
   
@@ -50,6 +56,7 @@ export default function SessionCard({
 
   const isHost = currentUserId === session.host_id;
   const isActive = session.end_time === null;
+  const isPast = session.end_time !== null && new Date(session.end_time) < new Date();
 
   const handleJoinMeeting = () => {
     router.push(`/sessions/${session.id}/meet`);
@@ -114,6 +121,20 @@ export default function SessionCard({
             >
               <Video className="w-5 h-5 mr-2" />
               Tham gia buổi học
+            </Button>
+          )}
+
+          {/* Attendance export button - shown for teachers/admins on past sessions */}
+          {canExportAttendance && isPast && onExportAttendance && (
+            <Button
+              onClick={() => onExportAttendance(session)}
+              variant="outline"
+              size="sm"
+              className="text-sm"
+              disabled={isExportingAttendance}
+            >
+              <Download className="w-4 h-4 mr-2" />
+              {isExportingAttendance ? "Đang tải..." : "See attendance"}
             </Button>
           )}
 

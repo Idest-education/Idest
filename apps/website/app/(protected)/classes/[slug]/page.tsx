@@ -11,11 +11,14 @@ import {
   getAllSessions,
   endSession,
   deleteSession,
+  getSessionAttendance,
 } from "@/services/session.service";
 import { ClassDetail } from "@/types/class";
 import { SessionData, PaginatedResponse } from "@/types/session";
 import DefaultAvatar from "@/assets/default-avatar.png";
 import { BookOpen, Users, Clock, Award, Copy, CheckCircle2, PlusCircle, ChevronDown, ChevronUp } from "lucide-react";
+import { toast } from "sonner";
+import * as XLSX from "xlsx";
 import LoadingScreen from "@/components/loading-screen";
 import MemberCard from "@/components/class/member-card";
 import ConversationPopup from "@/components/conversation/ConversationPopup";
@@ -41,6 +44,7 @@ export default function ClassDetailPage() {
   const [currentUserId, setCurrentUserId] = useState<string>("");
   const [userRole, setUserRole] = useState<string | null>(null);
   const [membersExpanded, setMembersExpanded] = useState(false);
+  const [exportingSessionId, setExportingSessionId] = useState<string | null>(null);
 
   useEffect(() => {
     setMounted(true);
@@ -203,6 +207,74 @@ export default function ClassDetailPage() {
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : "Đã xảy ra lỗi";
       alert(errorMessage);
+    }
+  };
+
+  const handleExportAttendance = async (session: SessionData) => {
+    setExportingSessionId(session.id);
+    try {
+      if (!classData?.members && !classData?.teachers) {
+        toast.error("Không thể lấy danh sách thành viên lớp học.");
+        return;
+      }
+
+      const attendance = await getSessionAttendance(session.id);
+      
+      // Create a map of user_id -> attendance record for quick lookup
+      const attendanceMap = new Map(
+        attendance.attendees?.map((a) => [a.user_id, a]) || []
+      );
+
+      // Combine members and teachers into a single list
+      const allParticipants = [
+        ...(classData.members || []),
+        ...(classData.teachers || []),
+      ];
+
+      // Remove duplicates (in case a teacher is also in members)
+      const uniqueParticipants = Array.from(
+        new Map(allParticipants.map((p) => [p.id, p])).values()
+      );
+
+      // Build Excel data with all class members and teachers
+      const rows = uniqueParticipants.map((participant) => {
+        const attendee = attendanceMap.get(participant.id);
+        return {
+          "Full Name": participant.full_name || "",
+          "Email": participant.email || "",
+          "Role": participant.role || "",
+          "Attended": attendee?.is_attended ? "Yes" : "No",
+        };
+      });
+
+      // Create workbook and worksheet
+      const wb = XLSX.utils.book_new();
+      const ws = XLSX.utils.json_to_sheet(rows);
+
+      // Set column widths
+      ws["!cols"] = [
+        { wch: 30 }, // Full Name
+        { wch: 30 }, // Email
+        { wch: 15 }, // Role
+        { wch: 12 }, // Attended
+      ];
+
+      XLSX.utils.book_append_sheet(wb, ws, "Attendance");
+
+      // Generate filename with session date
+      const sessionDate = new Date(session.start_time).toISOString().split("T")[0];
+      const sessionTopic = (session.metadata?.topic || "session").replace(/[^a-z0-9]/gi, "_");
+      const filename = `attendance_${sessionTopic}_${sessionDate}_${session.id.substring(0, 8)}.xlsx`;
+
+      // Write and download
+      XLSX.writeFile(wb, filename);
+      
+      toast.success("Đã tải xuống dữ liệu điểm danh thành công");
+    } catch (err) {
+      console.error("Error exporting attendance:", err);
+      toast.error("Không thể tải xuống dữ liệu điểm danh. Vui lòng thử lại.");
+    } finally {
+      setExportingSessionId(null);
     }
   };
 
@@ -479,6 +551,12 @@ export default function ClassDetailPage() {
                     onEnd={handleEndSession}
                     onDelete={handleDeleteSession}
                     currentUserId={currentUserId}
+                    canExportAttendance={
+                      (userRole === "TEACHER" || userRole === "ADMIN") &&
+                      sessionFilter === "past"
+                    }
+                    onExportAttendance={handleExportAttendance}
+                    isExportingAttendance={exportingSessionId === s.id}
                   />
                 ))
             )}
