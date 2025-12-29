@@ -19,6 +19,9 @@ import { getSessionById } from "@/services/session.service";
 import { SessionData } from "@/types/session";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
+const MEET_RECORDING_ENABLED =
+  process.env.NEXT_PUBLIC_MEET_RECORDING_ENABLED === "true";
+
 // Component to sync LiveKit track events with store state
 function TrackStateSync() {
   const room = useRoomContext();
@@ -324,7 +327,9 @@ export default function SessionMeetPage() {
             )}
           </div>
           <div className="flex items-center gap-2">
-            <MeetRecordingsDialog sessionId={sessionId} />
+            {MEET_RECORDING_ENABLED && (
+              <MeetRecordingsDialog sessionId={sessionId} />
+            )}
           </div>
         </div>
       </div>

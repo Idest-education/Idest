@@ -21,6 +21,9 @@ import { useMeetStore } from "@/hooks/useMeetStore";
 import { ScreenSharePayload, ToggleMediaPayload } from "@/types/meet";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
+const MEET_RECORDING_ENABLED =
+  process.env.NEXT_PUBLIC_MEET_RECORDING_ENABLED === "true";
+
 interface MeetControlsProps {
   sessionId: string | null;
   onLeave: () => void;
@@ -257,7 +260,7 @@ export function MeetControls({
              )}
           </Tooltip>
 
-          {canRecord && (
+          {MEET_RECORDING_ENABLED && canRecord && (
             <Button
               variant={isRecording ? "destructive" : "secondary"}
               size="sm"
