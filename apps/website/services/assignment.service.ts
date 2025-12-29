@@ -38,6 +38,14 @@ const getAssignmentBaseUrl = () => {
   return `${baseUrl}/hehe`;
 };
 
+// Create-assignment should call the assignment microservice directly (no main-backend proxy).
+const getAssignmentCreateBaseUrl = () => {
+  return (
+    process.env.NEXT_PUBLIC_ASSIGNMENT_API_URL ||
+    "https://idest-assignment-microservice.fly.dev"
+  );
+};
+
 export async function getAssignments(pagination?: PaginationDto): Promise<AssignmentResponse> {
   const params = pagination ? { page: pagination.page, limit: pagination.limit } : {};
   const res = await http.get(`${getAssignmentBaseUrl()}/assignments`, { params });
@@ -223,22 +231,22 @@ export async function getListeningSubmissionResult(id: string) {
 // =======================
 
 export async function createReadingAssignment(payload: CreateReadingOrListeningAssignmentPayload) {
-  const res = await http.post(`${getAssignmentBaseUrl()}/reading/assignments`, payload);
+  const res = await http.post(`${getAssignmentCreateBaseUrl()}/reading/assignments`, payload);
   return res.data;
 }
 
 export async function createListeningAssignment(payload: CreateReadingOrListeningAssignmentPayload) {
-  const res = await http.post(`${getAssignmentBaseUrl()}/listening/assignments`, payload);
+  const res = await http.post(`${getAssignmentCreateBaseUrl()}/listening/assignments`, payload);
   return res.data;
 }
 
 export async function createWritingAssignment(payload: CreateWritingAssignmentPayload) {
-  const res = await http.post(`${getAssignmentBaseUrl()}/writing/assignments`, payload);
+  const res = await http.post(`${getAssignmentCreateBaseUrl()}/writing/assignments`, payload);
   return res.data;
 }
 
 export async function createSpeakingAssignment(payload: CreateSpeakingAssignmentPayload) {
-  const res = await http.post(`${getAssignmentBaseUrl()}/speaking/assignments`, payload);
+  const res = await http.post(`${getAssignmentCreateBaseUrl()}/speaking/assignments`, payload);
   return res.data;
 }
 
