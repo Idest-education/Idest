@@ -14,7 +14,7 @@ import {
   getSessionAttendance,
 } from "@/services/session.service";
 import { ClassDetail } from "@/types/class";
-import { SessionData, PaginatedResponse } from "@/types/session";
+import { SessionData, PaginatedResponse, SessionAttendanceSummaryDto } from "@/types/session";
 import DefaultAvatar from "@/assets/default-avatar.png";
 import { BookOpen, Users, Clock, Award, Copy, CheckCircle2, PlusCircle, ChevronDown, ChevronUp } from "lucide-react";
 import { toast } from "sonner";
@@ -218,7 +218,7 @@ export default function ClassDetailPage() {
         return;
       }
 
-      const attendance = await getSessionAttendance(session.id);
+      const attendance = await getSessionAttendance(session.id) as SessionAttendanceSummaryDto;
       
       // Create a map of user_id -> attendance record for quick lookup
       const attendanceMap = new Map(
