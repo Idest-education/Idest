@@ -1,0 +1,495 @@
+@import "@livekit/components-styles/prefabs";
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 0 0% 3.9%;
+    --card: 0 0% 100%;
+    --card-foreground: 0 0% 3.9%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 0 0% 3.9%;
+    --primary: 0 0% 9%;
+    --primary-foreground: 0 0% 98%;
+    --secondary: 0 0% 96.1%;
+    --secondary-foreground: 0 0% 9%;
+    --muted: 0 0% 96.1%;
+    --muted-foreground: 0 0% 45.1%;
+    --accent: 0 0% 96.1%;
+    --accent-foreground: 0 0% 9%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 0 0% 89.8%;
+    --input: 0 0% 89.8%;
+    --ring: 0 0% 3.9%;
+    --chart-1: 12 76% 61%;
+    --chart-2: 173 58% 39%;
+    --chart-3: 197 37% 24%;
+    --chart-4: 43 74% 66%;
+    --chart-5: 27 87% 67%;
+    --radius: 0.5rem;
+  }
+  .dark {
+    --background: 0 0% 3.9%;
+    --foreground: 0 0% 98%;
+    --card: 0 0% 3.9%;
+    --card-foreground: 0 0% 98%;
+    --popover: 0 0% 3.9%;
+    --popover-foreground: 0 0% 98%;
+    --primary: 0 0% 98%;
+    --primary-foreground: 0 0% 9%;
+    --secondary: 0 0% 14.9%;
+    --secondary-foreground: 0 0% 98%;
+    --muted: 0 0% 14.9%;
+    --muted-foreground: 0 0% 63.9%;
+    --accent: 0 0% 14.9%;
+    --accent-foreground: 0 0% 98%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 0 0% 14.9%;
+    --input: 0 0% 14.9%;
+    --ring: 0 0% 83.1%;
+    --chart-1: 220 70% 50%;
+    --chart-2: 160 60% 45%;
+    --chart-3: 30 80% 55%;
+    --chart-4: 280 65% 60%;
+    --chart-5: 340 75% 55%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+}
+
+@layer components {
+  /* Hide video element when camera is muted to show placeholder avatar */
+  .lk-participant-tile[data-lk-video-muted="true"] .lk-participant-media-video {
+    display: none;
+  }
+
+  /* Ensure custom initial avatar is perfectly centered */
+  .lk-participant-placeholder {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+  }
+
+  .lk-participant-placeholder svg {
+    display: none;
+  }
+
+  /* Google Meet-like video styling */
+  .lk-participant-tile {
+    position: relative !important;
+    width: 100% !important;
+    height: 100% !important;
+    overflow: hidden !important;
+    background: transparent;
+    transition: opacity 0.2s ease-in-out;
+    display: flex !important;
+    flex-direction: column;
+  }
+
+  /* Ensure all LiveKit wrapper divs fill space */
+  .lk-participant-tile > div,
+  .lk-participant-tile > *,
+  .lk-participant-tile > * > * {
+    width: 100% !important;
+    height: 100% !important;
+    flex: 1 1 auto !important;
+    min-width: 0 !important;
+    min-height: 0 !important;
+  }
+
+  /* Video elements should cover the container - always fill tile */
+  .lk-participant-tile video,
+  .lk-participant-media-video video,
+  .lk-participant-media-video {
+    width: 100% !important;
+    height: 100% !important;
+    object-fit: cover !important;
+    object-position: center !important;
+    background: #000 !important;
+    display: block !important;
+    min-width: 100% !important;
+    min-height: 100% !important;
+  }
+
+  /* Screen share videos must preserve aspect ratio - use contain instead of cover */
+  .screen-share-container .lk-participant-tile video,
+  .screen-share-container .lk-participant-media-video video {
+    object-fit: contain !important;
+    object-position: center !important;
+  }
+
+  /* Screen share container should center content */
+  .screen-share-container {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+  }
+
+  /* Override GridLayout rules for screen share to center content */
+  .screen-share-container [class*="GridLayout"] {
+    width: 100% !important;
+    height: 100% !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+  }
+
+  /* Screen share tile should fill container but allow video to maintain aspect ratio */
+  .screen-share-container .lk-participant-tile {
+    width: 100% !important;
+    height: 100% !important;
+    max-width: 100% !important;
+    max-height: 100% !important;
+    aspect-ratio: unset !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+  }
+
+  /* Screen share video container should center the video */
+  .screen-share-container .lk-participant-media-video {
+    position: relative !important;
+    width: 100% !important;
+    height: 100% !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    inset: auto !important;
+  }
+
+  /* Video container positioning */
+  .lk-participant-media-video {
+    position: absolute !important;
+    inset: 0 !important;
+    min-width: 100% !important;
+    min-height: 100% !important;
+  }
+
+  /* GridLayout should fill container */
+  [class*="lk-grid"],
+  [class*="GridLayout"],
+  div[class*="grid"] {
+    width: 100% !important;
+    height: 100% !important;
+  }
+
+  /* Ensure GridLayout children fill */
+  [class*="GridLayout"] > * {
+    width: 100% !important;
+    height: 100% !important;
+  }
+
+  /* Remove any max-width constraints */
+  .lk-participant-tile,
+  .lk-participant-tile *,
+  .lk-participant-tile * * {
+    max-width: none !important;
+    max-height: none !important;
+  }
+
+  /* Special handling for single participant - must fill width */
+  .single-participant-video {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 100% !important;
+  }
+
+  .single-participant-video .lk-participant-tile,
+  .single-participant-video .lk-participant-tile *,
+  .single-participant-video video {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 100% !important;
+    aspect-ratio: unset !important;
+    height: 100% !important;
+  }
+
+  /* For grid layouts (multiple participants), maintain aspect ratios and ensure visibility */
+  .multi-participant-grid {
+    display: grid !important;
+    visibility: visible !important;
+  }
+
+  .multi-participant-grid > div {
+    width: 100% !important;
+    height: 100% !important;
+    min-width: 0 !important;
+    min-height: 0 !important;
+    visibility: visible !important;
+    position: relative !important;
+  }
+
+  .multi-participant-grid .lk-participant-tile {
+    aspect-ratio: 16/9 !important;
+    width: 100% !important;
+    height: 100% !important;
+    visibility: visible !important;
+  }
+
+  /* Two participants layout - fill width, maintain aspect ratio, don't fill height */
+  .two-participants-grid {
+    width: 100% !important;
+    max-width: 100% !important;
+    height: fit-content !important;
+    align-items: center !important;
+  }
+
+  .two-participants-grid > div {
+    width: 100% !important;
+    height: auto !important;
+    aspect-ratio: 16/9 !important;
+  }
+
+  .two-participants-grid .lk-participant-tile {
+    aspect-ratio: 16/9 !important;
+    width: 100% !important;
+    height: 100% !important;
+  }
+
+  /* Force all LiveKit internal containers to fill - but be more specific */
+  .lk-participant-tile {
+    width: 100% !important;
+    height: 100% !important;
+    min-width: 0 !important;
+    min-height: 0 !important;
+    box-sizing: border-box !important;
+    display: flex !important;
+    flex-direction: column !important;
+  }
+
+  .lk-participant-tile > * {
+    width: 100% !important;
+    height: 100% !important;
+    min-width: 0 !important;
+    min-height: 0 !important;
+    box-sizing: border-box !important;
+    flex: 1 1 auto !important;
+  }
+
+  /* Smooth transitions for video tiles */
+  .lk-participant-tile,
+  .lk-participant-media-video {
+    will-change: auto;
+    backface-visibility: hidden;
+    transform: translateZ(0);
+  }
+
+  /* Participant metadata styling */
+  .lk-participant-metadata {
+    background: linear-gradient(to top, rgba(0, 0, 0, 0.7) 0%, transparent 100%);
+    padding: 0.5rem 0.75rem;
+    color: white;
+    font-size: 0.75rem;
+    line-height: 1.2;
+  }
+
+  .lk-participant-metadata-item {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+  }
+
+  /* Prevent layout shifts */
+  .lk-participant-tile[data-lk-video-muted="false"] .lk-participant-placeholder {
+    display: none !important;
+  }
+
+  /* Grid layout stability */
+  [class*="grid"] {
+    contain: layout style;
+  }
+
+  /* Smooth scrolling for horizontal camera strip */
+  .overflow-x-auto {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
+  }
+
+  .overflow-x-auto::-webkit-scrollbar {
+    height: 6px;
+  }
+
+  .overflow-x-auto::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .overflow-x-auto::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 3px;
+  }
+
+  .overflow-x-auto::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.3);
+  }
+
+  /* Shine animation for tabs */
+  @keyframes shine {
+    0% {
+      transform: translateX(-200%) skewX(-12deg);
+    }
+    100% {
+      transform: translateX(200%) skewX(-12deg);
+    }
+  }
+
+  .animate-shine {
+    animation: shine 2s ease-in-out infinite;
+  }
+
+  /* Soft bounce animation */
+  @keyframes bounce-soft {
+    0%, 100% {
+      transform: translateY(0);
+    }
+    50% {
+      transform: translateY(-4px);
+    }
+  }
+
+  .animate-bounce-soft {
+    animation: bounce-soft 3s ease-in-out infinite;
+  }
+
+  /* Slow spin animation */
+  @keyframes spin-slow {
+    from {
+      transform: rotate(0deg);
+    }
+    to {
+      transform: rotate(360deg);
+    }
+  }
+
+  .animate-spin-slow {
+    animation: spin-slow 3s linear infinite;
+  }
+
+  /* Float up animation for particles */
+  @keyframes float-up {
+    0% {
+      transform: translateY(0) scale(0);
+      opacity: 0;
+    }
+    50% {
+      opacity: 1;
+    }
+    100% {
+      transform: translateY(-100px) scale(1);
+      opacity: 0;
+    }
+  }
+
+  .animate-float-up {
+    animation: float-up 1.5s ease-out forwards;
+  }
+
+  .animation-delay-200 {
+    animation-delay: 0.2s;
+  }
+
+  .animation-delay-400 {
+    animation-delay: 0.4s;
+  }
+
+  .animation-delay-600 {
+    animation-delay: 0.6s;
+  }
+
+  /* Chat animations */
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+
+  .animate-fadeIn {
+    animation: fadeIn 0.3s ease-out forwards;
+  }
+
+  @keyframes slideInLeft {
+    from {
+      opacity: 0;
+      transform: translateX(-10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateX(0);
+    }
+  }
+
+  .animate-slideInLeft {
+    animation: slideInLeft 0.3s ease-out forwards;
+  }
+
+  @keyframes slideDown {
+    from {
+      opacity: 0;
+      transform: translateY(-10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  .animate-slideDown {
+    animation: slideDown 0.2s ease-out forwards;
+  }
+
+  /* Touch manipulation for better mobile performance */
+  .touch-manipulation {
+    touch-action: manipulation;
+  }
+
+  /* Message appearance animation */
+  @keyframes messageSlideIn {
+    from {
+      opacity: 0;
+      transform: translateY(10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  .animate-messageSlideIn {
+    animation: messageSlideIn 0.3s ease-out forwards;
+  }
+
+  /* Skeleton loader animation */
+  @keyframes skeleton {
+    0% {
+      background-position: -200px 0;
+    }
+    100% {
+      background-position: calc(200px + 100%) 0;
+    }
+  }
+
+  .animate-skeleton {
+    animation: skeleton 1.5s ease-in-out infinite;
+    background: linear-gradient(
+      90deg,
+      #f0f0f0 0px,
+      #e0e0e0 40px,
+      #f0f0f0 80px
+    );
+    background-size: 200px 100%;
+  }
+}
