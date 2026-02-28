@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import { useState, useMemo } from "react";
 import Image from "next/image";
 
@@ -30,12 +30,19 @@ export function LoginForm({
   const [isLoading, setIsLoading] = useState(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const router = useRouter();
-  
-  // Randomly select an image on component mount
+  const pathname = usePathname();
+
+  // Deterministic image selection based on pathname (avoids hydration mismatch)
   const selectedImage = useMemo(() => {
-    const randomIndex = Math.floor(Math.random() * carouselImages.length);
-    return carouselImages[randomIndex];
-  }, []);
+    const str = pathname ?? "/auth/login";
+    let hash = 0;
+    for (let i = 0; i < str.length; i++) {
+      hash = (hash << 5) - hash + str.charCodeAt(i);
+      hash = hash & hash;
+    }
+    const index = Math.abs(hash) % carouselImages.length;
+    return carouselImages[index];
+  }, [pathname]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();

@@ -1,9 +1,11 @@
 {
+  "name": "idest-website",
   "private": true,
   "scripts": {
     "dev": "next dev --turbopack",
     "build": "next build",
     "start": "next start",
+    "prod": "NODE_ENV=production next build && next start",
     "lint": "next lint"
   },
   "dependencies": {
@@ -40,20 +42,17 @@
     "sonner": "^2.0.7",
     "tailwind-merge": "^3.3.0",
     "xlsx": "^0.18.5",
-    "zustand": "^5.0.8"
+    "zustand": "^5.0.8",
+    "@idest/shared": "workspace:*"
   },
   "devDependencies": {
-    "@eslint/eslintrc": "^3",
-    "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "autoprefixer": "^10.4.20",
     "baseline-browser-mapping": "^2.8.32",
-    "eslint": "^9",
     "eslint-config-next": "15.3.1",
     "postcss": "^8",
     "tailwindcss": "^3.4.1",
-    "tailwindcss-animate": "^1.0.7",
-    "typescript": "^5"
+    "tailwindcss-animate": "^1.0.7"
   }
 }

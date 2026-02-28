@@ -1,0 +1,49 @@
+services:
+  server:
+    build:
+      context: ./apps/server
+      dockerfile: dockerfile
+    container_name: idest-server
+    ports:
+      - "3001:3000"
+    env_file:
+      - ./apps/server/.env
+    environment:
+      - NODE_ENV=production
+    depends_on:
+      - assignments
+    restart: unless-stopped
+
+  assignments:
+    build:
+      context: ./apps/assignments
+      dockerfile: Dockerfile
+    container_name: idest-assignments
+    ports:
+      - "8008:8008"
+    env_file:
+      - ./apps/assignments/.env
+    environment:
+      - NODE_ENV=production
+    restart: unless-stopped
+
+  website:
+    build:
+      context: ./apps/website
+      dockerfile: Dockerfile
+      args:
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL}
+        NEXT_PUBLIC_API_WS_URL: ${NEXT_PUBLIC_API_WS_URL}
+        NEXT_PUBLIC_MEET_URL: ${NEXT_PUBLIC_MEET_URL}
+        NEXT_PUBLIC_MEET_WS_URL: ${NEXT_PUBLIC_MEET_WS_URL}
+        NEXT_PUBLIC_CONVERSATION_URL: ${NEXT_PUBLIC_CONVERSATION_URL}
+        NEXT_PUBLIC_SUPABASE_URL: ${NEXT_PUBLIC_SUPABASE_URL}
+        NEXT_PUBLIC_SUPABASE_PUBLISHABLE_OR_ANON_KEY: ${NEXT_PUBLIC_SUPABASE_PUBLISHABLE_OR_ANON_KEY}
+    container_name: idest-website
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+    depends_on:
+      - server
+    restart: unless-stopped

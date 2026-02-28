@@ -1,0 +1,81 @@
+# dependencies
+node_modules
+/.pnp
+.pnp.*
+.yarn/*
+!.yarn/patches
+!.yarn/plugins
+!.yarn/releases
+!.yarn/versions
+
+# compiled output
+dist
+build
+
+# next.js
+.next/
+out/
+
+# prisma
+generated/prisma
+
+# logs
+logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+
+# env files
+.env
+.env.development
+.env*.local
+.env.test.local
+.env.production.local
+
+# tests
+coverage
+.nyc_output
+
+# OS
+.DS_Store
+*.pem
+
+# IDEs and editors
+.idea
+.project
+.classpath
+.c9/
+*.launch
+.settings/
+*.sublime-workspace
+
+# IDE - VSCode
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+
+# temp
+.temp
+.tmp
+
+# runtime data
+pids
+*.pid
+*.seed
+*.pid.lock
+
+# typescript
+*.tsbuildinfo
+
+# vercel
+.vercel
+
+# diagnostic reports
+report.[0-9]*.[0-9]*.[0-9]*.[0-9]*.json
+
+.pnpm-store
