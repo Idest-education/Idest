@@ -59,6 +59,14 @@ coverage
 !.vscode/launch.json
 !.vscode/extensions.json
 
+# Python
+__pycache__
+*.py[cod]
+*$py.class
+.venv
+venv
+.Python
+
 # temp
 .temp
 .tmp
