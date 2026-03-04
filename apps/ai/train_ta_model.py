@@ -3,25 +3,31 @@ Train a linear regression model to predict IELTS Task Achievement (TA) scores.
 
 Pipeline: data loading -> feature extraction -> diagnostics -> model training -> evaluation
 
-Features (Groups A-E):
+Features (Groups A-E + minimal LT):
   A: Discourse markers (with overuse penalty)
   B: Discourse-aware coherence (sentence embeddings + marker labels)
   C: Structural depth (sentence/paragraph counts)
   D: Semantic development depth (paragraph embeddings vs prompt)
   E: LLM-based structural judgment (Ollama/Phi-3 Mini, loaded from cache)
+  LT: Minimal LanguageTool features (spelling/grammar per 100 words + ratio)
 
-Includes: StandardScaler, correlation/VIF diagnostics, reduced feature set, Ridge comparison.
+Experiments: A) Base 14 (no LT), B) Base + minimal LT, C) Base + LT + Ridge (alpha grid)
 """
 
 import numpy as np
 import pandas as pd
 from sklearn.linear_model import LinearRegression, Ridge
 from sklearn.metrics import mean_absolute_error, r2_score
-from sklearn.model_selection import train_test_split
+from sklearn.model_selection import GridSearchCV, train_test_split
 from sklearn.preprocessing import StandardScaler
 
 from test import load_clean_data
 from writing_scorer.features import FEATURE_NAMES, extract_classical_features
+from writing_scorer.languagetool_features import (
+    LT_FEATURE_NAMES,
+    extract_lt_features_batch,
+    get_languagetool,
+)
 from writing_scorer.llm_features import (
     LLM_FEATURE_NAMES,
     get_llm_feature_array,
@@ -30,20 +36,23 @@ from writing_scorer.llm_features import (
 from writing_scorer.task_achievement import model as sbert_model
 
 
-# Reduced feature set: one per correlation cluster (|r|>0.8), drops redundant structural/similarity features
+# Base reduced feature set (no LT): one per correlation cluster (|r|>0.8)
 REDUCED_FEATURE_NAMES = [
-    "cosine_sim",  # keep over mean_prompt_paragraph_sim (cluster)
-    "word_count",  # keep over sentence_count, avg_*, longest_* (length cluster)
-    "body_paragraph_count",  # keep over paragraph_count (cluster)
+    "cosine_sim",
+    "word_count",
+    "body_paragraph_count",
     "n_example_markers",
     "n_reason_markers",
     "n_contrast_markers",
     "n_addition_markers",
     "discourse_marker_density_score",
-    "mean_discourse_coherence",  # keep over min_paragraph_discourse_coherence (cluster)
-    "mean_prompt_paragraph_sim",  # complementary to cosine_sim (prompt-para)
+    "mean_discourse_coherence",
+    "mean_prompt_paragraph_sim",
     "inter_paragraph_diversity",
 ]
+
+# Base 14 = REDUCED + LLM (no LT)
+# Base + LT = Base 14 + LT_FEATURE_NAMES (minimal: spelling/grammar per 100 words, ratio)
 
 
 # ── Data Loading ─────────────────────────────────────────────────────────────
@@ -91,6 +100,14 @@ def extract_features(
             essays = df["essay"].tolist()
             X = extract_classical_features(prompts, essays, sbert_model)
             y = df["TA"].values
+
+    # LanguageTool grammar/spelling features (always appended)
+    print("  Extracting LanguageTool features...")
+    tool = get_languagetool()
+    X_lt = extract_lt_features_batch(essays, tool)
+    X = np.hstack([X, X_lt])
+    feature_names.extend(LT_FEATURE_NAMES)
+    print(f"  LanguageTool features: {X_lt.shape[1]}")
 
     print(f"  Final feature matrix: {X.shape} (n_samples={len(y)})")
     return X, y, feature_names
@@ -160,16 +177,22 @@ def identify_correlation_clusters(
     return [sorted(c) for c in clusters_map.values() if len(c) > 1]
 
 
-def select_reduced_features(
-    X: np.ndarray, names: list[str]
+def select_feature_subset(
+    X: np.ndarray,
+    names: list[str],
+    include_lt: bool = False,
 ) -> tuple[np.ndarray, list[str]]:
-    """Select columns by REDUCED_FEATURE_NAMES. Append any LLM features present."""
-    reduced = [n for n in REDUCED_FEATURE_NAMES if n in names]
+    """Select base features (REDUCED + LLM). Optionally add minimal LT features."""
+    subset = [n for n in REDUCED_FEATURE_NAMES if n in names]
     for n in LLM_FEATURE_NAMES:
-        if n in names and n not in reduced:
-            reduced.append(n)
-    indices = [names.index(n) for n in reduced]
-    return X[:, indices], reduced
+        if n in names and n not in subset:
+            subset.append(n)
+    if include_lt:
+        for n in LT_FEATURE_NAMES:
+            if n in names and n not in subset:
+                subset.append(n)
+    indices = [names.index(n) for n in subset]
+    return X[:, indices], subset
 
 
 def run_diagnostics(
@@ -229,51 +252,85 @@ def main() -> None:
     X_train_scaled = scaler.fit_transform(X_train)
     X_test_scaled = scaler.transform(X_test)
 
-    # Reduced feature selection
-    X_train_red, reduced_names = select_reduced_features(X_train_scaled, feature_names)
-    X_test_red = X_test_scaled[:, [feature_names.index(n) for n in reduced_names]]
-    print(f"\n  Reduced feature set ({len(reduced_names)}): {reduced_names}")
+    # A) Base 14 features (no LT)
+    X_train_a, names_a = select_feature_subset(X_train_scaled, feature_names, include_lt=False)
+    X_test_a = X_test_scaled[:, [feature_names.index(n) for n in names_a]]
+    print(f"\n  Experiment A - Base features ({len(names_a)}): {names_a}")
 
-    # Config A: Raw 18 (or full), no scale, LR
-    model_a = LinearRegression().fit(X_train, y_train)
-    mae_a = _mae_clipped(y_test, model_a.predict(X_test))
+    # B) Base + minimal LT
+    X_train_b, names_b = select_feature_subset(X_train_scaled, feature_names, include_lt=True)
+    X_test_b = X_test_scaled[:, [feature_names.index(n) for n in names_b]]
+    print(f"  Experiment B - Base + LT ({len(names_b)}): + {[n for n in names_b if n not in names_a]}")
 
-    # Config B: Scaled full, LR
-    model_b = LinearRegression().fit(X_train_scaled, y_train)
-    mae_b = _mae_clipped(y_test, model_b.predict(X_test_scaled))
+    # VIF for Base + LT (target: all VIF < 5, no inf)
+    vif_b = compute_vif(X_train_b, names_b)
+    print("\n  VIF (Base + LT features):")
+    vif_ok = True
+    for n in names_b:
+        v = vif_b[n]
+        flag = " [HIGH]" if v > 5 else ""
+        if v == float("inf"):
+            vif_ok = False
+            flag = " [INF]"
+        s = f"{v:.1f}" if v != float("inf") else "inf"
+        print(f"    {n}: {s}{flag}")
+    if vif_ok and all(v <= 5 for v in vif_b.values()):
+        print("  All VIF <= 5 (no multicollinearity)")
+    else:
+        print("  Some VIF > 5 - consider dropping features or using Ridge")
 
-    # Config C: Scaled reduced, LR
-    model_c = LinearRegression().fit(X_train_red, y_train)
-    mae_c = _mae_clipped(y_test, model_c.predict(X_test_red))
+    # Model training
+    model_a = LinearRegression().fit(X_train_a, y_train)
+    mae_a = _mae_clipped(y_test, model_a.predict(X_test_a))
 
-    # Config D: Scaled reduced, Ridge
-    model_d = Ridge(alpha=1.0).fit(X_train_red, y_train)
-    mae_d = _mae_clipped(y_test, model_d.predict(X_test_red))
+    model_b = LinearRegression().fit(X_train_b, y_train)
+    mae_b = _mae_clipped(y_test, model_b.predict(X_test_b))
+
+    # C) Base + LT + Ridge with alpha grid search
+    grid = GridSearchCV(
+        Ridge(),
+        param_grid={"alpha": [0.01, 0.1, 1.0, 10.0, 100.0]},
+        scoring="neg_mean_absolute_error",
+        cv=5,
+    )
+    grid.fit(X_train_b, y_train)
+    best_alpha = grid.best_params_["alpha"]
+    model_c = Ridge(alpha=best_alpha).fit(X_train_b, y_train)
+    mae_c = _mae_clipped(y_test, model_c.predict(X_test_b))
 
     print("\n" + "=" * 60)
     print("  MAE Comparison")
     print("=" * 60)
-    print(f"  A. Raw {len(feature_names)} feat, no scale, LR:    {mae_a:.4f}")
-    print(f"  B. Scaled {len(feature_names)} feat, LR:           {mae_b:.4f}")
-    print(f"  C. Scaled reduced ({len(reduced_names)} feat), LR:   {mae_c:.4f}")
-    print(f"  D. Scaled reduced, Ridge(alpha=1):   {mae_d:.4f}")
+    print(f"  A. Base {len(names_a)} feat (no LT), LR:     {mae_a:.4f}")
+    print(f"  B. Base + LT ({len(names_b)} feat), LR:       {mae_b:.4f}")
+    print(f"  C. Base + LT, Ridge(alpha={best_alpha}):  {mae_c:.4f}")
+
+    print("\n  LT predictive value:")
+    if mae_b < mae_a:
+        print(f"    LT improves MAE by {mae_a - mae_b:.4f} (LR)")
+    else:
+        print(f"    LT does not improve MAE with LR (A: {mae_a:.4f} vs B: {mae_b:.4f})")
+    best_mae = min(mae_a, mae_b, mae_c)
+    if mae_c < mae_a:
+        print(f"    Ridge + LT improves over base: {mae_a - mae_c:.4f}")
+    print(f"    Best MAE: {best_mae:.4f}")
 
     print("\n" + "=" * 60)
-    print("  Coefficients (Config C - scaled, interpretable)")
+    print("  Coefficients (Config B - Base + LT)")
     print("=" * 60)
-    for name, coef in zip(reduced_names, model_c.coef_):
-        print(f"    {name:>35s}: {coef:+.4f}")
-    print(f"    {'intercept':>35s}: {model_c.intercept_:+.4f}")
+    for name, coef in zip(names_b, model_b.coef_):
+        print(f"    {name:>40s}: {coef:+.4f}")
+    print(f"    {'intercept':>40s}: {model_b.intercept_:+.4f}")
 
     print("\n" + "=" * 60)
-    print("  Coefficients (Config D - Ridge)")
+    print("  Coefficients (Config C - Ridge)")
     print("=" * 60)
-    for name, coef in zip(reduced_names, model_d.coef_):
-        print(f"    {name:>35s}: {coef:+.4f}")
-    print(f"    {'intercept':>35s}: {model_d.intercept_:+.4f}")
+    for name, coef in zip(names_b, model_c.coef_):
+        print(f"    {name:>40s}: {coef:+.4f}")
+    print(f"    {'intercept':>40s}: {model_c.intercept_:+.4f}")
 
     print("\n  First 10 predictions vs true (Config C):")
-    preds = np.clip(model_c.predict(X_test_red), 0, 9)
+    preds = np.clip(model_c.predict(X_test_b), 0, 9)
     print(f"  {'Predicted':>10s} {'True':>10s} {'Error':>10s}")
     print(f"  {'-' * 32}")
     for pred, true in zip(preds[:10], y_test[:10]):

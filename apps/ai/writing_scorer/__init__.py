@@ -2,6 +2,12 @@ from .task_achievement import compute_similarity, compute_similarity_batch, scor
 from .coherence import score_coherence
 from .features import FEATURE_NAMES, extract_classical_features
 from .grammar import score_grammar
+from .languagetool_features import (
+    LT_FEATURE_NAMES,
+    extract_lt_features,
+    extract_lt_features_batch,
+    get_languagetool,
+)
 from .lexical import score_lexical
 from .llm_features import LLM_FEATURE_NAMES, get_llm_feature_array
 
@@ -14,6 +20,10 @@ __all__ = [
     "score_grammar",
     "FEATURE_NAMES",
     "extract_classical_features",
+    "LT_FEATURE_NAMES",
+    "extract_lt_features",
+    "extract_lt_features_batch",
+    "get_languagetool",
     "LLM_FEATURE_NAMES",
     "get_llm_feature_array",
 ]
