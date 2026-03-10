@@ -1,27 +1,27 @@
 """
-LanguageTool-based grammar and spelling feature extraction.
+Grammar and spelling feature extraction for IELTS scoring.
 
-Minimal, non-redundant feature set to avoid multicollinearity (VIF):
+LanguageTool-based features:
 - lt_spelling_error_per_100_words
 - lt_grammar_error_per_100_words
 - lt_grammar_spelling_ratio (grammar / max(spelling, 1))
-
-Raw counts and per-category counts are excluded (they are linearly dependent).
 """
 
 from __future__ import annotations
 
 import logging
+
 import numpy as np
 
 logger = logging.getLogger(__name__)
 
-# Minimal LT feature set: rates + ratio only (no raw counts, no category breakdown)
 LT_FEATURE_NAMES = [
     "lt_spelling_error_per_100_words",
     "lt_grammar_error_per_100_words",
     "lt_grammar_spelling_ratio",
 ]
+
+GRAMMAR_FEATURE_NAMES = LT_FEATURE_NAMES
 
 _tool = None
 

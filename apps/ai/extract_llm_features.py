@@ -7,7 +7,9 @@ Usage:
     python extract_llm_features.py
 """
 
-from test import load_clean_data
+from __future__ import annotations
+
+from data import load_clean_data
 from writing_scorer.llm_features import run_and_cache
 
 

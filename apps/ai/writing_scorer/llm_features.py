@@ -11,12 +11,13 @@ from __future__ import annotations
 
 import json
 import logging
-import re
 from pathlib import Path
 
 import numpy as np
 import pandas as pd
 from pydantic import BaseModel, ValidationError
+
+from .text_utils import segment_essay
 
 logger = logging.getLogger(__name__)
 
@@ -52,19 +53,6 @@ class DevelopedLengthMismatchError(ValueError):
     """Raised when len(developed) != body_count after retries."""
 
 
-_PARA_SPLIT_RE = re.compile(r"(?:\n\s*)+")
-
-
-def _segment_essay(essay: str) -> tuple[list[str], list[str], list[str]]:
-    """Split by blank lines or single newlines. Returns (intro, body, conclusion)."""
-    paragraphs = [p.strip() for p in _PARA_SPLIT_RE.split(essay) if p.strip()]
-    if len(paragraphs) <= 2:
-        intro = paragraphs[:1] if paragraphs else []
-        conclusion = paragraphs[1:2] if len(paragraphs) == 2 else []
-        return (intro, [], conclusion)
-    return (paragraphs[:1], paragraphs[1:-1], paragraphs[-1:])
-
-
 def truncate_essay(essay: str, max_words: int = MAX_ESSAY_WORDS) -> str:
     words = essay.split()
     if len(words) <= max_words:
@@ -80,7 +68,7 @@ def judge_essay(prompt: str, essay: str) -> EssayJudgment:
     from ollama import chat
 
     truncated = truncate_essay(essay)
-    _, body_paragraphs, _ = _segment_essay(truncated)
+    _, body_paragraphs, _ = segment_essay(truncated)
     body_count = len(body_paragraphs)
 
     body_section = (
@@ -155,7 +143,7 @@ def run_and_cache(df: pd.DataFrame) -> None:
             continue
         try:
             result = judge_essay(row["prompt"], row["essay"])
-        except (DevelopedLengthMismatchError, ValidationError, json.JSONDecodeError, KeyError, Exception) as e:
+        except (DevelopedLengthMismatchError, ValidationError, json.JSONDecodeError, KeyError) as e:
             logger.warning("LLM extraction failed for essay %s, skipping: %s", i, e)
             continue
         body_count = len(result.developed)
