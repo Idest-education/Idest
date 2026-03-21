@@ -15,6 +15,11 @@ const nextConfig: NextConfig = {
         hostname: "lh3.googleusercontent.com",
         pathname: "/**",
       },
+      {
+        protocol: "https",
+        hostname: "s4-media1.study4.com",
+        pathname: "/**",
+      },
     ],
   },
 };

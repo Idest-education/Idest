@@ -17,10 +17,69 @@ Workspace packages are declared in [`pnpm-workspace.yaml`](pnpm-workspace.yaml).
 ## Prerequisites
 
 - **Node.js** 18+ (LTS recommended)
-- **pnpm** (install: `corepack enable && corepack prepare pnpm@latest --activate`, or see [pnpm installation](https://pnpm.io/installation))
+- **pnpm**
 - **Docker** and **Docker Compose** (for running the full stack via [`docker-compose.yml`](docker-compose.yml))
-- **Python** 3.11 if you run or develop [`apps/ai`](apps/ai) on the host (not only inside Docker)
-.
+- **Python** 3.11+ if you run or develop [`apps/ai`](apps/ai) on the host (not only inside Docker)
+- **PostgreSQL** reachable via `DATABASE_URL` in `apps/server` — not started by this repo’s Compose file; use local Postgres, another container, or a hosted DB
+
+See [Installing Node, pnpm, Python, and Docker](#installing-node-pnpm-python-and-docker) below for step-by-step setup on **macOS** and **Windows**.
+
+## Installing Node, pnpm, Python, and Docker
+
+### macOS
+
+1. **Node.js**  
+   - **Installer:** Download the LTS build from [nodejs.org](https://nodejs.org/) and run it.  
+   - **Homebrew:** `brew install node` (or a specific major, e.g. `brew install node@20`).  
+   - **nvm (optional):** [nvm](https://github.com/nvm-sh/nvm) lets you switch versions: `nvm install --lts` then `nvm use --lts`.  
+   Verify: `node -v` (should be v18 or newer).
+
+2. **pnpm**  
+   Node 16.13+ ships with **Corepack** (recommended):
+
+   ```bash
+   corepack enable
+   corepack prepare pnpm@latest --activate
+   ```
+
+   Alternatives: `brew install pnpm`, or `npm install -g pnpm`.  
+   Verify: `pnpm -v`.
+
+3. **Python**  
+   - **Installer:** [python.org/downloads](https://www.python.org/downloads/) — pick a 3.11 macOS installer.  
+   - **Homebrew:** `brew install python@3.11` (or another 3.11 formula).  
+   On Apple Silicon, use native ARM builds when offered. Verify: `python3 -V`. For isolated project envs: `python3 -m venv .venv` then `source .venv/bin/activate` before `pnpm python`.
+
+4. **Docker**  
+   Install [Docker Desktop for Mac](https://docs.docker.com/desktop/install/mac-install/). After install, open Docker Desktop once so the daemon runs. The `docker` and `docker compose` CLIs are included. Verify: `docker -v` and `docker compose version`.
+
+### Windows
+
+1. **Node.js**  
+   - **Installer:** Download the LTS `.msi` from [nodejs.org](https://nodejs.org/) and complete the wizard (leave “Add to PATH” enabled).  
+   - **winget:** `winget install OpenJS.NodeJS.LTS`  
+   Restart the terminal, then verify: `node -v`.
+
+2. **pnpm**  
+   In **PowerShell** or **Command Prompt** (as a regular user, after Node is on PATH):
+
+   ```powershell
+   corepack enable
+   corepack prepare pnpm@latest --activate
+   ```
+
+   If `corepack` is unavailable, use: `npm install -g pnpm`.  
+   Verify: `pnpm -v`.
+
+3. **Python**  
+   - **Installer:** [python.org/downloads/windows](https://www.python.org/downloads/windows/) — run the installer and check **“Add python.exe to PATH”**.  
+   - **winget:** `winget install Python.Python.3.12` (or another 3.11+ version).  
+   Use `py -3 -V` or `python --version` in a **new** terminal. For a venv: `py -3 -m venv .venv` then `.venv\Scripts\activate` before `pnpm python`.
+
+4. **Docker**  
+   Install [Docker Desktop for Windows](https://docs.docker.com/desktop/install/windows-install/). Enable **WSL 2** when the installer prompts (recommended). Reboot if asked, start Docker Desktop, then verify in PowerShell: `docker -v` and `docker compose version`.
+
+**Note:** On Windows, run repo commands from PowerShell, Command Prompt, or Git Bash from the repository root. The root script `pnpm python` calls `python3`; if that fails, run `py -3 -m pip install -r apps/ai/requirements.txt` from the repo root instead.
 
 ## Environment variables
 
