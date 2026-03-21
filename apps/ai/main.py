@@ -1,34 +1,16 @@
+from inference import get_scorer
 from utils.preprocess import clean_text
-
-try:
-    from writing_scorer import score_task, score_coherence, score_lexical, score_grammar
-    _SCORING_AVAILABLE = True
-except ImportError:
-    _SCORING_AVAILABLE = False
-
-_PLACEHOLDER_SCORE = 6.0
 
 
 def grade_essay(prompt: str, essay: str) -> dict:
+    prompt = clean_text(prompt)
     essay = clean_text(essay)
-
-    if _SCORING_AVAILABLE:
-        scores = {
-            "task_achievement": score_task(prompt, essay),
-            "coherence": score_coherence(essay),
-            "lexical": score_lexical(prompt, essay),
-            "grammar": score_grammar(essay),
-        }
-    else:
-        scores = {
-            "task_achievement": _PLACEHOLDER_SCORE,
-            "coherence": _PLACEHOLDER_SCORE,
-            "lexical": _PLACEHOLDER_SCORE,
-            "grammar": _PLACEHOLDER_SCORE,
-        }
-
-    scores["overall"] = round(sum(scores.values()) / len(scores), 1)
-    return scores
+    result = get_scorer().score(prompt, essay)
+    return {
+        **result.scores,
+        "description": result.description,
+        "metadata": result.metadata,
+    }
 
 
 if __name__ == "__main__":
@@ -62,5 +44,7 @@ if __name__ == "__main__":
     print("IELTS Writing Task 2 - Band Scores")
     print("=" * 40)
     for criterion, score in result.items():
+        if not isinstance(score, (int, float)):
+            continue
         label = criterion.replace("_", " ").title()
         print(f"  {label:<25} {score:.1f}")

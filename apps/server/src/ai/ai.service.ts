@@ -59,6 +59,10 @@ export class AiService {
     return response.output_text;
   }
 
+  async generateSpeech(text: string) {
+    
+  }
+
   async getContextCategory(prompt: string) {
     const context = getContextCategoryWithRegex(prompt);
     console.log('regex result: ', context);

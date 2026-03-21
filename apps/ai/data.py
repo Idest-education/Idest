@@ -5,6 +5,8 @@ import re
 import pandas as pd
 from datasets import load_dataset
 
+RUBRIC_COLUMNS = ["TA", "CC", "LR", "GR"]
+
 
 def _extract_scores(text: str) -> dict[str, float | None]:
     rubrics = [
@@ -49,6 +51,9 @@ def load_clean_data() -> pd.DataFrame:
         .replace("<4", "3.5")
         .astype(float)
     )
+    valid_rubrics = df[RUBRIC_COLUMNS].apply(lambda col: col.between(0.0, 9.0))
+    df = df[valid_rubrics.all(axis=1)]
+    df = df[df["band"].between(0.0, 9.0)]
     df = df.reset_index(drop=True)
     return df
 

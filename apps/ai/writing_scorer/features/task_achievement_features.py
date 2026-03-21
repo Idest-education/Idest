@@ -29,10 +29,31 @@ TASK_ACHIEVEMENT_FEATURE_NAMES = [
 ]
 
 
+def _strip_word_boundaries(pattern: str) -> str:
+    if pattern.startswith(r"\b"):
+        pattern = pattern[2:]
+    if pattern.endswith(r"\b"):
+        pattern = pattern[:-2]
+    return pattern
+
+
+def _count_pattern(text_lower: str, pattern: str) -> int:
+    # Single-word markers are only counted at sentence starts to avoid
+    # rewarding generic function words such as "and" or "but" mid-sentence.
+    if r"\ " not in pattern:
+        token_pattern = _strip_word_boundaries(pattern)
+        return sum(
+            1
+            for sentence in split_sentences(text_lower)
+            if re.match(rf"^\s*{token_pattern}\b", sentence)
+        )
+    return len(re.findall(pattern, text_lower))
+
+
 def _count_markers(text_lower: str) -> dict[str, int]:
     counts: dict[str, int] = {}
     for group, patterns in MARKER_GROUPS.items():
-        counts[group] = sum(len(re.findall(p, text_lower)) for p in patterns)
+        counts[group] = sum(_count_pattern(text_lower, pattern) for pattern in patterns)
     return counts
 
 

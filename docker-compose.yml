@@ -1,49 +1,185 @@
+name: idest
+
 services:
+  website:
+    build:
+      context: .
+      dockerfile: apps/website/Dockerfile
+      args:
+        NEXT_PUBLIC_SUPABASE_URL: "${NEXT_PUBLIC_SUPABASE_URL:-https://example.supabase.co}"
+        NEXT_PUBLIC_SUPABASE_PUBLISHABLE_OR_ANON_KEY: "${NEXT_PUBLIC_SUPABASE_PUBLISHABLE_OR_ANON_KEY:-placeholder-anon-key}"
+        NEXT_PUBLIC_API_URL: "${NEXT_PUBLIC_API_URL:-http://localhost:8000}"
+        NEXT_PUBLIC_ASSIGNMENT_API_URL: "${NEXT_PUBLIC_ASSIGNMENT_API_URL:-http://localhost:8000/hehe}"
+        NEXT_PUBLIC_MEET_URL: "${NEXT_PUBLIC_MEET_URL:-http://localhost:8000}"
+        NEXT_PUBLIC_CONVERSATION_URL: "${NEXT_PUBLIC_CONVERSATION_URL:-http://localhost:8000}"
+        NEXT_PUBLIC_API_WS_URL: "${NEXT_PUBLIC_API_WS_URL:-http://localhost:8000}"
+        NEXT_PUBLIC_MEET_WS_URL: "${NEXT_PUBLIC_MEET_WS_URL:-}"
+        NEXT_PUBLIC_TURN_SERVER_URL: "${NEXT_PUBLIC_TURN_SERVER_URL:-}"
+        NEXT_PUBLIC_TURN_USERNAME: "${NEXT_PUBLIC_TURN_USERNAME:-}"
+        NEXT_PUBLIC_TURN_CREDENTIAL: "${NEXT_PUBLIC_TURN_CREDENTIAL:-}"
+    container_name: idest-website
+    init: true
+    env_file:
+      - path: ./apps/website/.env
+        required: false
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      HOSTNAME: 0.0.0.0
+      NEXT_PUBLIC_SUPABASE_URL: "${NEXT_PUBLIC_SUPABASE_URL:-https://example.supabase.co}"
+      NEXT_PUBLIC_SUPABASE_PUBLISHABLE_OR_ANON_KEY: "${NEXT_PUBLIC_SUPABASE_PUBLISHABLE_OR_ANON_KEY:-placeholder-anon-key}"
+      NEXT_PUBLIC_API_URL: "${NEXT_PUBLIC_API_URL:-http://localhost:8000}"
+      NEXT_PUBLIC_ASSIGNMENT_API_URL: "${NEXT_PUBLIC_ASSIGNMENT_API_URL:-http://localhost:8000/hehe}"
+      NEXT_PUBLIC_MEET_URL: "${NEXT_PUBLIC_MEET_URL:-http://localhost:8000}"
+      NEXT_PUBLIC_CONVERSATION_URL: "${NEXT_PUBLIC_CONVERSATION_URL:-http://localhost:8000}"
+      NEXT_PUBLIC_API_WS_URL: "${NEXT_PUBLIC_API_WS_URL:-http://localhost:8000}"
+      NEXT_PUBLIC_MEET_WS_URL: "${NEXT_PUBLIC_MEET_WS_URL:-}"
+      NEXT_PUBLIC_TURN_SERVER_URL: "${NEXT_PUBLIC_TURN_SERVER_URL:-}"
+      NEXT_PUBLIC_TURN_USERNAME: "${NEXT_PUBLIC_TURN_USERNAME:-}"
+      NEXT_PUBLIC_TURN_CREDENTIAL: "${NEXT_PUBLIC_TURN_CREDENTIAL:-}"
+    depends_on:
+      server:
+        condition: service_healthy
+    ports:
+      - "${WEBSITE_PORT:-3000}:3000"
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - fetch('http://127.0.0.1:3000').then((response)=>process.exit(response.ok?0:1)).catch(()=>process.exit(1))
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 40s
+    restart: unless-stopped
+    networks:
+      - idest-network
+
   server:
     build:
-      context: ./apps/server
-      dockerfile: dockerfile
+      context: .
+      dockerfile: apps/server/Dockerfile
     container_name: idest-server
-    ports:
-      - "3001:3000"
+    init: true
     env_file:
-      - ./apps/server/.env
+      - path: ./apps/server/.env
+        required: false
     environment:
-      - NODE_ENV=production
+      NODE_ENV: production
+      PORT: 8000
+      ASSIGNMENT_URL: "${ASSIGNMENT_URL:-http://assignments:8008}"
+      AI_URL: "${AI_URL:-http://ai:8001}"
+      KOKORO_URL: "${KOKORO_URL:-http://kokoro:8880}"
     depends_on:
-      - assignments
+      assignments:
+        condition: service_healthy
+    ports:
+      - "${SERVER_PORT:-8000}:8000"
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - fetch('http://127.0.0.1:8000').then((response)=>process.exit(response.ok?0:1)).catch(()=>process.exit(1))
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 45s
     restart: unless-stopped
+    networks:
+      - idest-network
 
   assignments:
     build:
-      context: ./apps/assignments
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: apps/assignments/Dockerfile
     container_name: idest-assignments
-    ports:
-      - "8008:8008"
+    init: true
     env_file:
-      - ./apps/assignments/.env
+      - path: ./apps/assignments/.env
+        required: false
     environment:
-      - NODE_ENV=production
+      NODE_ENV: production
+      PORT: 8008
+      API_URL: "${API_URL:-http://localhost:8000}"
+      FRONTEND_URL: "${FRONTEND_URL:-http://localhost:3000}"
+      AI_URL: "${AI_URL:-http://ai:8001}"
+      KOKORO_URL: "${KOKORO_URL:-http://kokoro:8880}"
+    expose:
+      - "8008"
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - fetch('http://127.0.0.1:8008').then((response)=>process.exit(response.ok?0:1)).catch(()=>process.exit(1))
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 45s
     restart: unless-stopped
+    networks:
+      - idest-network
 
-  website:
+  ai:
     build:
-      context: ./apps/website
-      dockerfile: Dockerfile
-      args:
-        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL}
-        NEXT_PUBLIC_API_WS_URL: ${NEXT_PUBLIC_API_WS_URL}
-        NEXT_PUBLIC_MEET_URL: ${NEXT_PUBLIC_MEET_URL}
-        NEXT_PUBLIC_MEET_WS_URL: ${NEXT_PUBLIC_MEET_WS_URL}
-        NEXT_PUBLIC_CONVERSATION_URL: ${NEXT_PUBLIC_CONVERSATION_URL}
-        NEXT_PUBLIC_SUPABASE_URL: ${NEXT_PUBLIC_SUPABASE_URL}
-        NEXT_PUBLIC_SUPABASE_PUBLISHABLE_OR_ANON_KEY: ${NEXT_PUBLIC_SUPABASE_PUBLISHABLE_OR_ANON_KEY}
-    container_name: idest-website
-    ports:
-      - "3000:3000"
+      context: .
+      dockerfile: apps/ai/Dockerfile
+    container_name: idest-ai
+    init: true
     environment:
-      - NODE_ENV=production
-    depends_on:
-      - server
+      PORT: 8001
+      PYTHONDONTWRITEBYTECODE: "1"
+      PYTHONUNBUFFERED: "1"
+      HF_HOME: /data/huggingface
+      TRANSFORMERS_CACHE: /data/huggingface
+      SENTENCE_TRANSFORMERS_HOME: /data/sentence-transformers
+      XDG_CACHE_HOME: /data/xdg
+    expose:
+      - "8001"
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8001/openapi.json')"
+      interval: 30s
+      timeout: 15s
+      retries: 5
+      start_period: 120s
     restart: unless-stopped
+    networks:
+      - idest-network
+
+  kokoro:
+    image: ghcr.io/remsky/kokoro-fastapi-cpu:v0.1.4
+    container_name: idest-kokoro
+    pull_policy: always
+    init: true
+    environment:
+      PORT: 8880
+    expose:
+      - "8880"
+    volumes:
+      - kokoro-cache:/root/.cache
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8880/docs')"
+      interval: 30s
+      timeout: 15s
+      retries: 5
+      start_period: 90s
+    restart: unless-stopped
+    networks:
+      - idest-network
+
+networks:
+  idest-network:
+    driver: bridge
+
+volumes:
+  kokoro-cache:

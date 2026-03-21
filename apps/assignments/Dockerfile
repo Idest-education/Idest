@@ -1,48 +1,33 @@
-# Stage 1: Build
-FROM node:20-alpine AS builder
+FROM node:22-bookworm-slim AS base
 
-# Install pnpm
-RUN npm install -g pnpm
-
-# Set working directory
+RUN npm install -g pnpm@10
 WORKDIR /app
 
-# Copy package files
-COPY package.json pnpm-lock.yaml ./
+FROM base AS deps
 
-# Install dependencies
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml .npmrc ./
+COPY apps/server/package.json apps/server/package.json
+COPY apps/assignments/package.json apps/assignments/package.json
+COPY apps/website/package.json apps/website/package.json
+COPY packages/shared/package.json packages/shared/package.json
+
 RUN pnpm install --frozen-lockfile
 
-# Copy source code
+FROM deps AS builder
+
 COPY . .
+RUN pnpm --filter idest-assignment-microservice build
 
-# Build the application
-RUN pnpm run build
+FROM base AS runner
 
-# Stage 2: Production
-FROM node:20-alpine AS production
-
-# Install pnpm
-RUN npm install -g pnpm
-
-# Set working directory
+ENV NODE_ENV=production
 WORKDIR /app
 
-# Copy package files
-COPY package.json pnpm-lock.yaml ./
+COPY --from=builder /app/node_modules ./node_modules
+COPY --from=builder /app/apps/assignments ./apps/assignments
+COPY --from=builder /app/packages/shared ./packages/shared
 
-# Install only production dependencies
-RUN pnpm install --frozen-lockfile --prod
-
-# Copy built application from builder stage
-COPY --from=builder /app/dist ./dist
-
-# Expose the application port
+WORKDIR /app/apps/assignments
 EXPOSE 8008
 
-# Set environment to production
-ENV NODE_ENV=production
-
-# Start the application
-CMD ["node", "dist/main"]
-
+CMD ["node", "dist/main.js"]

@@ -1,61 +1,59 @@
-FROM node:20-alpine AS base
+FROM node:22-bookworm-slim AS base
 
-# Install dependencies only when needed
+RUN npm install -g pnpm@10
+WORKDIR /app
+
 FROM base AS deps
-# Check https://github.com/nodejs/docker-node/tree/b4117f9333da4138b03a546ec926ef50a31506c3#nodealpine to understand why libc6-compat might be needed.
-RUN apk add --no-cache libc6-compat
-WORKDIR /app
 
-# Install dependencies
-COPY package.json package-lock.json* ./
-RUN npm ci
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml .npmrc ./
+COPY apps/server/package.json apps/server/package.json
+COPY apps/assignments/package.json apps/assignments/package.json
+COPY apps/website/package.json apps/website/package.json
+COPY packages/shared/package.json packages/shared/package.json
 
-# Rebuild the source code only when needed
-FROM base AS builder
-WORKDIR /app
-COPY --from=deps /app/node_modules ./node_modules
-COPY . .
+RUN pnpm install --frozen-lockfile
 
-# Disable telemetry during the build.
-ENV NEXT_TELEMETRY_DISABLED 1
+FROM deps AS builder
 
-# Build arguments for NEXT_PUBLIC_ variables
-ARG NEXT_PUBLIC_API_URL
-ARG NEXT_PUBLIC_API_WS_URL
-ARG NEXT_PUBLIC_MEET_URL
-ARG NEXT_PUBLIC_MEET_WS_URL
-ARG NEXT_PUBLIC_CONVERSATION_URL
 ARG NEXT_PUBLIC_SUPABASE_URL
 ARG NEXT_PUBLIC_SUPABASE_PUBLISHABLE_OR_ANON_KEY
+ARG NEXT_PUBLIC_API_URL
+ARG NEXT_PUBLIC_ASSIGNMENT_API_URL
+ARG NEXT_PUBLIC_MEET_URL
+ARG NEXT_PUBLIC_CONVERSATION_URL
+ARG NEXT_PUBLIC_API_WS_URL
+ARG NEXT_PUBLIC_MEET_WS_URL
+ARG NEXT_PUBLIC_TURN_SERVER_URL
+ARG NEXT_PUBLIC_TURN_USERNAME
+ARG NEXT_PUBLIC_TURN_CREDENTIAL
 
-# Build the application
-RUN npm run build
+ENV NEXT_PUBLIC_SUPABASE_URL=$NEXT_PUBLIC_SUPABASE_URL
+ENV NEXT_PUBLIC_SUPABASE_PUBLISHABLE_OR_ANON_KEY=$NEXT_PUBLIC_SUPABASE_PUBLISHABLE_OR_ANON_KEY
+ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
+ENV NEXT_PUBLIC_ASSIGNMENT_API_URL=$NEXT_PUBLIC_ASSIGNMENT_API_URL
+ENV NEXT_PUBLIC_MEET_URL=$NEXT_PUBLIC_MEET_URL
+ENV NEXT_PUBLIC_CONVERSATION_URL=$NEXT_PUBLIC_CONVERSATION_URL
+ENV NEXT_PUBLIC_API_WS_URL=$NEXT_PUBLIC_API_WS_URL
+ENV NEXT_PUBLIC_MEET_WS_URL=$NEXT_PUBLIC_MEET_WS_URL
+ENV NEXT_PUBLIC_TURN_SERVER_URL=$NEXT_PUBLIC_TURN_SERVER_URL
+ENV NEXT_PUBLIC_TURN_USERNAME=$NEXT_PUBLIC_TURN_USERNAME
+ENV NEXT_PUBLIC_TURN_CREDENTIAL=$NEXT_PUBLIC_TURN_CREDENTIAL
+ENV NEXT_TELEMETRY_DISABLED=1
 
-# Production image, copy all the files and run next
+COPY . .
+RUN pnpm --filter idest-website build
+
 FROM base AS runner
+
+ENV NODE_ENV=production
+ENV NEXT_TELEMETRY_DISABLED=1
 WORKDIR /app
 
-ENV NODE_ENV production
-ENV NEXT_TELEMETRY_DISABLED 1
+COPY --from=builder /app/node_modules ./node_modules
+COPY --from=builder /app/apps/website ./apps/website
+COPY --from=builder /app/packages/shared ./packages/shared
 
-RUN addgroup --system --gid 1001 nodejs
-RUN adduser --system --uid 1001 nextjs
-
-COPY --from=builder /app/public ./public
-
-# Set the correct permission for prerender cache
-RUN mkdir .next
-RUN chown nextjs:nodejs .next
-
-# Automatically leverage output traces to reduce image size
-COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
-COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
-
-USER nextjs
-
+WORKDIR /app/apps/website
 EXPOSE 3000
 
-ENV PORT 3000
-ENV HOSTNAME "0.0.0.0"
-
-CMD ["node", "server.js"]
+CMD ["pnpm", "exec", "next", "start", "-H", "0.0.0.0", "-p", "3000"]

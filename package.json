@@ -4,6 +4,11 @@
   "private": true,
   "description": "Idest",
   "scripts": {
+    "prep": "pnpm install",
+    "docker": "docker compose up",
+    "db:generate": "pnpm --filter idest-server prisma:generate",
+    "db:push": "pnpm --filter idest-server prisma:push",
+    "python": "python3 -m pip install -r apps/ai/requirements.txt",
     "dev": "pnpm -r --parallel run dev",
     "build": "pnpm -r run build",
     "lint": "pnpm -r run lint",

@@ -10,8 +10,12 @@ IELTS feature extraction organized by rubric criteria.
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 import numpy as np
-from sentence_transformers import SentenceTransformer
+
+if TYPE_CHECKING:
+    from sentence_transformers import SentenceTransformer
 
 from . import coherence_features as coherence_features_module
 from . import embeddings as embeddings_module
@@ -179,14 +183,13 @@ def extract_classical_features(
     else:
         all_sent_embs = np.empty((0, prompt_embs.shape[1]))
 
-    print("    Encoding paragraphs...")
+    print("    Encoding body paragraphs...")
     all_paras: list[str] = []
     essay_para_offsets: list[tuple[int, int]] = []
 
-    for essay in essays:
-        paragraphs = split_paragraphs(essay)
+    for body in essay_body_paragraphs:
         start = len(all_paras)
-        all_paras.extend(paragraphs)
+        all_paras.extend(body)
         essay_para_offsets.append((start, len(all_paras)))
 
     if all_paras:
@@ -200,7 +203,7 @@ def extract_classical_features(
         all_para_embs = np.empty((0, prompt_embs.shape[1]))
 
     print("    Extracting lexical features...")
-    lexical_rows = extract_lexical_features_batch(essays)
+    lexical_rows = extract_lexical_features_batch(essays, prompts)
     syntax_rows = None
     readability_rows = None
     sentence_coherence_rows = None

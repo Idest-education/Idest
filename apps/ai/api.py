@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from fastapi import FastAPI
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from main import grade_essay
 
@@ -13,20 +13,17 @@ class GradeRequest(BaseModel):
     essay: str
 
 
-@app.post("/grade/writing")
-def grade_writing(req: GradeRequest):
-    scores = grade_essay(req.question, req.essay)
+class GradeResponse(BaseModel):
+    task_achievement: float
+    coherence: float
+    lexical: float
+    grammar: float
+    overall: float
+    description: str
+    metadata: dict = Field(default_factory=dict)
 
-    return {
-        "task_achievement": scores["task_achievement"],
-        "coherence": scores["coherence"],
-        "lexical": scores["lexical"],
-        "grammar": scores["grammar"],
-        "overall": scores["overall"],
-        "description": (
-            "Your essay addresses the task with adequate ideas and supporting details. "
-            "There is reasonable coherence and cohesion, with some effective use of linking devices. "
-            "Lexical resource is sufficient with occasional flexibility. "
-            "Grammatical range and accuracy are generally good with minor errors."
-        ),
-    }
+
+@app.post("/grade/writing")
+def grade_writing(req: GradeRequest) -> GradeResponse:
+    scores = grade_essay(req.question, req.essay)
+    return GradeResponse(**scores)
