@@ -1,16 +1,6 @@
-import { SubmitAssignmentV2Dto } from '../dto/v2/submit-assignment-v2.dto';
+import { SubmitObjectiveAssignmentDto } from '../dto/objective/submit-objective.dto';
 
-/**
- * Grading V2
- * - Uses question.answer_key and submission.section_answers[*].answers[*].answer
- * - Implements core types: gap_fill_template, multiple_choice_single, multiple_choice_multi, true_false_not_given, matching
- *
- * Notes:
- * - This is intentionally tolerant: string comparisons are case-insensitive + trimmed.
- * - For multi-select, order is ignored.
- */
-
-export interface GradingResultV2 {
+export interface GradingObjectiveResult {
   score: number;
   total_questions: number;
   correct_answers: number;
@@ -56,10 +46,9 @@ function roundToHalf(score: number): number {
   return Math.max(0, Math.min(9, rounded));
 }
 
-function indexAnswers(submission: SubmitAssignmentV2Dto | any) {
+function indexAnswers(submission: SubmitObjectiveAssignmentDto | any) {
   const bySection = new Map<string, Map<string, any>>();
-  // Support both DTO submissions (section_answers) and stored submissions (answers_v2)
-  const sections = submission?.section_answers ?? submission?.answers_v2 ?? [];
+  const sections = submission?.section_answers ?? submission?.answers ?? [];
   for (const sec of sections) {
     const byQuestion = new Map<string, any>();
     for (const qa of sec.answers ?? []) {
@@ -70,23 +59,22 @@ function indexAnswers(submission: SubmitAssignmentV2Dto | any) {
   return bySection;
 }
 
-export function gradeAssignmentV2(assignment: any, submission: SubmitAssignmentV2Dto | any): GradingResultV2 {
-  // Accept either DTO shape (section_answers) or stored submissions (answers_v2)
+export function gradeObjectiveAssignment(assignment: any, submission: SubmitObjectiveAssignmentDto | any): GradingObjectiveResult {
   const normalizedSubmission = submission?.section_answers
     ? submission
-    : { ...submission, section_answers: submission?.answers_v2 ?? [] };
+    : { ...submission, section_answers: submission?.answers ?? [] };
 
   const submittedIndex = indexAnswers(normalizedSubmission);
 
   let total = 0;
   let correctCount = 0;
 
-  const details: GradingResultV2['details'] = [];
+  const details: GradingObjectiveResult['details'] = [];
 
   for (const section of assignment.sections ?? []) {
     const sectionAnswers = submittedIndex.get(section.id) ?? new Map<string, any>();
 
-    const sectionDetail: GradingResultV2['details'][number] = {
+    const sectionDetail: GradingObjectiveResult['details'][number] = {
       section_id: section.id,
       section_title: section.title,
       questions: [],
@@ -98,7 +86,7 @@ export function gradeAssignmentV2(assignment: any, submission: SubmitAssignmentV
         total += 1;
         const submitted = sectionAnswers.get(q.id);
 
-        const qDetail: GradingResultV2['details'][number]['questions'][number] = {
+        const qDetail: GradingObjectiveResult['details'][number]['questions'][number] = {
           question_id: q.id,
           correct: false,
           parts: [],
@@ -108,14 +96,13 @@ export function gradeAssignmentV2(assignment: any, submission: SubmitAssignmentV
         const key = q.answer_key;
         const hasKey = key && Object.keys(key).length > 0;
 
-        // If no answer key is provided, treat as incorrect to avoid false positives
         if (!hasKey) {
           sectionDetail.questions.push(qDetail);
           continue;
         }
 
-        // gap_fill_template: { blanks: { [blank_id]: string } }
-        if (type === 'gap_fill_template') {
+        // gap_fill_template & form_completion
+        if (type === 'gap_fill_template' || type === 'form_completion') {
           const submittedBlanks = submitted?.blanks ?? {};
           const correctBlanks = key?.blanks ?? {};
           const blankIds = Object.keys(correctBlanks);
@@ -134,10 +121,7 @@ export function gradeAssignmentV2(assignment: any, submission: SubmitAssignmentV
             if (!ok) allCorrect = false;
           }
           qDetail.correct = allCorrect;
-        }
-
-        // multiple_choice_single: { choice: optionId }
-        else if (type === 'multiple_choice_single') {
+        } else if (type === 'multiple_choice_single') {
           const expected = key?.choice ?? key?.correct_answer;
           const ok = expected !== undefined && compareScalar(submitted?.choice, expected);
           qDetail.correct = ok;
@@ -147,10 +131,7 @@ export function gradeAssignmentV2(assignment: any, submission: SubmitAssignmentV
             submitted_answer: submitted?.choice,
             correct_answer: expected,
           });
-        }
-
-        // multiple_choice_multi: { choices: optionId[] }
-        else if (type === 'multiple_choice_multi') {
+        } else if (type === 'multiple_choice_multi') {
           const expected = key?.choices ?? key?.correct_answer;
           const ok =
             Array.isArray(expected) &&
@@ -163,10 +144,7 @@ export function gradeAssignmentV2(assignment: any, submission: SubmitAssignmentV
             submitted_answer: submitted?.choices,
             correct_answer: expected,
           });
-        }
-
-        // true_false_not_given: { choice: 'TRUE' | 'FALSE' | 'NOT_GIVEN' }
-        else if (type === 'true_false_not_given') {
+        } else if (type === 'true_false_not_given' || type === 'yes_no_not_given') {
           const expected = key?.choice ?? key?.correct_answer;
           const ok = expected !== undefined && compareScalar(submitted?.choice, expected);
           qDetail.correct = ok;
@@ -176,13 +154,7 @@ export function gradeAssignmentV2(assignment: any, submission: SubmitAssignmentV
             submitted_answer: submitted?.choice,
             correct_answer: expected,
           });
-        }
-
-        // matching: two formats supported
-        // 1. Complex: { map: { [leftId]: rightId } } with key.map
-        // 2. Simple: { choice: "A" } with key.correct_answer
-        else if (type === 'matching') {
-          // Check if it's complex matching format
+        } else if (type === 'matching' || type === 'matching_headings' || type === 'diagram_labeling') {
           if (key?.map && typeof key.map === 'object') {
             const submittedMap = submitted?.map ?? {};
             const correctMap = key.map;
@@ -202,7 +174,6 @@ export function gradeAssignmentV2(assignment: any, submission: SubmitAssignmentV
             }
             qDetail.correct = allCorrect;
           } else {
-            // Simple single-choice matching format
             const ok = key?.correct_answer !== undefined && compareScalar(submitted?.choice, key?.correct_answer);
             qDetail.correct = ok;
             qDetail.parts?.push({
@@ -212,10 +183,7 @@ export function gradeAssignmentV2(assignment: any, submission: SubmitAssignmentV
               correct_answer: key?.correct_answer,
             });
           }
-        }
-
-        // short_answer: { text: string } with key.correct_answer
-        else if (type === 'short_answer') {
+        } else if (type === 'short_answer') {
           const ok = key?.correct_answer !== undefined && compareScalar(submitted?.text, key?.correct_answer);
           qDetail.correct = ok;
           qDetail.parts?.push({
@@ -224,10 +192,7 @@ export function gradeAssignmentV2(assignment: any, submission: SubmitAssignmentV
             submitted_answer: submitted?.text,
             correct_answer: key?.correct_answer,
           });
-        }
-
-        // fallback: strict equality on submitted.answer vs answer_key.answer
-        else {
+        } else {
           const ok = hasKey && compareScalar(submitted, key);
           qDetail.correct = ok;
           qDetail.parts?.push({
@@ -259,5 +224,3 @@ export function gradeAssignmentV2(assignment: any, submission: SubmitAssignmentV
     details,
   };
 }
-
-

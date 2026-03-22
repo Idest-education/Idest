@@ -8,6 +8,8 @@ import { WritingSubmission, WritingSubmissionDocument } from './schemas/writing-
 import { CreateWritingSubmissionDto } from './dto/create-writing-submission.dto';
 import { PaginationDto, PaginatedResponse } from '../dto/pagination.dto';
 import { RabbitService } from '../../rabbit/rabbit.service';
+import { generateUniqueSlug } from '../utils/slug.util';
+import { v4 as uuidv4 } from 'uuid';
 
 @Injectable()
 export class WritingService {
@@ -20,7 +22,16 @@ export class WritingService {
   ) {}
 
   async createAssignment(dto: CreateWritingAssignmentDto) {
-    const created = new this.writingAssignmentModel(dto);
+    const tasks = (dto.tasks ?? []).map((t) => ({
+      ...t,
+      id: t.id ?? uuidv4(),
+    }));
+    const data = {
+      ...dto,
+      tasks,
+      slug: dto.slug ?? (await generateUniqueSlug(dto.title, this.writingAssignmentModel)),
+    } as any;
+    const created = new this.writingAssignmentModel(data);
     return created.save();
   }
 
@@ -72,7 +83,9 @@ export class WritingService {
     if (!assignment) throw new BadRequestException('assignment_id must reference a writing assignment');
 
     const created = new this.writingSubmissionModel({
-      ...dto,
+      assignment_id: dto.assignment_id,
+      user_id: dto.user_id,
+      content_by_task_id: dto.content_by_task_id,
       status: 'pending',
       score: undefined,
       feedback: undefined,
@@ -85,17 +98,11 @@ export class WritingService {
         submissionId: saved.id,
         assignmentId: dto.assignment_id,
         userId: dto.user_id,
-        contentOne: dto.contentOne,
-        contentTwo: dto.contentTwo,
+        content_by_task_id: dto.content_by_task_id,
       });
     } catch (error) {
-      // Best-effort: keep the submission, but mark it failed if we can't queue grading.
       await this.writingSubmissionModel
-        .findOneAndUpdate(
-          { id: saved.id },
-          { status: 'failed' },
-          { new: true },
-        )
+        .findOneAndUpdate({ _id: saved._id }, { status: 'failed' }, { new: true })
         .exec();
       throw error;
     }
@@ -105,22 +112,18 @@ export class WritingService {
 
   async updateSubmissionGrade(submissionId: string, score: number | undefined, feedback: string | undefined) {
     return this.writingSubmissionModel
-      .findOneAndUpdate(
-        { id: submissionId },
-        { score, feedback, status: 'graded' },
-        { new: true },
-      )
+      .findOneAndUpdate({ _id: submissionId }, { score, feedback, status: 'graded' }, { new: true })
       .exec();
   }
 
   async markSubmissionFailed(submissionId: string) {
     return this.writingSubmissionModel
-      .findOneAndUpdate({ id: submissionId }, { status: 'failed' }, { new: true })
+      .findOneAndUpdate({ _id: submissionId }, { status: 'failed' }, { new: true })
       .exec();
   }
 
   async getSubmission(id: string) {
-    return this.writingSubmissionModel.findOne({ id }).exec();
+    return this.writingSubmissionModel.findOne({ _id: id }).exec();
   }
 
   async getAllSubmissions() {
@@ -135,5 +138,3 @@ export class WritingService {
     return this.writingSubmissionModel.find({ assignment_id: assignmentId }).exec();
   }
 }
-
-

@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Patch, Delete, Param, Body, HttpStatus, UseGuards, Query } from '@nestjs/common';
+import { Controller, Get, Post, Patch, Delete, Param, Body, HttpStatus, UseGuards, Query, Req } from '@nestjs/common';
 import { ApiTags, ApiBearerAuth, ApiOperation, ApiResponse, ApiQuery } from '@nestjs/swagger';
 import { WritingService } from './writing.service';
 import { CreateWritingAssignmentDto } from './dto/create-writing-assignment.dto';
@@ -20,8 +20,11 @@ export class WritingController {
   @Roles('ADMIN', 'TEACHER')
   @ApiOperation({ summary: 'Create writing assignment (ADMIN/TEACHER only)' })
   @ApiResponse({ status: HttpStatus.CREATED })
-  async create(@Body() dto: CreateWritingAssignmentDto) {
-    const data = await this.writingService.createAssignment(dto);
+  async create(@Body() dto: CreateWritingAssignmentDto, @Req() req: any) {
+    const data = await this.writingService.createAssignment({
+      ...dto,
+      created_by: dto.created_by || req.user?.sub || req.user?.userId,
+    });
     return { status: true, message: 'Created', data, statusCode: HttpStatus.CREATED };
   }
 

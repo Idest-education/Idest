@@ -4,7 +4,7 @@ import { JwtModule } from '@nestjs/jwt';
 import { SpeakingService } from './speaking.service';
 import { SpeakingController } from './speaking.controller';
 import { SpeakingAssignment, SpeakingAssignmentSchema } from '../schemas/speaking-assignment.schema';
-import { SpeakingResponse, SpeakingResponseSchema } from './schemas/speaking-response.schema';
+import { SpeakingSubmission, SpeakingSubmissionSchema } from './schemas/speaking-submission.schema';
 import { JwtAuthGuard } from '../../guards/jwt-auth.guard';
 import { GradeModule } from '../../grade/grade.module';
 import { SupabaseModule } from '../../supabase/supabase.module';
@@ -14,7 +14,7 @@ import { RabbitModule } from '../../rabbit/rabbit.module';
   imports: [
     MongooseModule.forFeature([
       { name: SpeakingAssignment.name, schema: SpeakingAssignmentSchema },
-      { name: SpeakingResponse.name, schema: SpeakingResponseSchema },
+      { name: SpeakingSubmission.name, schema: SpeakingSubmissionSchema },
     ]),
     JwtModule.register({
       secret: process.env.JWT_SECRET || 'default-secret-key',
@@ -29,5 +29,3 @@ import { RabbitModule } from '../../rabbit/rabbit.module';
   exports: [SpeakingService],
 })
 export class SpeakingModule {}
-
-

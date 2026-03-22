@@ -1,12 +1,7 @@
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsString, IsUUID, IsOptional, IsNumber } from 'class-validator';
+import { ApiProperty } from '@nestjs/swagger';
+import { IsObject, IsString } from 'class-validator';
 
 export class CreateWritingSubmissionDto {
-  @ApiPropertyOptional()
-  @IsUUID()
-  @IsOptional()
-  id?: string;
-
   @ApiProperty()
   @IsString()
   assignment_id: string;
@@ -15,15 +10,7 @@ export class CreateWritingSubmissionDto {
   @IsString()
   user_id: string;
 
-  @ApiProperty()
-  @IsString()
-  contentOne: string;
-
-  @ApiProperty()
-  @IsString()
-  contentTwo: string;
-
-
+  @ApiProperty({ description: 'Map of writing task id to essay text' })
+  @IsObject()
+  content_by_task_id: Record<string, string>;
 }
-
-

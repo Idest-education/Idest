@@ -1,19 +1,21 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-import { Document, SchemaTypes } from 'mongoose';
+import { SchemaTypes } from 'mongoose';
 import { v4 as uuidv4 } from 'uuid';
 
-/**
- * Assignment Schema V2
- * - Stimulus/template-based questions
- * - Rich media assets
- * - Backward incompatible with v1 (DB reset OK)
- */
-
-export type AssignmentDocument = Assignment & Document;
-
-export type Skill = 'reading' | 'listening' | 'writing' | 'speaking';
-
 export type MediaKind = 'image' | 'audio' | 'file';
+
+export const OBJECTIVE_QUESTION_TYPES = [
+  'gap_fill_template',
+  'multiple_choice_single',
+  'multiple_choice_multi',
+  'true_false_not_given',
+  'yes_no_not_given',
+  'matching',
+  'matching_headings',
+  'diagram_labeling',
+  'short_answer',
+  'form_completion',
+] as const;
 
 @Schema({ _id: false })
 export class MediaAsset {
@@ -61,9 +63,6 @@ export class StimulusTemplate {
   @Prop({ required: true, enum: ['text'] })
   format: 'text';
 
-  /**
-   * Template body with placeholders: {{blank:1}}, {{blank:2}}, etc.
-   */
   @Prop({ required: true })
   body: string;
 
@@ -96,42 +95,25 @@ export class Question {
   @Prop({ required: true })
   order_index: number;
 
-  /**
-   * Discriminated by DTO/service validation. Add new types freely.
-   */
   @Prop({
     required: true,
-    enum: [
-      'gap_fill_template',
-      'multiple_choice_single',
-      'multiple_choice_multi',
-      'true_false_not_given',
-      'matching',
-      'diagram_labeling',
-      'short_answer',
-    ],
+    enum: OBJECTIVE_QUESTION_TYPES,
   })
   type: string;
 
   @Prop()
   prompt_md?: string;
 
-  @Prop({ type: StimulusSchema, required: true })
-  stimulus: Stimulus;
-
   /**
-   * Interaction model depends on type (stored as JSON).
-   * Example shapes:
-   * - gap_fill_template: { blanks: Array<{ blank_id, input: { kind: 'text' } }> }
-   * - multiple_choice_single: { options: Array<{ id, label_md }> }
-   * - matching: { left: Array<{ id, label_md }>, right: Array<{ id, label_md }> }
+   * Optional per-question stimulus when it adds to (or overrides) the question group's shared stimulus.
+   * Shared diagram/image for a multi-part task belongs on QuestionGroup.stimulus.
    */
+  @Prop({ type: StimulusSchema })
+  stimulus?: Stimulus;
+
   @Prop({ type: SchemaTypes.Mixed, required: true })
   interaction: any;
 
-  /**
-   * Answer key depends on type (stored as JSON). This is server-side truth for grading.
-   */
   @Prop({ type: SchemaTypes.Mixed, required: true })
   answer_key: any;
 }
@@ -151,12 +133,16 @@ export class QuestionGroup {
   @Prop()
   instructions_md?: string;
 
+  /**
+   * Shared stimulus for all questions in this group (e.g. diagram/map image for labeling items 14–20).
+   */
+  @Prop({ type: StimulusSchema })
+  stimulus?: Stimulus;
+
   @Prop({ type: [QuestionSchema], default: [] })
   questions: Question[];
 }
 export const QuestionGroupSchema = SchemaFactory.createForClass(QuestionGroup);
-
-export type SectionMaterialType = 'reading' | 'listening';
 
 @Schema({ _id: false })
 export class ReadingSectionMaterial {
@@ -198,9 +184,6 @@ export class Section {
   @Prop({ required: true })
   order_index: number;
 
-  /**
-   * Discriminated union stored as Mixed for flexibility; validated by DTO/service.
-   */
   @Prop({ type: SchemaTypes.Mixed, required: true })
   material: ReadingSectionMaterial | ListeningSectionMaterial;
 
@@ -208,51 +191,3 @@ export class Section {
   question_groups: QuestionGroup[];
 }
 export const SectionSchema = SchemaFactory.createForClass(Section);
-
-@Schema({ timestamps: { createdAt: 'created_at', updatedAt: false } })
-export class Assignment {
-  @Prop({ type: String, default: () => uuidv4() })
-  _id: string;
-
-  @Prop({ required: true })
-  created_by: string;
-
-  @Prop()
-  class_id?: string;
-
-  @Prop({
-    required: true,
-    enum: ['reading', 'listening', 'writing', 'speaking'],
-  })
-  skill: Skill;
-
-  @Prop({ required: true, unique: true })
-  slug: string;
-
-  @Prop({ required: true })
-  title: string;
-
-  @Prop()
-  description?: string;
-
-  @Prop({ default: false })
-  is_public: boolean;
-
-  @Prop({ type: [SectionSchema], default: [] })
-  sections: Section[];
-}
-export const AssignmentSchema = SchemaFactory.createForClass(Assignment);
-
-AssignmentSchema.virtual('id').get(function () {
-  return this._id;
-});
-
-AssignmentSchema.set('toJSON', {
-  virtuals: true,
-  transform: (_, ret: any) => {
-    delete ret.__v;
-    return ret;
-  },
-});
-
-

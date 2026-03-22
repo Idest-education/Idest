@@ -1,9 +1,13 @@
 import { Controller, Get, Post, Patch, Delete, Param, Body, HttpStatus, UseGuards, Req, Query } from '@nestjs/common';
-import { ApiTags, ApiBearerAuth, ApiOperation, ApiResponse, ApiQuery, ApiExtraModels, getSchemaPath } from '@nestjs/swagger';
+import { ApiTags, ApiBearerAuth, ApiOperation, ApiResponse, ApiQuery, ApiExtraModels } from '@nestjs/swagger';
 import { ReadingService } from './reading.service';
-import { CreateAssignmentV2Dto, ReadingSectionMaterialDto, ListeningSectionMaterialDto } from '../dto/v2/create-assignment-v2.dto';
-import { UpdateAssignmentV2Dto } from '../dto/v2/update-assignment-v2.dto';
-import { SubmitAssignmentV2Dto } from '../dto/v2/submit-assignment-v2.dto';
+import { CreateReadingAssignmentDto } from './dto/create-reading-assignment.dto';
+import {
+  ReadingSectionMaterialDto,
+  ListeningSectionMaterialDto,
+} from '../dto/objective/objective-assignment.dto';
+import { UpdateObjectiveAssignmentDto } from '../dto/objective/update-objective-assignment.dto';
+import { SubmitObjectiveAssignmentDto } from '../dto/objective/submit-objective.dto';
 import { JwtAuthGuard } from '../../guards/jwt-auth.guard';
 import { RolesGuard } from '../../guards/role.guard';
 import { Roles } from '../../decorators/role.decorator';
@@ -17,16 +21,14 @@ import { PaginationDto } from '../dto/pagination.dto';
 export class ReadingController {
   constructor(private readonly readingService: ReadingService) {}
 
-
   @Post('assignments')
   @Roles('ADMIN', 'TEACHER')
   @ApiOperation({ summary: 'Create reading assignment (ADMIN/TEACHER only)' })
   @ApiResponse({ status: HttpStatus.CREATED })
-  async create(@Body() dto: CreateAssignmentV2Dto, @Req() req: any) {
+  async create(@Body() dto: CreateReadingAssignmentDto, @Req() req: any) {
     const data = await this.readingService.createAssignment({
       ...dto,
       created_by: (dto as any).created_by || req.user?.sub || req.user?.userId,
-      slug: undefined as any,
     });
     return { status: true, message: 'Created', data, statusCode: HttpStatus.CREATED };
   }
@@ -40,6 +42,7 @@ export class ReadingController {
     const data = await this.readingService.findAll(pagination);
     return { status: true, message: 'Fetched', data, statusCode: HttpStatus.OK };
   }
+
   @Get('submissions')
   @ApiOperation({ summary: 'Get all reading submissions' })
   @ApiResponse({ status: HttpStatus.OK })
@@ -60,7 +63,7 @@ export class ReadingController {
   @Roles('ADMIN', 'TEACHER')
   @ApiOperation({ summary: 'Update reading assignment (ADMIN/TEACHER only)' })
   @ApiResponse({ status: HttpStatus.OK })
-  async update(@Param('id') id: string, @Body() dto: UpdateAssignmentV2Dto) {
+  async update(@Param('id') id: string, @Body() dto: UpdateObjectiveAssignmentDto) {
     const data = await this.readingService.update(id, dto);
     return { status: true, message: 'Updated', data, statusCode: HttpStatus.OK };
   }
@@ -75,19 +78,19 @@ export class ReadingController {
   }
 
   @Post('submissions')
-  @ApiOperation({ 
+  @ApiOperation({
     summary: 'Submit and grade reading assignment',
-    description: 'Submit answers for a reading assignment and receive immediate grading with a score from 0-9 (rounded to .0 or .5)'
+    description:
+      'Submit answers for a reading assignment and receive immediate grading with a score from 0-9 (rounded to .0 or .5)',
   })
   @ApiResponse({ status: HttpStatus.OK, description: 'Assignment graded and saved successfully' })
-  async submit(@Body() dto: SubmitAssignmentV2Dto, @Req() req: any) {
+  async submit(@Body() dto: SubmitObjectiveAssignmentDto, @Req() req: any) {
     const data = await this.readingService.gradeSubmission({
       ...dto,
       submitted_by: dto.submitted_by || req.user?.sub || req.user?.userId,
     });
     return { status: true, message: 'Graded', data, statusCode: HttpStatus.OK };
   }
-
 
   @Get('submissions/user/:userId')
   @ApiOperation({ summary: 'Get user reading submissions' })
@@ -112,8 +115,4 @@ export class ReadingController {
     const data = await this.readingService.getSubmission(id);
     return { status: true, message: 'Fetched', data, statusCode: HttpStatus.OK };
   }
-
-  
 }
-
-

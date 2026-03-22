@@ -1,18 +1,4 @@
-import { ApiProperty } from '@nestjs/swagger';
-import { IsEnum, ValidateNested, IsArray, ValidateIf, IsEmpty } from 'class-validator';
-import { Type } from 'class-transformer';
-import { CreateAssignmentDto, CreateSectionDto } from '../../dto/create-assignment.dto';
+import { CreateObjectiveAssignmentBaseDto } from '../../dto/objective/objective-assignment.dto';
 
-export class CreateReadingAssignmentDto extends CreateAssignmentDto {
-  @ApiProperty({ enum: ['reading'] })
-  @IsEnum(['reading'])
-  declare skill: 'reading';
-
-  @ApiProperty({ type: [CreateSectionDto] })
-  @IsArray()
-  @ValidateNested({ each: true })
-  @Type(() => CreateSectionDto)
-  declare sections: CreateSectionDto[];
-}
-
-
+/** Reading assignment create body (material.type must be `reading` per section). */
+export class CreateReadingAssignmentDto extends CreateObjectiveAssignmentBaseDto {}

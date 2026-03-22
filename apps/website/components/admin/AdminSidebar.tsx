@@ -7,18 +7,14 @@ import {
   LayoutDashboard,
   Users,
   GraduationCap,
-  FileText,
   Video,
   Settings,
-  ClipboardList,
 } from "lucide-react";
 
 const navItems = [
   { href: "/admin", label: "Dashboard", icon: LayoutDashboard },
   { href: "/admin/users", label: "Users", icon: Users },
   { href: "/admin/classes", label: "Classes", icon: GraduationCap },
-  { href: "/admin/assignments", label: "Assignments", icon: FileText },
-  { href: "/admin/submissions", label: "Submissions", icon: ClipboardList },
   { href: "/admin/sessions", label: "Sessions", icon: Video },
 ];
 

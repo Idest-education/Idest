@@ -1,12 +1,14 @@
 import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
 import { JwtModule } from '@nestjs/jwt';
-import { Assignment, AssignmentSchema } from './schemas/assignment-v2.schema';
-import { Submission, SubmissionSchema } from './schemas/submission.schema';
+import { ReadingAssignment, ReadingAssignmentSchema } from './schemas/reading-assignment.schema';
+import { ListeningAssignment, ListeningAssignmentSchema } from './schemas/listening-assignment.schema';
 import { WritingAssignment, WritingAssignmentSchema } from './schemas/writing-assignment.schema';
 import { SpeakingAssignment, SpeakingAssignmentSchema } from './schemas/speaking-assignment.schema';
+import { ReadingSubmission, ReadingSubmissionSchema } from './schemas/reading-submission.schema';
+import { ListeningSubmission, ListeningSubmissionSchema } from './schemas/listening-submission.schema';
 import { WritingSubmission, WritingSubmissionSchema } from './writing/schemas/writing-submission.schema';
-import { SpeakingResponse, SpeakingResponseSchema } from './speaking/schemas/speaking-response.schema';
+import { SpeakingSubmission, SpeakingSubmissionSchema } from './speaking/schemas/speaking-submission.schema';
 import { JwtAuthGuard } from '../guards/jwt-auth.guard';
 import { AssignmentController } from './assignment.controller';
 import { AssignmentService } from './assignment.service';
@@ -18,12 +20,14 @@ import { SpeakingModule } from './speaking/speaking.module';
 @Module({
   imports: [
     MongooseModule.forFeature([
-      { name: Assignment.name, schema: AssignmentSchema },
-      { name: Submission.name, schema: SubmissionSchema },
+      { name: ReadingAssignment.name, schema: ReadingAssignmentSchema },
+      { name: ListeningAssignment.name, schema: ListeningAssignmentSchema },
       { name: WritingAssignment.name, schema: WritingAssignmentSchema },
       { name: SpeakingAssignment.name, schema: SpeakingAssignmentSchema },
+      { name: ReadingSubmission.name, schema: ReadingSubmissionSchema },
+      { name: ListeningSubmission.name, schema: ListeningSubmissionSchema },
       { name: WritingSubmission.name, schema: WritingSubmissionSchema },
-      { name: SpeakingResponse.name, schema: SpeakingResponseSchema },
+      { name: SpeakingSubmission.name, schema: SpeakingSubmissionSchema },
     ]),
     JwtModule.register({
       secret: process.env.JWT_SECRET || 'default-secret-key',

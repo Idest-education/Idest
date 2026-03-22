@@ -1,18 +1,18 @@
 import { Controller, Post, Body, Param, UploadedFiles, UseInterceptors } from '@nestjs/common';
 import { RabbitService } from '../rabbit/rabbit.service';
-import { SubmitAssignmentDto } from '../assignment/dto/submit-assignment.dto';
+import { SubmitObjectiveAssignmentDto } from '../assignment/dto/objective/submit-objective.dto';
 import { CreateWritingSubmissionDto } from '../assignment/writing/dto/create-writing-submission.dto';
 import { FileFieldsInterceptor } from '@nestjs/platform-express';
-import { CreateSpeakingResponseDto } from '../assignment/speaking/dto/create-speaking-response.dto';
+import { CreateSpeakingSubmissionDto } from '../assignment/speaking/dto/create-speaking-submission.dto';
 
-@Controller("grade")
+@Controller('grade')
 export class GradeController {
   constructor(private readonly rabbitService: RabbitService) {}
 
   @Post(':skill')
   async submitJson(
     @Param('skill') skill: 'reading' | 'listening',
-    @Body() body: SubmitAssignmentDto
+    @Body() body: SubmitObjectiveAssignmentDto,
   ) {
     await this.rabbitService.send('grade_queue', {
       skill,
@@ -24,31 +24,31 @@ export class GradeController {
   }
 
   @Post('writing/submissions')
-  async submitWriting(
-    @Body() body: CreateWritingSubmissionDto
-  ) {
+  async submitWriting(@Body() body: CreateWritingSubmissionDto) {
     await this.rabbitService.send('grade_queue', {
       skill: 'writing',
       assignmentId: body.assignment_id,
       userId: body.user_id,
-      contentOne: body.contentOne,
-      contentTwo: body.contentTwo,
+      content_by_task_id: body.content_by_task_id,
     });
     return { message: 'Your submission has been queued for grading' };
   }
 
   @Post('speaking/submissions')
-  @UseInterceptors(FileFieldsInterceptor([
-    { name: 'audioOne', maxCount: 1 },
-    { name: 'audioTwo', maxCount: 1 },
-    { name: 'audioThree', maxCount: 1 },
-  ]))
+  @UseInterceptors(
+    FileFieldsInterceptor([
+      { name: 'audioOne', maxCount: 1 },
+      { name: 'audioTwo', maxCount: 1 },
+      { name: 'audioThree', maxCount: 1 },
+    ]),
+  )
   async submitSpeaking(
-    @Body() dto: CreateSpeakingResponseDto,
-    @UploadedFiles() files: {
-      audioOne?: Express.Multer.File[],
-      audioTwo?: Express.Multer.File[],
-      audioThree?: Express.Multer.File[],
+    @Body() dto: CreateSpeakingSubmissionDto,
+    @UploadedFiles()
+    files: {
+      audioOne?: Express.Multer.File[];
+      audioTwo?: Express.Multer.File[];
+      audioThree?: Express.Multer.File[];
     },
   ) {
     const payload = {

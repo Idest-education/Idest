@@ -3,7 +3,6 @@ import { Type } from 'class-transformer';
 import {
   IsArray,
   IsBoolean,
-  IsEnum,
   IsNumber,
   IsOptional,
   IsString,
@@ -12,11 +11,9 @@ import {
   IsIn,
   IsObject,
 } from 'class-validator';
+import { OBJECTIVE_QUESTION_TYPES } from '../../schemas/shared/objective-shared.schema';
 
-/**
- * DTOs for Assignment Schema V2.
- * Backward incompatible with v1.
- */
+const QUESTION_TYPES_LIST = [...OBJECTIVE_QUESTION_TYPES] as string[];
 
 export class MediaAssetDto {
   @ApiProperty()
@@ -24,7 +21,7 @@ export class MediaAssetDto {
   id: string;
 
   @ApiProperty({ enum: ['image', 'audio', 'file'] })
-  @IsEnum(['image', 'audio', 'file'])
+  @IsIn(['image', 'audio', 'file'])
   kind: 'image' | 'audio' | 'file';
 
   @ApiProperty()
@@ -78,7 +75,7 @@ export class StimulusTemplateDto {
   @IsIn(['text'])
   format: 'text';
 
-  @ApiProperty({ description: 'Template body with placeholders like {{blank:1}}' })
+  @ApiProperty()
   @IsString()
   body: string;
 
@@ -123,44 +120,24 @@ export class QuestionDto {
   @IsNumber()
   order_index: number;
 
-  @ApiProperty({
-    enum: [
-      'gap_fill_template',
-      'multiple_choice_single',
-      'multiple_choice_multi',
-      'true_false_not_given',
-      'matching',
-      'diagram_labeling',
-      'short_answer',
-    ],
-  })
-  @IsEnum([
-    'gap_fill_template',
-    'multiple_choice_single',
-    'multiple_choice_multi',
-    'true_false_not_given',
-    'matching',
-    'diagram_labeling',
-    'short_answer',
-  ])
-  type:
-    | 'gap_fill_template'
-    | 'multiple_choice_single'
-    | 'multiple_choice_multi'
-    | 'true_false_not_given'
-    | 'matching'
-    | 'diagram_labeling'
-    | 'short_answer';
+  @ApiProperty({ enum: QUESTION_TYPES_LIST })
+  @IsIn(QUESTION_TYPES_LIST)
+  type: string;
 
   @ApiPropertyOptional()
   @IsOptional()
   @IsString()
   prompt_md?: string;
 
-  @ApiProperty({ type: StimulusDto })
+  @ApiPropertyOptional({
+    type: StimulusDto,
+    description:
+      'Optional per-question stimulus; use QuestionGroup.stimulus for shared images/diagrams for the whole group.',
+  })
+  @IsOptional()
   @ValidateNested()
   @Type(() => StimulusDto)
-  stimulus: StimulusDto;
+  stimulus?: StimulusDto;
 
   @ApiProperty({ description: 'Type-specific interaction payload' })
   @IsObject()
@@ -189,6 +166,16 @@ export class QuestionGroupDto {
   @IsOptional()
   @IsString()
   instructions_md?: string;
+
+  @ApiPropertyOptional({
+    type: StimulusDto,
+    description:
+      'Shared stimulus for the whole group (e.g. image to label, map, diagram). Questions 14–20 on one figure.',
+  })
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => StimulusDto)
+  stimulus?: StimulusDto;
 
   @ApiProperty({ type: [QuestionDto] })
   @IsArray()
@@ -250,13 +237,7 @@ export class SectionDto {
   @IsNumber()
   order_index: number;
 
-  @ApiProperty({
-    description: 'Discriminated by `type`: reading or listening',
-    oneOf: [
-      { $ref: '#/components/schemas/ReadingSectionMaterialDto' },
-      { $ref: '#/components/schemas/ListeningSectionMaterialDto' },
-    ],
-  })
+  @ApiProperty()
   @ValidateNested()
   @Type(() => Object)
   material: ReadingSectionMaterialDto | ListeningSectionMaterialDto;
@@ -268,7 +249,7 @@ export class SectionDto {
   question_groups: QuestionGroupDto[];
 }
 
-export class CreateAssignmentV2Dto {
+export class CreateObjectiveAssignmentBaseDto {
   @ApiPropertyOptional()
   @IsOptional()
   @IsString()
@@ -278,10 +259,6 @@ export class CreateAssignmentV2Dto {
   @IsOptional()
   @IsString()
   class_id?: string;
-
-  @ApiProperty({ enum: ['reading', 'listening', 'writing', 'speaking'] })
-  @IsEnum(['reading', 'listening', 'writing', 'speaking'])
-  skill: 'reading' | 'listening' | 'writing' | 'speaking';
 
   @ApiPropertyOptional()
   @IsOptional()
@@ -307,5 +284,3 @@ export class CreateAssignmentV2Dto {
   @Type(() => SectionDto)
   sections: SectionDto[];
 }
-
-

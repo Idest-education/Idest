@@ -112,12 +112,23 @@ export class GradeService implements OnModuleInit {
         return;
       }
 
-      let question = `Task 1: ${assignment.taskone}\nTask 2: ${assignment.tasktwo}`;
-      if (assignment.imgDescription) {
-        question += `\n\nImage Description for task 1: ${assignment.imgDescription}`;
+      const tasks = assignment.tasks ?? [];
+      let question = '';
+      for (const t of tasks) {
+        question += `Task ${t.task_number} (${t.id}):\n${t.prompt_md}\n`;
+        if (t.instructions_md) question += `${t.instructions_md}\n`;
+        if (t.stimulus?.data_description_md) {
+          question += `Data / context: ${t.stimulus.data_description_md}\n`;
+        }
+        question += '\n';
       }
 
-      const submissionText = `Task 1 Answer:\n${message.contentOne}\n\nTask 2 Answer:\n${message.contentTwo}`;
+      const byTask = message.content_by_task_id ?? {};
+      let submissionText = '';
+      for (const t of tasks) {
+        const text = byTask[t.id] ?? '';
+        submissionText += `Task ${t.task_number} (${t.id}):\n${text}\n\n`;
+      }
 
       const gradeResponseText = await this.gradeWritingSubmission(
         submissionText,
@@ -186,16 +197,27 @@ export class GradeService implements OnModuleInit {
       let answer = '';
 
       assignment.parts?.forEach((part: any) => {
-        question += `Part ${part.part_number}: \n`;
-        part.questions?.forEach((q: any) => {
-          question += `Q${q.order_index}: ${q.prompt}\n`;
+        question += `Part ${part.part_number}:\n`;
+        if (part.cue_card) {
+          question += `Topic: ${part.cue_card.topic_md}\n`;
+          (part.cue_card.bullet_points ?? []).forEach((b: string) => {
+            question += `- ${b}\n`;
+          });
+        }
+        (part.items ?? []).forEach((item: any) => {
+          question += `Q: ${item.prompt_md}\n`;
+          (item.follow_up_prompts ?? []).forEach((f: string) => {
+            question += `  Follow-up: ${f}\n`;
+          });
         });
         question += '\n';
       });
 
-      if (transcriptOne) answer += `Part 1:\n${transcriptOne}\n\n`;
-      if (transcriptTwo) answer += `Part 2:\n${transcriptTwo}\n\n`;
-      if (transcriptThree) answer += `Part 3:\n${transcriptThree}\n\n`;
+      const transcripts: Array<{ part_number: number; item_id?: string; text?: string }> = [];
+      if (transcriptOne) transcripts.push({ part_number: 1, text: transcriptOne });
+      if (transcriptTwo) transcripts.push({ part_number: 2, text: transcriptTwo });
+      if (transcriptThree) transcripts.push({ part_number: 3, text: transcriptThree });
+      answer = transcripts.map((t) => `Part ${t.part_number}:\n${t.text ?? ''}`).join('\n\n');
 
       const gradeResponseText = await this.gradeSpeakingSubmission(
         question,
@@ -211,11 +233,14 @@ export class GradeService implements OnModuleInit {
         return;
       }
 
+      const transcriptItems: Array<{ part_number: number; item_id?: string; text?: string }> = [];
+      if (transcriptOne) transcriptItems.push({ part_number: 1, text: transcriptOne });
+      if (transcriptTwo) transcriptItems.push({ part_number: 2, text: transcriptTwo });
+      if (transcriptThree) transcriptItems.push({ part_number: 3, text: transcriptThree });
+
       const result = await this.speakingService.updateResponseGrade({
         responseId,
-        transcriptOne,
-        transcriptTwo,
-        transcriptThree,
+        transcripts: transcriptItems,
         score: gradeResponse.score,
         feedback: gradeResponse.feedback,
       });

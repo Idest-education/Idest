@@ -1,45 +1,45 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
-import { Assignment, AssignmentDocument } from '../schemas/assignment-v2.schema';
-import { Submission, SubmissionDocument } from '../schemas/submission.schema';
-import { CreateAssignmentV2Dto } from '../dto/v2/create-assignment-v2.dto';
-import { UpdateAssignmentV2Dto } from '../dto/v2/update-assignment-v2.dto';
-import { SubmitAssignmentV2Dto } from '../dto/v2/submit-assignment-v2.dto';
+import { ListeningAssignment, ListeningAssignmentDocument } from '../schemas/listening-assignment.schema';
+import { ListeningSubmission, ListeningSubmissionDocument } from '../schemas/listening-submission.schema';
+import { CreateListeningAssignmentDto } from './dto/create-listening-assignment.dto';
+import { UpdateObjectiveAssignmentDto } from '../dto/objective/update-objective-assignment.dto';
+import { SubmitObjectiveAssignmentDto } from '../dto/objective/submit-objective.dto';
 import { generateUniqueSlug } from '../utils/slug.util';
-import { gradeAssignmentV2, GradingResultV2 } from '../utils/grading-v2.util';
+import { gradeObjectiveAssignment } from '../utils/grading-objective.util';
 import { PaginationDto, PaginatedResponse } from '../dto/pagination.dto';
 
 @Injectable()
 export class ListeningService {
   constructor(
-    @InjectModel(Assignment.name)
-    private assignmentModel: Model<AssignmentDocument>,
-    @InjectModel(Submission.name)
-    private submissionModel: Model<SubmissionDocument>,
+    @InjectModel(ListeningAssignment.name)
+    private listeningAssignmentModel: Model<ListeningAssignmentDocument>,
+    @InjectModel(ListeningSubmission.name)
+    private listeningSubmissionModel: Model<ListeningSubmissionDocument>,
   ) {}
 
-  private assertListeningSections(sections: CreateAssignmentV2Dto['sections']) {
+  private assertListeningSections(sections: CreateListeningAssignmentDto['sections']) {
     for (const s of sections) {
-      if ((s as any)?.material?.type !== 'listening') throw new BadRequestException('material.type must be listening for listening sections');
+      if ((s as any)?.material?.type !== 'listening') {
+        throw new BadRequestException('material.type must be listening for listening sections');
+      }
     }
   }
 
-  async createAssignment(dto: CreateAssignmentV2Dto) {
-    if (dto.skill && dto.skill !== 'listening') throw new BadRequestException('skill must be listening');
+  async createAssignment(dto: CreateListeningAssignmentDto) {
     this.assertListeningSections(dto.sections);
     const data = {
       ...dto,
-      slug: dto.slug ?? await generateUniqueSlug(dto.title, this.assignmentModel),
-      skill: 'listening',
+      slug: dto.slug ?? (await generateUniqueSlug(dto.title, this.listeningAssignmentModel)),
     } as any;
-    const created = new this.assignmentModel(data);
+    const created = new this.listeningAssignmentModel(data);
     return created.save();
   }
 
   async findAll(pagination?: PaginationDto): Promise<PaginatedResponse<any> | any[]> {
     if (!pagination) {
-      return this.assignmentModel.find({ skill: 'listening' }).exec();
+      return this.listeningAssignmentModel.find().exec();
     }
 
     const page = pagination.page || 1;
@@ -47,8 +47,8 @@ export class ListeningService {
     const skip = (page - 1) * limit;
 
     const [data, total] = await Promise.all([
-      this.assignmentModel.find({ skill: 'listening' }).skip(skip).limit(limit).exec(),
-      this.assignmentModel.countDocuments({ skill: 'listening' }).exec(),
+      this.listeningAssignmentModel.find().skip(skip).limit(limit).exec(),
+      this.listeningAssignmentModel.countDocuments().exec(),
     ]);
 
     const totalPages = Math.ceil(total / limit);
@@ -67,70 +67,68 @@ export class ListeningService {
   }
 
   async findOne(id: string) {
-    return this.assignmentModel.findOne({ _id: id, skill: 'listening' }).exec();
+    const doc: any = await this.listeningAssignmentModel.findOne({ _id: id }).lean().exec();
+    if (!doc) return doc;
+    for (const section of doc.sections ?? []) {
+      for (const group of section.question_groups ?? []) {
+        for (const q of group.questions ?? []) {
+          delete q.answer_key;
+        }
+      }
+    }
+    return doc;
   }
 
-  async update(id: string, dto: UpdateAssignmentV2Dto) {
-    if (dto.skill && dto.skill !== 'listening') throw new BadRequestException('skill must be listening');
+  async update(id: string, dto: UpdateObjectiveAssignmentDto) {
     if (dto.sections) this.assertListeningSections(dto.sections as any);
-    return this.assignmentModel
-      .findOneAndUpdate({ _id: id, skill: 'listening' }, dto, { new: true, runValidators: true })
+    return this.listeningAssignmentModel
+      .findOneAndUpdate({ _id: id }, dto, { new: true, runValidators: true })
       .exec();
   }
 
   async remove(id: string) {
-    return this.assignmentModel.findOneAndDelete({ _id: id, skill: 'listening' }).exec();
+    return this.listeningAssignmentModel.findOneAndDelete({ _id: id }).exec();
   }
 
-  async gradeSubmission(submission: SubmitAssignmentV2Dto): Promise<Submission> {
-    const assignment = await this.assignmentModel
-      .findOne({ _id: submission.assignment_id, skill: 'listening' })
-      .exec();
+  async gradeSubmission(submission: SubmitObjectiveAssignmentDto): Promise<ListeningSubmission> {
+    const assignment = await this.listeningAssignmentModel.findOne({ _id: submission.assignment_id }).exec();
 
     if (!assignment) {
       throw new NotFoundException('Listening assignment not found');
     }
 
-    const gradingResult = gradeAssignmentV2(assignment as any, submission as any);
+    const gradingResult = gradeObjectiveAssignment(assignment as any, submission as any);
 
     const submissionData = {
       assignment_id: submission.assignment_id,
       submitted_by: submission.submitted_by,
-      skill: 'listening',
-      answers_v2: submission.section_answers,
+      answers: { section_answers: submission.section_answers },
       ...gradingResult,
     };
 
-    const createdSubmission = new this.submissionModel(submissionData);
+    const createdSubmission = new this.listeningSubmissionModel(submissionData);
     return createdSubmission.save();
   }
 
   async getAllSubmissions() {
-    const results = await this.submissionModel.find({ skill: 'listening' }).exec();
-    return results || [];
+    return this.listeningSubmissionModel.find().exec();
   }
 
   async getUserSubmissions(userId: string) {
-    const results = await this.submissionModel.find({ skill: 'listening', submitted_by: userId }).exec();
-    return results || [];
+    return this.listeningSubmissionModel.find({ submitted_by: userId }).exec();
   }
 
   async getAssignmentSubmissions(assignmentId: string) {
-    const results = await this.submissionModel.find({ skill: 'listening', assignment_id: assignmentId }).exec();
-    return results || [];
+    return this.listeningSubmissionModel.find({ assignment_id: assignmentId }).exec();
   }
 
   async getSubmission(id: string) {
-    const submission = await this.submissionModel
-      .findOne({ _id: id, skill: 'listening' })
-      .exec();
-    
+    const submission = await this.listeningSubmissionModel.findOne({ _id: id }).exec();
+
     if (!submission) {
       throw new NotFoundException('Submission not found');
     }
-    
+
     return submission;
   }
 }
-
-

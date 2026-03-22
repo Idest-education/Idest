@@ -3,15 +3,15 @@ import { MongooseModule } from '@nestjs/mongoose';
 import { JwtModule } from '@nestjs/jwt';
 import { ReadingService } from './reading.service';
 import { ReadingController } from './reading.controller';
-import { Assignment, AssignmentSchema } from '../schemas/assignment-v2.schema';
-import { Submission, SubmissionSchema } from '../schemas/submission.schema';
+import { ReadingAssignment, ReadingAssignmentSchema } from '../schemas/reading-assignment.schema';
+import { ReadingSubmission, ReadingSubmissionSchema } from '../schemas/reading-submission.schema';
 import { JwtAuthGuard } from '../../guards/jwt-auth.guard';
 
 @Module({
   imports: [
     MongooseModule.forFeature([
-      { name: Assignment.name, schema: AssignmentSchema },
-      { name: Submission.name, schema: SubmissionSchema },
+      { name: ReadingAssignment.name, schema: ReadingAssignmentSchema },
+      { name: ReadingSubmission.name, schema: ReadingSubmissionSchema },
     ]),
     JwtModule.register({
       secret: process.env.JWT_SECRET || 'default-secret-key',
@@ -23,5 +23,3 @@ import { JwtAuthGuard } from '../../guards/jwt-auth.guard';
   exports: [ReadingService],
 })
 export class ReadingModule {}
-
-

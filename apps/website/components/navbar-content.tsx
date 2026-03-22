@@ -12,8 +12,6 @@ import Logo from "@/assets/logo.png";
 const navItems = [
   { href: "/classes", label: "Lớp học" },
   { href: "/sessions", label: "Buổi học" },
-  { href: "/assignment", label: "Bài tập" },
-  { href: "/assignment/submissions", label: "Bài nộp" },
   { href: "/service-status", label: "Trạng thái dịch vụ" },
 ];
 

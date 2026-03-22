@@ -1,9 +1,9 @@
-import { Controller, Get, Post, Patch, Delete, Param, Body, HttpStatus, UseGuards, UseInterceptors, UploadedFile, UploadedFiles, Query } from '@nestjs/common';
+import { Controller, Get, Post, Patch, Delete, Param, Body, HttpStatus, UseGuards, UseInterceptors, UploadedFile, UploadedFiles, Query, Req } from '@nestjs/common';
 import { ApiTags, ApiBearerAuth, ApiOperation, ApiResponse, ApiConsumes, ApiBody, ApiQuery } from '@nestjs/swagger';
 import { SpeakingService } from './speaking.service';
 import { CreateSpeakingAssignmentDto } from './dto/create-speaking-assignment.dto';
 import { UpdateSpeakingAssignmentDto } from './dto/update-speaking-assignment.dto';
-import { CreateSpeakingResponseDto } from './dto/create-speaking-response.dto';
+import { CreateSpeakingSubmissionDto } from './dto/create-speaking-submission.dto';
 import { JwtAuthGuard } from '../../guards/jwt-auth.guard';
 import { RolesGuard } from '../../guards/role.guard';
 import { Roles } from '../../decorators/role.decorator';
@@ -21,8 +21,11 @@ export class SpeakingController {
   @Roles('ADMIN', 'TEACHER')
   @ApiOperation({ summary: 'Create speaking assignment (ADMIN/TEACHER only)' })
   @ApiResponse({ status: HttpStatus.CREATED })
-  async create(@Body() dto: CreateSpeakingAssignmentDto) {
-    const data = await this.speakingService.createAssignment(dto);
+  async create(@Body() dto: CreateSpeakingAssignmentDto, @Req() req: any) {
+    const data = await this.speakingService.createAssignment({
+      ...dto,
+      created_by: dto.created_by || req.user?.sub || req.user?.userId,
+    });
     return { status: true, message: 'Created', data, statusCode: HttpStatus.CREATED };
   }
 
@@ -86,7 +89,7 @@ export class SpeakingController {
   ]))
   @ApiResponse({ status: HttpStatus.CREATED })
   async submitResponse(
-    @Body() dto: CreateSpeakingResponseDto,
+    @Body() dto: CreateSpeakingSubmissionDto,
     @UploadedFiles() files: {
       audioOne?: Express.Multer.File[],
       audioTwo?: Express.Multer.File[],

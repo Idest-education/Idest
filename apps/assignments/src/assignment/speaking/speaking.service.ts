@@ -2,8 +2,8 @@ import { BadRequestException, Injectable, Inject, forwardRef } from '@nestjs/com
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { SpeakingAssignment, SpeakingAssignmentDocument } from '../schemas/speaking-assignment.schema';
-import { SpeakingResponse, SpeakingResponseDocument } from './schemas/speaking-response.schema';
-import { CreateSpeakingResponseDto } from './dto/create-speaking-response.dto';
+import { SpeakingSubmission, SpeakingSubmissionDocument } from './schemas/speaking-submission.schema';
+import { CreateSpeakingSubmissionDto } from './dto/create-speaking-submission.dto';
 import { CreateSpeakingAssignmentDto } from './dto/create-speaking-assignment.dto';
 import { UpdateSpeakingAssignmentDto } from './dto/update-speaking-assignment.dto';
 import { GradeService } from '../../grade/grade.service';
@@ -12,14 +12,15 @@ import { concatenateAudioFiles, getExtensionFromMimetype } from '../utils/audio.
 import { v4 as uuidv4 } from 'uuid';
 import { PaginationDto, PaginatedResponse } from '../dto/pagination.dto';
 import { RabbitService } from '../../rabbit/rabbit.service';
+import { generateUniqueSlug } from '../utils/slug.util';
 
 @Injectable()
 export class SpeakingService {
   constructor(
     @InjectModel(SpeakingAssignment.name)
     private speakingAssignmentModel: Model<SpeakingAssignmentDocument>,
-    @InjectModel(SpeakingResponse.name)
-    private speakingResponseModel: Model<SpeakingResponseDocument>,
+    @InjectModel(SpeakingSubmission.name)
+    private speakingSubmissionModel: Model<SpeakingSubmissionDocument>,
     @Inject(forwardRef(() => GradeService))
     private gradeService: GradeService,
     private supabaseService: SupabaseService,
@@ -27,7 +28,11 @@ export class SpeakingService {
   ) {}
 
   async createAssignment(dto: CreateSpeakingAssignmentDto) {
-    const created = new this.speakingAssignmentModel(dto);
+    const data = {
+      ...dto,
+      slug: dto.slug ?? (await generateUniqueSlug(dto.title, this.speakingAssignmentModel)),
+    } as any;
+    const created = new this.speakingAssignmentModel(data);
     return created.save();
   }
 
@@ -75,42 +80,33 @@ export class SpeakingService {
   }
 
   async submitResponse(
-    dto: CreateSpeakingResponseDto,
+    dto: CreateSpeakingSubmissionDto,
     files: {
-      audioOne?: Express.Multer.File[],
-      audioTwo?: Express.Multer.File[],
-      audioThree?: Express.Multer.File[],
+      audioOne?: Express.Multer.File[];
+      audioTwo?: Express.Multer.File[];
+      audioThree?: Express.Multer.File[];
     },
   ) {
     const assignment = await this.speakingAssignmentModel.findOne({ _id: dto.assignment_id }).exec();
     if (!assignment) throw new BadRequestException('assignment_id must reference a speaking assignment');
-    
+
     const submissionId = dto.id || uuidv4();
 
     let audioUrl: string | undefined;
 
     const audioFiles: Express.Multer.File[] = [];
-    
+
     if (files.audioOne?.[0]) audioFiles.push(files.audioOne[0]);
     if (files.audioTwo?.[0]) audioFiles.push(files.audioTwo[0]);
     if (files.audioThree?.[0]) audioFiles.push(files.audioThree[0]);
-    
+
     if (audioFiles.length > 0) {
-      console.log(`Concatenating ${audioFiles.length} audio files...`);
       const { buffer, mimetype } = concatenateAudioFiles(audioFiles);
-      
       const extension = getExtensionFromMimetype(mimetype);
       const fileName = `${submissionId}.${extension}`;
-      
-      console.log(`Uploading combined audio to Supabase bucket "audio" as ${fileName}...`);
+
       try {
-        audioUrl = await this.supabaseService.uploadFile(
-          'audio',
-          fileName,
-          buffer,
-          mimetype,
-        );
-        console.log(`Audio uploaded successfully: ${audioUrl}`);
+        audioUrl = await this.supabaseService.uploadFile('audio', fileName, buffer, mimetype);
       } catch (error) {
         console.error('Failed to upload audio to Supabase:', error);
         audioUrl = '';
@@ -118,17 +114,16 @@ export class SpeakingService {
     }
 
     const payload = {
-      ...dto,
-      id: submissionId,
+      _id: submissionId,
+      assignment_id: dto.assignment_id,
+      user_id: dto.user_id,
       audio_url: audioUrl || '',
-      transcriptOne: undefined,
-      transcriptTwo: undefined,
-      transcriptThree: undefined,
+      transcripts: [],
       score: undefined,
       feedback: undefined,
       status: 'pending',
     } as any;
-    const created = new this.speakingResponseModel(payload);
+    const created = new this.speakingSubmissionModel(payload);
     const saved = await created.save();
 
     try {
@@ -162,8 +157,8 @@ export class SpeakingService {
         },
       });
     } catch (error) {
-      await this.speakingResponseModel
-        .findOneAndUpdate({ id: submissionId }, { status: 'failed' }, { new: true })
+      await this.speakingSubmissionModel
+        .findOneAndUpdate({ _id: submissionId }, { status: 'failed' }, { new: true })
         .exec();
       throw error;
     }
@@ -173,47 +168,43 @@ export class SpeakingService {
 
   async updateResponseGrade(params: {
     responseId: string;
-    transcriptOne?: string;
-    transcriptTwo?: string;
-    transcriptThree?: string;
+    transcripts?: Array<{ part_number: number; item_id?: string; text?: string }>;
     score?: number;
     feedback?: string;
   }) {
-    const { responseId, ...update } = params;
-    return this.speakingResponseModel
+    const { responseId, transcripts, score, feedback } = params;
+    return this.speakingSubmissionModel
       .findOneAndUpdate(
-        { id: responseId },
-        { ...update, status: 'graded' },
+        { _id: responseId },
+        { transcripts, score, feedback, status: 'graded' },
         { new: true },
       )
       .exec();
   }
 
   async markResponseFailed(responseId: string) {
-    return this.speakingResponseModel
-      .findOneAndUpdate({ id: responseId }, { status: 'failed' }, { new: true })
+    return this.speakingSubmissionModel
+      .findOneAndUpdate({ _id: responseId }, { status: 'failed' }, { new: true })
       .exec();
   }
 
   async getResponse(id: string) {
-    return this.speakingResponseModel.findOne({ id }).exec();
+    return this.speakingSubmissionModel.findOne({ _id: id }).exec();
   }
 
   async getAllResponses() {
-    return this.speakingResponseModel.find().exec();
+    return this.speakingSubmissionModel.find().exec();
   }
 
   async getUserResponses(userId: string) {
-    return this.speakingResponseModel.find({ user_id: userId }).exec();
+    return this.speakingSubmissionModel.find({ user_id: userId }).exec();
   }
 
   async getAssignmentResponses(assignmentId: string) {
-    return this.speakingResponseModel.find({ assignment_id: assignmentId }).exec();
+    return this.speakingSubmissionModel.find({ assignment_id: assignmentId }).exec();
   }
 
   async speechToText(file: Express.Multer.File) {
     return this.gradeService.speechToText(file);
   }
 }
-
-
