@@ -10,6 +10,8 @@ from __future__ import annotations
 import re
 from pathlib import Path
 
+from ielts_ai.paths import APPS_AI_DIR
+
 from ..text_utils import body_paragraphs, split_paragraphs, split_sentences
 
 __all__ = [
@@ -60,7 +62,7 @@ MARKER_GROUPS: dict[str, list[str]] = _load_marker_groups()
 
 def get_cache_dir() -> Path:
     """Return the shared cache directory for reusable feature artifacts."""
-    cache_dir = Path(__file__).resolve().parents[2] / "cache"
+    cache_dir = APPS_AI_DIR / "cache"
     cache_dir.mkdir(parents=True, exist_ok=True)
     return cache_dir
 

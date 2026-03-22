@@ -13,14 +13,11 @@ try:
 except ImportError:
     CatBoostRegressor = None
 
-
-_path = Path(__file__).resolve()
-try:
-    PROJECT_ROOT = _path.parents[2]  # Monorepo root when running from apps/ai/
-except IndexError:
-    PROJECT_ROOT = _path.parent  # Use app dir when shallow (e.g. Docker /app)
-ARTIFACT_DIR = PROJECT_ROOT / "models" / "rubric_catboost"
+from ielts_ai.paths import ARTIFACT_DIR
 RUBRIC_TARGETS = ("TA", "CC", "LR", "GR")
+DIRECT_OVERALL_TARGET = "overall_direct"
+DERIVED_OVERALL_TARGET = "overall_from_rubrics"
+HYBRID_OVERALL_TARGET = "overall_hybrid_stacked"
 RUBRIC_RESPONSE_KEYS = {
     "TA": "task_achievement",
     "CC": "coherence",
@@ -37,7 +34,7 @@ DEFAULT_MODEL_FILES = {
 
 
 def _feature_dependencies():
-    from writing_scorer.features import (
+    from ielts_ai.writing_scorer.features import (
         EMBEDDING_FEATURE_NAMES,
         LT_FEATURE_NAMES,
         extract_classical_features,
@@ -63,7 +60,7 @@ def _feature_dependencies():
 
 
 def _llm_dependencies():
-    from writing_scorer.llm_features import LLM_FEATURE_NAMES, judge_essay
+    from ielts_ai.writing_scorer.llm_features import LLM_FEATURE_NAMES, judge_essay
 
     return {
         "LLM_FEATURE_NAMES": LLM_FEATURE_NAMES,
@@ -86,7 +83,7 @@ def derive_overall_score(rubric_scores: dict[str, float]) -> float:
 
 @dataclass(frozen=True)
 class ScoringResult:
-    scores: dict[str, float]
+    scores: dict[str, Any]
     description: str
     metadata: dict[str, Any]
 
@@ -103,6 +100,13 @@ class ArtifactBackedScorer:
         self.feature_names = list(self.metadata.get("feature_names", []))
         if not self.feature_names:
             raise RuntimeError("Model metadata is missing feature_names.")
+        self.calibrators = self._load_calibrators()
+        self.selected_overall_strategy = self.metadata.get(
+            "selected_overall_strategy",
+            DIRECT_OVERALL_TARGET,
+        )
+        self.abstention_policy = dict(self.metadata.get("abstention_policy", {}))
+        self.confidence_policy = dict(self.metadata.get("confidence_policy", {}))
         self._features = _feature_dependencies()
         self._llm = _llm_dependencies()
         self.feature_flags = self._features["resolve_feature_flags"](self.metadata.get("feature_flags"))
@@ -128,6 +132,78 @@ class ArtifactBackedScorer:
         if not loaded:
             raise RuntimeError(f"No CatBoost model artifacts found in {self.artifact_dir}")
         return loaded
+
+    def _load_calibrators(self) -> dict[str, dict[str, Any]]:
+        calibrator_name = self.metadata.get("calibrator_file", "calibrator.json")
+        calibrator_path = self.artifact_dir / calibrator_name
+        if not calibrator_path.exists():
+            return {}
+        with calibrator_path.open(encoding="utf-8") as handle:
+            payload = json.load(handle)
+        return payload if isinstance(payload, dict) else {}
+
+    def _apply_calibrator(self, key: str, value: float) -> float:
+        spec = self.calibrators.get(key)
+        raw = float(np.ravel(clip_scores(value))[0])
+        if not spec or spec.get("kind") == "identity":
+            return raw
+        if spec.get("kind") != "isotonic":
+            return raw
+        x_thresholds = np.asarray(spec.get("x_thresholds", []), dtype=np.float64)
+        y_thresholds = np.asarray(spec.get("y_thresholds", []), dtype=np.float64)
+        if len(x_thresholds) == 0 or len(y_thresholds) == 0:
+            return raw
+        return float(np.ravel(clip_scores(np.interp(raw, x_thresholds, y_thresholds)))[0])
+
+    def _agreement_confidence(self, candidates: dict[str, float]) -> float | None:
+        """Heuristic 0–1 score from spread of direct / derived / hybrid overall candidates."""
+        if not self.confidence_policy.get("enabled"):
+            return None
+        values = [float(v) for v in candidates.values() if np.isfinite(v)]
+        if len(values) < 2:
+            return 1.0 if len(values) == 1 else None
+        spread = max(values) - min(values)
+        return float(max(0.0, min(1.0, 1.0 - spread / 1.5)))
+
+    def _display_band(self, value: float) -> str:
+        clipped = float(np.ravel(clip_scores(value))[0])
+        if clipped <= 4.0:
+            return "<=4"
+        if clipped >= 8.5:
+            return ">=8.5"
+        return f"{round(float(np.ravel(round_to_half_band(clipped))[0]), 1):.1f}"
+
+    def _build_hybrid_meta_features(
+        self,
+        rubric_scores: dict[str, float],
+        direct_overall: float,
+    ) -> np.ndarray:
+        rubric_values = np.asarray([rubric_scores[target] for target in RUBRIC_TARGETS], dtype=np.float64)
+        rubric_mean = float(np.mean(rubric_values))
+        rubric_spread = float(np.max(rubric_values) - np.min(rubric_values))
+        rubric_std = float(np.std(rubric_values))
+        return np.asarray(
+            [[
+                *rubric_values.tolist(),
+                float(direct_overall),
+                rubric_mean,
+                rubric_spread,
+                rubric_std,
+            ]],
+            dtype=np.float64,
+        )
+
+    def _abstain(self, essay: str, degraded_features: list[str]) -> bool:
+        if self.abstention_policy.get("abstain_on_degraded_features") and degraded_features:
+            return True
+        words = len(essay.split())
+        min_words = self.abstention_policy.get("min_essay_words")
+        max_words = self.abstention_policy.get("max_essay_words")
+        if isinstance(min_words, int) and words < min_words:
+            return True
+        if isinstance(max_words, int) and words > max_words:
+            return True
+        return False
 
     def _ordered_feature_row(self, prompt: str, essay: str) -> tuple[np.ndarray, list[str]]:
         degraded_features: list[str] = []
@@ -200,16 +276,60 @@ class ArtifactBackedScorer:
     def score(self, prompt: str, essay: str) -> ScoringResult:
         features, degraded = self._ordered_feature_row(prompt, essay)
 
-        rubric_scores: dict[str, float] = {}
+        rubric_raw: dict[str, float] = {}
         for target in RUBRIC_TARGETS:
             model = self.models.get(target)
             if model is None:
                 continue
-            rubric_scores[target] = float(clip_scores(model.predict(features))[0])
+            rubric_raw[target] = float(clip_scores(model.predict(features))[0])
+
+        rubric_scores = {
+            target: self._apply_calibrator(target, value)
+            for target, value in rubric_raw.items()
+        }
 
         overall_model = self.models.get("band")
-        if rubric_scores:
-            overall = derive_overall_score(rubric_scores)
+        if rubric_raw:
+            derived_raw = derive_overall_score(rubric_raw)
+        else:
+            derived_raw = np.nan
+        if overall_model is not None:
+            direct_raw = float(clip_scores(overall_model.predict(features))[0])
+        else:
+            direct_raw = np.nan
+
+        overall_candidates: dict[str, float] = {}
+        if not np.isnan(direct_raw):
+            overall_candidates[DIRECT_OVERALL_TARGET] = self._apply_calibrator(
+                DIRECT_OVERALL_TARGET,
+                direct_raw,
+            )
+        if not np.isnan(derived_raw):
+            overall_candidates[DERIVED_OVERALL_TARGET] = self._apply_calibrator(
+                DERIVED_OVERALL_TARGET,
+                derived_raw,
+            )
+
+        hybrid_model = self.models.get(HYBRID_OVERALL_TARGET)
+        if hybrid_model is not None and rubric_raw and not np.isnan(direct_raw):
+            hybrid_raw = float(
+                clip_scores(
+                    hybrid_model.predict(
+                        self._build_hybrid_meta_features(rubric_raw, direct_raw)
+                    )
+                )[0]
+            )
+            overall_candidates[HYBRID_OVERALL_TARGET] = self._apply_calibrator(
+                HYBRID_OVERALL_TARGET,
+                hybrid_raw,
+            )
+
+        if self.selected_overall_strategy in overall_candidates:
+            overall = overall_candidates[self.selected_overall_strategy]
+        elif DIRECT_OVERALL_TARGET in overall_candidates:
+            overall = overall_candidates[DIRECT_OVERALL_TARGET]
+        elif DERIVED_OVERALL_TARGET in overall_candidates:
+            overall = overall_candidates[DERIVED_OVERALL_TARGET]
         elif overall_model is not None:
             overall = float(clip_scores(overall_model.predict(features))[0])
             rubric_scores = {target: overall for target in RUBRIC_TARGETS}
@@ -217,19 +337,65 @@ class ArtifactBackedScorer:
         else:
             raise RuntimeError("No rubric or overall model available for inference.")
 
+        abstained = self._abstain(essay, degraded)
+        overall_display = self._display_band(overall)
+        conf_value = self._agreement_confidence(overall_candidates)
         response_scores = {
             RUBRIC_RESPONSE_KEYS[target]: round(rubric_scores[target], 1)
             for target in RUBRIC_TARGETS
+            if target in rubric_scores
         }
         response_scores["overall"] = round(overall, 1)
+        response_scores["overall_display"] = overall_display
+        if conf_value is not None:
+            response_scores["confidence"] = round(conf_value, 3)
         description = build_score_description(response_scores)
         metadata = {
             "artifact_dir": str(self.artifact_dir),
             "feature_count": len(self.feature_names),
             "degraded_features": sorted(set(degraded)),
             "loaded_models": sorted(self.models.keys()),
+            "selected_overall_strategy": self.selected_overall_strategy,
+            "overall_candidates": {key: round(value, 3) for key, value in overall_candidates.items()},
+            "overall_display": overall_display,
+            "abstained": abstained,
+            "confidence": conf_value,
+            "confidence_enabled": bool(self.confidence_policy.get("enabled", False)),
         }
         return ScoringResult(scores=response_scores, description=description, metadata=metadata)
+
+    def score_overall_direct(self, prompt: str, essay: str) -> ScoringResult:
+        """Predict overall band using `overall_model.cbm` only (not derived from rubric models)."""
+        features, degraded = self._ordered_feature_row(prompt, essay)
+        overall_model = self.models.get("band")
+        if overall_model is None:
+            raise RuntimeError(
+                f"Overall model not loaded; expected artifact at "
+                f"{self.artifact_dir / DEFAULT_MODEL_FILES['band']}"
+            )
+        grade = self._apply_calibrator(
+            DIRECT_OVERALL_TARGET,
+            float(clip_scores(overall_model.predict(features))[0]),
+        )
+        rounded = round(grade, 1)
+        grade_display = self._display_band(grade)
+        description = f"Estimated band (direct CatBoost overall): {grade_display}."
+        metadata = {
+            "artifact_dir": str(self.artifact_dir),
+            "feature_count": len(self.feature_names),
+            "degraded_features": sorted(set(degraded)),
+            "loaded_models": sorted(self.models.keys()),
+            "source": "overall_model.cbm",
+            "grade_display": grade_display,
+            "abstained": self._abstain(essay, degraded),
+            "confidence": None,
+            "confidence_enabled": bool(self.confidence_policy.get("enabled", False)),
+        }
+        return ScoringResult(
+            scores={"grade": rounded, "grade_display": grade_display},
+            description=description,
+            metadata=metadata,
+        )
 
 
 def _criterion_feedback(name: str, score: float) -> str:
@@ -250,11 +416,16 @@ def _criterion_feedback(name: str, score: float) -> str:
 
 def build_score_description(scores: dict[str, float]) -> str:
     criteria = ["task_achievement", "coherence", "lexical", "grammar"]
-    parts = [_criterion_feedback(name, scores[name]) for name in criteria]
-    parts.append(f"Overall estimated band: {scores['overall']:.1f}.")
+    parts = [_criterion_feedback(name, scores[name]) for name in criteria if name in scores]
+    display = scores.get("overall_display")
+    if display is None:
+        display = f"{scores['overall']:.1f}"
+    parts.append(f"Overall estimated band: {display}.")
     return " ".join(parts)
 
 
 @lru_cache(maxsize=1)
 def get_scorer() -> ArtifactBackedScorer:
     return ArtifactBackedScorer()
+
+

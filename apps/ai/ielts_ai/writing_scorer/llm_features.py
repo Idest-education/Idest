@@ -9,6 +9,7 @@ Results are cached to disk for offline extraction.
 
 from __future__ import annotations
 
+import hashlib
 import json
 import logging
 from pathlib import Path
@@ -17,11 +18,14 @@ import numpy as np
 import pandas as pd
 from pydantic import BaseModel, ValidationError
 
+from ielts_ai.paths import APPS_AI_DIR
+
 from .text_utils import segment_essay
 
 logger = logging.getLogger(__name__)
 
-CACHE_PATH = Path(__file__).resolve().parent.parent / "cache" / "llm_features.parquet"
+CACHE_PATH = APPS_AI_DIR / "cache" / "llm_features.parquet"
+CACHE_VERSION = "prompt_essay_hash_v2"
 
 SYSTEM_PROMPT = (
     "You are an IELTS writing examiner. You will receive a question and a list of body paragraphs "
@@ -51,6 +55,12 @@ class EssayJudgment(BaseModel):
 
 class DevelopedLengthMismatchError(ValueError):
     """Raised when len(developed) != body_count after retries."""
+
+
+def _cache_key(prompt: str, essay: str) -> str:
+    prompt_norm = " ".join(str(prompt).strip().lower().split())
+    essay_norm = " ".join(str(essay).strip().lower().split())
+    return hashlib.sha1(f"{prompt_norm}||{essay_norm}".encode("utf-8")).hexdigest()
 
 
 def truncate_essay(essay: str, max_words: int = MAX_ESSAY_WORDS) -> str:
@@ -117,6 +127,7 @@ def _append_to_cache(new_rows: list[dict]) -> None:
     if CACHE_PATH.exists():
         existing = pd.read_parquet(CACHE_PATH)
         combined = pd.concat([existing, new_df], ignore_index=True)
+        combined = combined.drop_duplicates(["cache_version", "cache_key"], keep="last")
     else:
         combined = new_df
     combined.to_parquet(CACHE_PATH, index=False)
@@ -126,10 +137,10 @@ def run_and_cache(df: pd.DataFrame) -> None:
     """Run LLM extraction for all essays, saving incrementally to parquet."""
     CACHE_PATH.parent.mkdir(parents=True, exist_ok=True)
 
-    done: set[int] = set()
-    if CACHE_PATH.exists():
-        cached = pd.read_parquet(CACHE_PATH)
-        done = set(cached["idx"].tolist())
+    done: set[str] = set()
+    cached = load_cached_llm_features()
+    if cached is not None:
+        done = set(cached["cache_key"].tolist())
 
     total = len(df)
     remaining = total - len(done)
@@ -139,7 +150,8 @@ def run_and_cache(df: pd.DataFrame) -> None:
     processed = 0
 
     for i, row in df.iterrows():
-        if i in done:
+        key = _cache_key(row["prompt"], row["essay"])
+        if key in done:
             continue
         try:
             result = judge_essay(row["prompt"], row["essay"])
@@ -149,7 +161,8 @@ def run_and_cache(df: pd.DataFrame) -> None:
         body_count = len(result.developed)
         ratio = sum(result.developed) / max(body_count, 1)
         rows.append({
-            "idx": i,
+            "cache_version": CACHE_VERSION,
+            "cache_key": key,
             "llm_position_clear": float(result.has_position),
             "llm_full_task_coverage": float(result.covers_all_parts),
             "llm_structured_paragraph_ratio": ratio,
@@ -171,27 +184,42 @@ def load_cached_llm_features() -> pd.DataFrame | None:
     if not CACHE_PATH.exists():
         return None
     df = pd.read_parquet(CACHE_PATH)
-    return df.sort_values("idx").reset_index(drop=True)
-
-
-def get_llm_feature_array(n_essays: int) -> np.ndarray | None:
-    """Load cached LLM features as a numpy array aligned by index.
-    Returns None if cache is missing or incomplete."""
-    cached = load_cached_llm_features()
-    if cached is None or len(cached) < n_essays:
+    expected = {"cache_version", "cache_key", *LLM_FEATURE_NAMES}
+    if not expected.issubset(df.columns):
         return None
-    cached = cached.head(n_essays)
-    return cached[LLM_FEATURE_NAMES].values
+    df = df[df["cache_version"] == CACHE_VERSION]
+    if df.empty:
+        return None
+    return df.drop_duplicates("cache_key", keep="last").reset_index(drop=True)
+
+
+def get_llm_feature_array(prompts: list[str], essays: list[str]) -> np.ndarray | None:
+    """Load cached LLM features aligned by prompt+essay hash."""
+    cached = load_cached_llm_features()
+    if cached is None:
+        return None
+    cached_map = {
+        row.cache_key: np.asarray([getattr(row, name) for name in LLM_FEATURE_NAMES], dtype=np.float64)
+        for row in cached.itertuples(index=False)
+    }
+    rows: list[np.ndarray] = []
+    for prompt, essay in zip(prompts, essays, strict=False):
+        key = _cache_key(prompt, essay)
+        values = cached_map.get(key)
+        if values is None:
+            return None
+        rows.append(values)
+    return np.vstack(rows).astype(np.float64, copy=False)
 
 
 def get_partial_llm_cache() -> tuple[np.ndarray, np.ndarray] | None:
     """Load cached LLM features for essays that have been processed.
-    Returns (indices, values) or None if cache is empty.
-    indices: 1d array of dataframe row indices with cached features
+    Returns (cache_keys, values) or None if cache is empty.
+    cache_keys: 1d array of prompt+essay hashes with cached features
     values: (len(indices), 3) array of LLM features"""
     cached = load_cached_llm_features()
     if cached is None or len(cached) == 0:
         return None
-    indices = cached["idx"].values
+    indices = cached["cache_key"].values
     values = cached[LLM_FEATURE_NAMES].values
     return indices, values
