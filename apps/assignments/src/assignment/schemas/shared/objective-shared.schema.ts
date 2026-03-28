@@ -1,6 +1,7 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { SchemaTypes } from 'mongoose';
 import { v4 as uuidv4 } from 'uuid';
+import type { ObjectiveAnswerKey, ObjectiveInteraction } from './objective-interaction-answer.schema';
 
 export type MediaKind = 'image' | 'audio' | 'file';
 
@@ -111,11 +112,13 @@ export class Question {
   @Prop({ type: StimulusSchema })
   stimulus?: Stimulus;
 
+  /** UI payload; see `objective-interaction-answer.schema.ts` for concrete classes. */
   @Prop({ type: SchemaTypes.Mixed, required: true })
-  interaction: any;
+  interaction: ObjectiveInteraction;
 
+  /** Correct answers; shape depends on `type`; see `objective-interaction-answer.schema.ts`. */
   @Prop({ type: SchemaTypes.Mixed, required: true })
-  answer_key: any;
+  answer_key: ObjectiveAnswerKey;
 }
 export const QuestionSchema = SchemaFactory.createForClass(Question);
 

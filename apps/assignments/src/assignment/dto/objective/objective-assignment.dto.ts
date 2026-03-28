@@ -1,4 +1,4 @@
-import { ApiProperty, ApiPropertyOptional, ApiExtraModels } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 import {
   IsArray,
@@ -12,6 +12,7 @@ import {
   IsObject,
 } from 'class-validator';
 import { OBJECTIVE_QUESTION_TYPES } from '../../schemas/shared/objective-shared.schema';
+import type { ObjectiveAnswerKey, ObjectiveInteraction } from '../../schemas/shared/objective-interaction-answer.schema';
 
 const QUESTION_TYPES_LIST = [...OBJECTIVE_QUESTION_TYPES] as string[];
 
@@ -139,13 +140,19 @@ export class QuestionDto {
   @Type(() => StimulusDto)
   stimulus?: StimulusDto;
 
-  @ApiProperty({ description: 'Type-specific interaction payload' })
+  @ApiProperty({
+    description:
+      'UI payload by question type: options (MC), blanks (gap/form), left/right (matching), etc. See GapFillTemplateInteraction, MultipleChoiceSingleInteraction, … in objective-interaction-answer.schema.ts',
+  })
   @IsObject()
-  interaction: any;
+  interaction: ObjectiveInteraction;
 
-  @ApiProperty({ description: 'Type-specific answer key payload' })
+  @ApiProperty({
+    description:
+      'Correct answers; shape matches `type` and grading-objective.util.ts (blanks, choice, choices, map, correct_answer, …)',
+  })
   @IsObject()
-  answer_key: any;
+  answer_key: ObjectiveAnswerKey;
 }
 
 export class QuestionGroupDto {

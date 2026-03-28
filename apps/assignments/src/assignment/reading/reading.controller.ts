@@ -12,10 +12,41 @@ import { JwtAuthGuard } from '../../guards/jwt-auth.guard';
 import { RolesGuard } from '../../guards/role.guard';
 import { Roles } from '../../decorators/role.decorator';
 import { PaginationDto } from '../dto/pagination.dto';
+import {
+  AnswerKeyGapFillOrForm,
+  AnswerKeyMatchingMap,
+  AnswerKeyMultipleChoiceMulti,
+  AnswerKeyMultipleChoiceSingle,
+  AnswerKeyShortAnswer,
+  FormCompletionInteraction,
+  GapFillTemplateInteraction,
+  MatchingInteraction,
+  McOption,
+  MultipleChoiceMultiInteraction,
+  MultipleChoiceSingleInteraction,
+  ScalarChoiceInteraction,
+  ShortAnswerInteraction,
+} from '../schemas/shared/objective-interaction-answer.schema';
 
 @ApiTags('reading')
 @ApiBearerAuth()
-@ApiExtraModels(ReadingSectionMaterialDto, ListeningSectionMaterialDto)
+@ApiExtraModels(
+  ReadingSectionMaterialDto,
+  ListeningSectionMaterialDto,
+  GapFillTemplateInteraction,
+  FormCompletionInteraction,
+  MultipleChoiceSingleInteraction,
+  MultipleChoiceMultiInteraction,
+  ScalarChoiceInteraction,
+  MatchingInteraction,
+  ShortAnswerInteraction,
+  AnswerKeyGapFillOrForm,
+  AnswerKeyMultipleChoiceSingle,
+  AnswerKeyMultipleChoiceMulti,
+  AnswerKeyMatchingMap,
+  AnswerKeyShortAnswer,
+  McOption,
+)
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Controller('reading')
 export class ReadingController {

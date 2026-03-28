@@ -1,6 +1,6 @@
-Experiment,Status,MAE,ACC_EXACT,ACC_0.5,ACC_1.0,n_features,llm_enabled
-plus_languagetool,completed,0.7673806485948285,0.25355148427549723,0.4251983932595278,0.6890369354364652,36.0,False
-plus_embeddings,completed,0.7959336951870944,0.23670030371313805,0.398550014695797,0.6643479964730087,414.0,False
-classical_only,completed,0.8143383382736241,0.233271284412658,0.38914470461448025,0.659057509552268,30.0,False
-plus_llm,skipped_missing_llm_cache,,,,,,False
-full_stack,skipped_missing_llm_cache,,,,,,False
+Experiment,Status,Split,MAE,ACC_EXACT,ACC_0.5,ACC_1.0,n_features,llm_enabled
+plus_languagetool,completed,dev,0.7778696701406518,0.23625922887612796,0.4085315832649713,0.6923707957342083,36.0,False
+classical_only,completed,dev,0.8385462652467893,0.2100082034454471,0.37407711238720265,0.6447908121410992,30.0,False
+plus_embeddings,completed,dev,0.8515748141781158,0.19688269073010664,0.3584905660377358,0.6423297785069729,414.0,False
+plus_llm,skipped_missing_llm_cache,dev,,,,,,False
+full_stack,skipped_missing_llm_cache,dev,,,,,,False

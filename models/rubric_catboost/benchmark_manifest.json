@@ -1,0 +1,70 @@
+{
+  "config": {
+    "dev_size": 0.15,
+    "real_test_size": 0.15,
+    "random_state": 42
+  },
+  "summary": {
+    "n_rows": 9189,
+    "split_counts": {
+      "dev": 1219,
+      "real_test": 1123,
+      "train": 6847
+    },
+    "source_counts": {
+      "crawled": 584,
+      "hf_public": 8605
+    },
+    "prompt_family_count": 2870,
+    "duplicate_cluster_count": 9189,
+    "near_duplicate_cluster_count": 9168,
+    "overall_band_counts": {
+      "3.5": 491,
+      "4.0": 500,
+      "4.5": 575,
+      "5.0": 910,
+      "5.5": 828,
+      "6.0": 991,
+      "6.5": 1017,
+      "7.0": 1193,
+      "7.5": 1000,
+      "8.0": 687,
+      "8.5": 902,
+      "9.0": 95
+    }
+  },
+  "columns": [
+    "prompt",
+    "essay",
+    "evaluation",
+    "band",
+    "TA",
+    "CC",
+    "LR",
+    "GR",
+    "source",
+    "human_rating_count",
+    "rater_disagreement",
+    "title",
+    "url",
+    "topic",
+    "source_item_id",
+    "essay_word_count",
+    "essay_char_count",
+    "prompt_family",
+    "essay_id",
+    "duplicate_cluster",
+    "near_duplicate_cluster",
+    "overall_band_bucket",
+    "is_multi_rated",
+    "meets_rating_bar",
+    "split",
+    "is_locked_real_test"
+  ],
+  "selected_overall_strategy": "overall_hybrid_stacked",
+  "tail_policy": {
+    "training_target": "numeric_regression",
+    "display_low_band_as": "<=4",
+    "display_high_band_as": ">=8.5"
+  }
+}
