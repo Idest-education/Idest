@@ -365,30 +365,84 @@ class ArtifactBackedScorer:
         return ScoringResult(scores=response_scores, description=description, metadata=metadata)
 
     def score_overall_direct(self, prompt: str, essay: str) -> ScoringResult:
-        """Predict overall band using `overall_model.cbm` only (not derived from rubric models)."""
+        """Predict overall band using best available overall strategy for Task 2."""
         features, degraded = self._ordered_feature_row(prompt, essay)
+
+        rubric_raw: dict[str, float] = {}
+        for target in RUBRIC_TARGETS:
+            model = self.models.get(target)
+            if model is None:
+                continue
+            rubric_raw[target] = float(clip_scores(model.predict(features))[0])
+
         overall_model = self.models.get("band")
-        if overall_model is None:
-            raise RuntimeError(
-                f"Overall model not loaded; expected artifact at "
-                f"{self.artifact_dir / DEFAULT_MODEL_FILES['band']}"
-            )
-        grade = self._apply_calibrator(
-            DIRECT_OVERALL_TARGET,
-            float(clip_scores(overall_model.predict(features))[0]),
+        direct_raw = (
+            float(clip_scores(overall_model.predict(features))[0])
+            if overall_model is not None
+            else np.nan
         )
+        derived_raw = derive_overall_score(rubric_raw) if rubric_raw else np.nan
+
+        overall_candidates: dict[str, float] = {}
+        overall_candidates_raw: dict[str, float] = {}
+        if not np.isnan(direct_raw):
+            overall_candidates_raw[DIRECT_OVERALL_TARGET] = direct_raw
+            overall_candidates[DIRECT_OVERALL_TARGET] = self._apply_calibrator(
+                DIRECT_OVERALL_TARGET,
+                direct_raw,
+            )
+        if not np.isnan(derived_raw):
+            overall_candidates_raw[DERIVED_OVERALL_TARGET] = derived_raw
+            overall_candidates[DERIVED_OVERALL_TARGET] = self._apply_calibrator(
+                DERIVED_OVERALL_TARGET,
+                derived_raw,
+            )
+
+        hybrid_model = self.models.get(HYBRID_OVERALL_TARGET)
+        if hybrid_model is not None and rubric_raw and not np.isnan(direct_raw):
+            hybrid_raw = float(
+                clip_scores(
+                    hybrid_model.predict(
+                        self._build_hybrid_meta_features(rubric_raw, direct_raw)
+                    )
+                )[0]
+            )
+            overall_candidates_raw[HYBRID_OVERALL_TARGET] = hybrid_raw
+            overall_candidates[HYBRID_OVERALL_TARGET] = self._apply_calibrator(
+                HYBRID_OVERALL_TARGET,
+                hybrid_raw,
+            )
+
+        # Keep inference aligned with training-time model selection.
+        preferred = [
+            self.selected_overall_strategy,
+            HYBRID_OVERALL_TARGET,
+            DIRECT_OVERALL_TARGET,
+            DERIVED_OVERALL_TARGET,
+        ]
+        selected_source = next((key for key in preferred if key in overall_candidates), None)
+        if selected_source is None:
+            raise RuntimeError(
+                "No suitable overall strategy is available; expected one of "
+                f"{preferred}."
+            )
+        grade = overall_candidates[selected_source]
         rounded = round(grade, 1)
         grade_display = self._display_band(grade)
-        description = f"Estimated band (direct CatBoost overall): {grade_display}."
+        description = f"Estimated band ({selected_source}): {grade_display}."
         metadata = {
             "artifact_dir": str(self.artifact_dir),
             "feature_count": len(self.feature_names),
             "degraded_features": sorted(set(degraded)),
             "loaded_models": sorted(self.models.keys()),
-            "source": "overall_model.cbm",
+            "source": selected_source,
+            "overall_candidates": {key: round(value, 3) for key, value in overall_candidates.items()},
+            "overall_candidates_raw": {
+                key: round(value, 3) for key, value in overall_candidates_raw.items()
+            },
             "grade_display": grade_display,
             "abstained": self._abstain(essay, degraded),
-            "confidence": None,
+            "confidence": self._agreement_confidence(overall_candidates),
             "confidence_enabled": bool(self.confidence_policy.get("enabled", False)),
         }
         return ScoringResult(

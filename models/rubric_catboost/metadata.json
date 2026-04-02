@@ -487,6 +487,7 @@
   },
   "benchmark_manifest_file": "benchmark_manifest.json",
   "evaluation_file": "evaluation.json",
+  "evaluation_summary_file": "evaluation_summary.txt",
   "calibrator_file": "calibrator.json",
   "ablation_file": "ablation_metrics.csv",
   "abstention_policy": {

@@ -6,6 +6,7 @@ import argparse
 import json
 from collections import Counter
 from dataclasses import dataclass
+from datetime import datetime, timezone
 import numpy as np
 import pandas as pd
 from sklearn.isotonic import IsotonicRegression
@@ -78,6 +79,16 @@ META_CATBOOST_PARAMS = {
     "random_seed": 42,
     "verbose": False,
 }
+METRICS_SUMMARY_FORMATTERS = {
+    "MAE": "{:.4f}".format,
+    "ACC_EXACT": "{:.2%}".format,
+    "ACC_0.5": "{:.2%}".format,
+    "ACC_1.0": "{:.2%}".format,
+    "ACC_1.5": "{:.2%}".format,
+    "MAE_CI95_LOW": "{:.4f}".format,
+    "MAE_CI95_HIGH": "{:.4f}".format,
+}
+
 ABLATION_CONFIGS: list[tuple[str, dict[str, object]]] = [
     (
         "classical_only",
@@ -285,10 +296,12 @@ def accuracy_metrics(y_true: np.ndarray, y_pred: np.ndarray) -> dict[str, float]
     exact = np.mean(pred_band == true_band)
     within_05 = np.mean(np.abs(pred - y_true) <= 0.5)
     within_1 = np.mean(np.abs(pred - y_true) <= 1.0)
+    within_15 = np.mean(np.abs(pred - y_true) <= 1.5)
     return {
         "exact": float(exact),
         "within_0.5": float(within_05),
         "within_1.0": float(within_1),
+        "within_1.5": float(within_15),
     }
 
 
@@ -330,6 +343,7 @@ def _slice_metrics(y_true: np.ndarray, y_pred: np.ndarray) -> dict[str, object]:
             "ACC_EXACT": acc["exact"],
             "ACC_0.5": acc["within_0.5"],
             "ACC_1.0": acc["within_1.0"],
+            "ACC_1.5": acc["within_1.5"],
         }
     return out
 
@@ -352,6 +366,7 @@ def evaluate_predictions(
         "ACC_EXACT": acc["exact"],
         "ACC_0.5": acc["within_0.5"],
         "ACC_1.0": acc["within_1.0"],
+        "ACC_1.5": acc["within_1.5"],
         "MAE_CI95": _bootstrap_mae_ci(
             y_true,
             clipped,
@@ -360,6 +375,19 @@ def evaluate_predictions(
         "per_band_mae": per_band_mae,
         "slice_metrics": _slice_metrics(y_true, clipped),
     }
+
+
+def format_evaluation_summary_text(metrics_df: pd.DataFrame) -> str:
+    """Human-readable table matching console output (saved to evaluation_summary.txt)."""
+    body = metrics_df.to_string(index=False, formatters=METRICS_SUMMARY_FORMATTERS)
+    return "\n".join(
+        [
+            "=" * 84,
+            "  Benchmarked evaluation summary",
+            "=" * 84,
+            body,
+        ]
+    )
 
 
 def _flatten_metric_row(
@@ -376,6 +404,7 @@ def _flatten_metric_row(
         "ACC_EXACT": metrics["ACC_EXACT"],
         "ACC_0.5": metrics["ACC_0.5"],
         "ACC_1.0": metrics["ACC_1.0"],
+        "ACC_1.5": metrics["ACC_1.5"],
         "MAE_CI95_LOW": metrics["MAE_CI95"]["low"],
         "MAE_CI95_HIGH": metrics["MAE_CI95"]["high"],
     }
@@ -800,6 +829,7 @@ def run_ablation_study(
                 "ACC_EXACT": np.nan,
                 "ACC_0.5": np.nan,
                 "ACC_1.0": np.nan,
+                "ACC_1.5": np.nan,
                 "n_features": np.nan,
                 "llm_enabled": False,
             })
@@ -821,6 +851,7 @@ def run_ablation_study(
             "ACC_EXACT": metrics["ACC_EXACT"],
             "ACC_0.5": metrics["ACC_0.5"],
             "ACC_1.0": metrics["ACC_1.0"],
+            "ACC_1.5": metrics["ACC_1.5"],
             "n_features": len(ablation_bundle.feature_names),
             "llm_enabled": bool(ablation_bundle.feature_flags["llm"]),
         })
@@ -985,6 +1016,15 @@ def save_training_artifacts(
     metrics_df.to_csv(ARTIFACT_DIR / "metrics.csv", index=False)
     ablation_df.to_csv(ARTIFACT_DIR / "ablation_metrics.csv", index=False)
 
+    summary_path = ARTIFACT_DIR / "evaluation_summary.txt"
+    summary_lines = [
+        f"generated_utc: {datetime.now(timezone.utc).isoformat()}",
+        "",
+        format_evaluation_summary_text(metrics_df),
+        "",
+    ]
+    summary_path.write_text("\n".join(summary_lines), encoding="utf-8")
+
     benchmark_manifest = summarize_benchmark_frame(bundle.frame)
     benchmark_manifest["selected_overall_strategy"] = artifacts["selected_overall_strategy"]
     benchmark_manifest["tail_policy"] = {
@@ -1028,6 +1068,7 @@ def save_training_artifacts(
         "model_files": saved_model_files,
         "benchmark_manifest_file": "benchmark_manifest.json",
         "evaluation_file": "evaluation.json",
+        "evaluation_summary_file": "evaluation_summary.txt",
         "calibrator_file": "calibrator.json",
         "ablation_file": "ablation_metrics.csv",
         "abstention_policy": artifacts["abstention_policy"],
@@ -1057,22 +1098,7 @@ def main() -> None:
     metrics_df, reports, models, artifacts = evaluate_pipeline(bundle, config)
     save_training_artifacts(bundle, models, metrics_df, reports, artifacts, ablation_df)
 
-    print("\n" + "=" * 84)
-    print("  Benchmarked evaluation summary")
-    print("=" * 84)
-    print(
-        metrics_df.to_string(
-            index=False,
-            formatters={
-                "MAE": "{:.4f}".format,
-                "ACC_EXACT": "{:.2%}".format,
-                "ACC_0.5": "{:.2%}".format,
-                "ACC_1.0": "{:.2%}".format,
-                "MAE_CI95_LOW": "{:.4f}".format,
-                "MAE_CI95_HIGH": "{:.4f}".format,
-            },
-        )
-    )
+    print("\n" + format_evaluation_summary_text(metrics_df))
 
 
 if __name__ == "__main__":
