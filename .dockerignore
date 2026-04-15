@@ -17,5 +17,8 @@ node_modules
 **/.DS_Store
 **/.env
 **/.env.*
+!apps/website/.env
+!apps/server/.env
+!apps/assignments/.env
 apps/ai/catboost_info
 apps/ai/tests/__pycache__

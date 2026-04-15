@@ -1,5 +1,11 @@
 """Artifact-backed CatBoost inference and score formatting."""
 
+from ielts_ai.inference.task1_scorer import (
+    Task1ArtifactBackedScorer,
+    decode_image_base64,
+    get_task1_scorer,
+    resolve_task1_figure_description,
+)
 from ielts_ai.inference.scorer import (
     ArtifactBackedScorer,
     DEFAULT_MODEL_FILES,
@@ -17,6 +23,10 @@ from ielts_ai.inference.scorer import (
 )
 
 __all__ = [
+    "Task1ArtifactBackedScorer",
+    "decode_image_base64",
+    "get_task1_scorer",
+    "resolve_task1_figure_description",
     "ArtifactBackedScorer",
     "DEFAULT_MODEL_FILES",
     "DERIVED_OVERALL_TARGET",

@@ -10,3 +10,4 @@ REPO_ROOT = APPS_AI_DIR.parent.parent
 
 CRAWLED_DATA_PATH = APPS_AI_DIR.parent / "server" / "data" / "ielts_task2_dataset.json"
 ARTIFACT_DIR = REPO_ROOT / "models" / "rubric_catboost"
+TASK1_ARTIFACT_DIR = REPO_ROOT / "models" / "rubric_catboost_task1"

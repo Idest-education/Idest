@@ -89,6 +89,19 @@ export class Stimulus {
 export const StimulusSchema = SchemaFactory.createForClass(Stimulus);
 
 @Schema({ _id: false })
+export class QuestionExplanation {
+  @Prop()
+  cite?: string;
+
+  @Prop()
+  keywords?: string;
+
+  @Prop()
+  explain?: string;
+}
+export const QuestionExplanationSchema = SchemaFactory.createForClass(QuestionExplanation);
+
+@Schema({ _id: false })
 export class Question {
   @Prop({ type: String, default: () => uuidv4() })
   id: string;
@@ -119,6 +132,9 @@ export class Question {
   /** Correct answers; shape depends on `type`; see `objective-interaction-answer.schema.ts`. */
   @Prop({ type: SchemaTypes.Mixed, required: true })
   answer_key: ObjectiveAnswerKey;
+
+  @Prop({ type: QuestionExplanationSchema })
+  explanation?: QuestionExplanation;
 }
 export const QuestionSchema = SchemaFactory.createForClass(Question);
 

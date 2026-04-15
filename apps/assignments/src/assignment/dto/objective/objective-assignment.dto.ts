@@ -112,6 +112,23 @@ export class StimulusDto {
   template?: StimulusTemplateDto;
 }
 
+export class QuestionExplanationDto {
+  @ApiPropertyOptional({ description: 'Passage excerpt containing the answer' })
+  @IsOptional()
+  @IsString()
+  cite?: string;
+
+  @ApiPropertyOptional({ description: 'Keyword / paraphrase pairs' })
+  @IsOptional()
+  @IsString()
+  keywords?: string;
+
+  @ApiPropertyOptional({ description: 'Detailed explanation text' })
+  @IsOptional()
+  @IsString()
+  explain?: string;
+}
+
 export class QuestionDto {
   @ApiProperty()
   @IsUUID()
@@ -153,6 +170,12 @@ export class QuestionDto {
   })
   @IsObject()
   answer_key: ObjectiveAnswerKey;
+
+  @ApiPropertyOptional({ type: QuestionExplanationDto })
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => QuestionExplanationDto)
+  explanation?: QuestionExplanationDto;
 }
 
 export class QuestionGroupDto {

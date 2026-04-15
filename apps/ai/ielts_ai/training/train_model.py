@@ -7,6 +7,7 @@ import json
 from collections import Counter
 from dataclasses import dataclass
 from datetime import datetime, timezone
+from pathlib import Path
 import numpy as np
 import pandas as pd
 from sklearn.isotonic import IsotonicRegression
@@ -1002,21 +1003,26 @@ def save_training_artifacts(
     reports: dict[str, object],
     artifacts: dict[str, object],
     ablation_df: pd.DataFrame,
+    *,
+    artifact_dir: Path | None = None,
+    benchmark_manifest: dict[str, object] | None = None,
+    metadata_extras: dict[str, object] | None = None,
 ) -> None:
-    ARTIFACT_DIR.mkdir(parents=True, exist_ok=True)
+    out_dir = artifact_dir or ARTIFACT_DIR
+    out_dir.mkdir(parents=True, exist_ok=True)
 
     saved_model_files: dict[str, str] = {}
     for target, model in models.items():
         if target not in MODEL_FILENAMES:
             continue
-        model_path = ARTIFACT_DIR / MODEL_FILENAMES[target]
+        model_path = out_dir / MODEL_FILENAMES[target]
         model.save_model(str(model_path))
         saved_model_files[target] = MODEL_FILENAMES[target]
 
-    metrics_df.to_csv(ARTIFACT_DIR / "metrics.csv", index=False)
-    ablation_df.to_csv(ARTIFACT_DIR / "ablation_metrics.csv", index=False)
+    metrics_df.to_csv(out_dir / "metrics.csv", index=False)
+    ablation_df.to_csv(out_dir / "ablation_metrics.csv", index=False)
 
-    summary_path = ARTIFACT_DIR / "evaluation_summary.txt"
+    summary_path = out_dir / "evaluation_summary.txt"
     summary_lines = [
         f"generated_utc: {datetime.now(timezone.utc).isoformat()}",
         "",
@@ -1025,27 +1031,28 @@ def save_training_artifacts(
     ]
     summary_path.write_text("\n".join(summary_lines), encoding="utf-8")
 
-    benchmark_manifest = summarize_benchmark_frame(bundle.frame)
-    benchmark_manifest["selected_overall_strategy"] = artifacts["selected_overall_strategy"]
-    benchmark_manifest["tail_policy"] = {
+    manifest = benchmark_manifest if benchmark_manifest is not None else summarize_benchmark_frame(bundle.frame)
+    manifest = dict(manifest)
+    manifest["selected_overall_strategy"] = artifacts["selected_overall_strategy"]
+    manifest["tail_policy"] = {
         "training_target": "numeric_regression",
         "display_low_band_as": "<=4",
         "display_high_band_as": ">=8.5",
     }
-    (ARTIFACT_DIR / "benchmark_manifest.json").write_text(
-        json.dumps(benchmark_manifest, indent=2),
+    (out_dir / "benchmark_manifest.json").write_text(
+        json.dumps(manifest, indent=2),
         encoding="utf-8",
     )
-    (ARTIFACT_DIR / "calibrator.json").write_text(
+    (out_dir / "calibrator.json").write_text(
         json.dumps(artifacts["calibrators"], indent=2),
         encoding="utf-8",
     )
-    (ARTIFACT_DIR / "evaluation.json").write_text(
+    (out_dir / "evaluation.json").write_text(
         json.dumps(reports, indent=2),
         encoding="utf-8",
     )
 
-    metadata = {
+    metadata: dict[str, object] = {
         "model_family": "CatBoostRegressor",
         "model_params": CATBOOST_PARAMS,
         "meta_model_params": META_CATBOOST_PARAMS,
@@ -1064,7 +1071,7 @@ def save_training_artifacts(
         "hybrid_prediction_name": HYBRID_OVERALL_TARGET,
         "n_features": len(bundle.feature_names),
         "n_samples": int(len(bundle.frame)),
-        "artifact_dir": str(ARTIFACT_DIR),
+        "artifact_dir": str(out_dir),
         "model_files": saved_model_files,
         "benchmark_manifest_file": "benchmark_manifest.json",
         "evaluation_file": "evaluation.json",
@@ -1074,8 +1081,10 @@ def save_training_artifacts(
         "abstention_policy": artifacts["abstention_policy"],
         "confidence_policy": artifacts["confidence_policy"],
     }
-    (ARTIFACT_DIR / "metadata.json").write_text(json.dumps(metadata, indent=2), encoding="utf-8")
-    print("\nSaved benchmarked training artifacts to", ARTIFACT_DIR)
+    if metadata_extras:
+        metadata.update(metadata_extras)
+    (out_dir / "metadata.json").write_text(json.dumps(metadata, indent=2), encoding="utf-8")
+    print("\nSaved benchmarked training artifacts to", out_dir)
 
 
 def main() -> None:

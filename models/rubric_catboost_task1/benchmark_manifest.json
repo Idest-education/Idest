@@ -1,0 +1,77 @@
+{
+  "config": {
+    "dev_size": 0.15,
+    "real_test_size": 0.15,
+    "random_state": 42
+  },
+  "summary": {
+    "n_rows": 11032,
+    "split_counts": {
+      "dev": 1622,
+      "real_test": 1572,
+      "train": 7838
+    },
+    "source_counts": {
+      "hf_task1": 11032
+    },
+    "prompt_family_count": 328,
+    "duplicate_cluster_count": 7622,
+    "near_duplicate_cluster_count": 7553,
+    "overall_band_counts": {
+      "4.0": 207,
+      "4.5": 1652,
+      "5.0": 961,
+      "5.5": 1059,
+      "6.0": 1107,
+      "6.5": 921,
+      "7.0": 1019,
+      "7.5": 1033,
+      "8.0": 1343,
+      "8.5": 547,
+      "9.0": 1183
+    }
+  },
+  "columns": [
+    "topic",
+    "subject",
+    "content",
+    "overall_band_score",
+    "row_index",
+    "hf_split",
+    "split",
+    "is_locked_real_test",
+    "TA",
+    "CC",
+    "LR",
+    "GR",
+    "band",
+    "source",
+    "human_rating_count",
+    "rater_disagreement",
+    "status",
+    "image_description",
+    "llm_t1_overview_strength",
+    "llm_t1_covers_prompt_parts",
+    "llm_t1_development_quality",
+    "llm_t1_consistency_with_reference",
+    "essay",
+    "essay_word_count",
+    "essay_char_count",
+    "prompt_family",
+    "essay_id",
+    "duplicate_cluster",
+    "near_duplicate_cluster",
+    "overall_band_bucket",
+    "is_multi_rated",
+    "meets_rating_bar",
+    "prompt"
+  ],
+  "task": "writing_task1",
+  "dataset_id": "TraTacXiMuoi/Ielts_writing_task1_academic",
+  "selected_overall_strategy": "overall_hybrid_stacked",
+  "tail_policy": {
+    "training_target": "numeric_regression",
+    "display_low_band_as": "<=4",
+    "display_high_band_as": ">=8.5"
+  }
+}

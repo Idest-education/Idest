@@ -1,0 +1,4 @@
+node_modules/
+package-lock.json
+# Local session cookies (do not commit)
+cj.txt

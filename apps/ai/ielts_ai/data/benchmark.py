@@ -109,6 +109,11 @@ def _extract_scores(text: str) -> dict[str, float | None]:
     return result
 
 
+def extract_rubric_scores_from_evaluation(text: str) -> dict[str, float | None]:
+    """Parse TA/CC/LR/GR from an IELTS-style evaluation string (Task 1 or Task 2)."""
+    return _extract_scores(text)
+
+
 def _parse_crawled_band(title: str) -> float:
     match = re.search(r"band\s+(\d+(?:\.\d+)?)", title.lower())
     if match:

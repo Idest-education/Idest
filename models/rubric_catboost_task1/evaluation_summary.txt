@@ -1,0 +1,41 @@
+generated_utc: 2026-04-05T07:45:15.968059+00:00
+
+====================================================================================
+  Benchmarked evaluation summary
+====================================================================================
+                Target     Split Evaluation    MAE ACC_EXACT ACC_0.5 ACC_1.0 ACC_1.5 MAE_CI95_LOW MAE_CI95_HIGH
+                    TA     train        oof 0.6683    24.43%  46.30%  77.18%  92.13%       0.6563        0.6763
+                    TA       dev        raw 0.6598    24.91%  45.68%  78.42%  93.22%       0.6362        0.6844
+                    TA       dev calibrated 0.6398    21.82%  47.16%  78.55%  93.96%       0.6167        0.6639
+                    TA real_test        raw 0.6878    22.96%  44.40%  77.42%  91.73%       0.6596        0.7156
+                    TA real_test calibrated 0.6939    18.89%  45.42%  76.72%  91.67%       0.6657        0.7210
+                    CC     train        oof 0.8556    19.27%  38.06%  64.99%  83.34%       0.8413        0.8685
+                    CC       dev        raw 0.8105    20.53%  40.44%  66.95%  85.27%       0.7814        0.8461
+                    CC       dev calibrated 0.7852    23.43%  43.03%  67.82%  87.42%       0.7582        0.8182
+                    CC real_test        raw 0.8704    19.72%  36.20%  64.63%  82.95%       0.8356        0.9039
+                    CC real_test calibrated 0.8763    19.53%  38.61%  61.70%  85.11%       0.8439        0.9141
+                    LR     train        oof 0.8361    17.93%  35.77%  66.43%  84.95%       0.8225        0.8479
+                    LR       dev        raw 0.8284    17.57%  35.20%  67.63%  86.50%       0.7985        0.8606
+                    LR       dev calibrated 0.7952    17.88%  40.07%  69.42%  87.61%       0.7642        0.8267
+                    LR real_test        raw 0.8376    18.51%  36.32%  65.84%  85.31%       0.8036        0.8689
+                    LR real_test calibrated 0.8383    18.83%  37.21%  66.41%  84.73%       0.8036        0.8704
+                    GR     train        oof 0.9755    17.12%  33.12%  59.61%  78.23%       0.9603        0.9909
+                    GR       dev        raw 0.9617    18.43%  32.61%  59.43%  78.18%       0.9271        0.9977
+                    GR       dev calibrated 0.9272    17.39%  35.14%  60.85%  81.50%       0.8958        0.9630
+                    GR real_test        raw 0.9805    17.18%  32.12%  59.10%  76.84%       0.9426        1.0174
+                    GR real_test calibrated 1.0042    17.24%  32.89%  55.73%  79.52%       0.9652        1.0433
+        overall_direct     train        oof 0.7554    23.07%  42.15%  70.71%  87.45%       0.7431        0.7667
+        overall_direct       dev        raw 0.7375    23.61%  43.03%  70.72%  89.89%       0.7119        0.7679
+        overall_direct       dev calibrated 0.7084    24.54%  45.38%  74.41%  91.43%       0.6824        0.7398
+        overall_direct real_test        raw 0.7627    20.55%  41.92%  71.31%  88.80%       0.7363        0.7951
+        overall_direct real_test calibrated 0.7600    21.88%  42.81%  71.76%  88.80%       0.7311        0.7889
+  overall_from_rubrics     train        oof 0.7503    22.70%  58.13%  79.48%  92.49%       0.7365        0.7627
+  overall_from_rubrics       dev        raw 0.7343    22.75%  58.14%  81.57%  93.65%       0.7053        0.7676
+  overall_from_rubrics       dev calibrated 0.7355    24.23%  44.45%  71.21%  91.74%       0.7085        0.7645
+  overall_from_rubrics real_test        raw 0.7675    20.87%  57.70%  79.39%  91.73%       0.7373        0.7991
+  overall_from_rubrics real_test calibrated 0.7750    24.62%  40.65%  70.10%  88.87%       0.7447        0.8059
+overall_hybrid_stacked     train   meta_fit 0.7157    27.35%  46.13%  72.85%  88.10%       0.7029        0.7278
+overall_hybrid_stacked       dev        raw 0.7183    25.15%  43.59%  72.56%  90.20%       0.6910        0.7485
+overall_hybrid_stacked       dev calibrated 0.7034    25.59%  45.19%  74.04%  91.06%       0.6788        0.7306
+overall_hybrid_stacked real_test        raw 0.7524    23.66%  41.79%  71.37%  87.72%       0.7222        0.7844
+overall_hybrid_stacked real_test calibrated 0.7635    24.36%  41.54%  71.18%  88.55%       0.7341        0.7963

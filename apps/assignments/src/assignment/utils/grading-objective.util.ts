@@ -23,12 +23,138 @@ export interface GradingObjectiveResult {
 }
 
 function normalizeString(s: unknown): string {
-  return String(s ?? '').trim().toLowerCase();
+  return String(s ?? '').replace(/\s+/g, ' ').trim().toLowerCase();
+}
+
+/**
+ * Expand an IELTS answer-key string into every concrete answer a student
+ * could legitimately write. Handles:
+ *   [OR]        top-level alternatives    "A [OR] B"          → ["a","b"]
+ *   (WORD)      optional word/prefix      "(MR) SMITH"        → ["smith","mr smith"]
+ *   (suffix)    optional suffix           "THOUGHT(S)"        → ["thought","thoughts"]
+ *   WORD1/WORD2 either-or within a token  "THINKING/THOUGHT"  → ["thinking","thought"]
+ */
+export function expandAnswerKey(key: string): string[] {
+  // Step 1: split on [OR] to get top-level alternatives
+  const orAlternatives = key.split(/\s*\[OR\]\s*/i).map((s) => s.trim()).filter(Boolean);
+
+  const results = new Set<string>();
+
+  for (const alt of orAlternatives) {
+    // Step 2: expand (…) optional groups
+    // Collect all candidate strings with each () group either included or excluded.
+    // We do this by tokenising at optional-group boundaries, then computing the power-set.
+    const optExpanded = expandOptionalGroups(alt);
+
+    for (const phrase of optExpanded) {
+      // Step 3: expand / within individual tokens
+      const slashExpanded = expandSlashVariants(phrase);
+      for (const candidate of slashExpanded) {
+        const norm = normalizeString(candidate);
+        if (norm) results.add(norm);
+      }
+    }
+  }
+
+  return Array.from(results);
+}
+
+/**
+ * Given a string that may contain (optional) groups, return all strings
+ * produced by independently including or excluding each group.
+ * e.g. "(MR) SMITH"       → ["SMITH", "MR SMITH"]
+ *      "12(.00) A.M./AM"  → ["12 A.M./AM", "12.00 A.M./AM"]
+ */
+function expandOptionalGroups(s: string): string[] {
+  // Split into segments: literal text and (group) captures, preserving order.
+  // Each (group) capture is a toggle: the chars inside may be present or absent.
+  const parts: Array<{ text: string; optional: boolean }> = [];
+  const re = /\(([^)]*)\)/g;
+  let last = 0;
+  let m: RegExpExecArray | null;
+
+  while ((m = re.exec(s)) !== null) {
+    if (m.index > last) {
+      parts.push({ text: s.slice(last, m.index), optional: false });
+    }
+    parts.push({ text: m[1], optional: true });
+    last = re.lastIndex;
+  }
+  if (last < s.length) {
+    parts.push({ text: s.slice(last), optional: false });
+  }
+
+  // Power-set over the optional parts: 2^n combinations
+  const optionalIndices = parts.map((p, i) => (p.optional ? i : -1)).filter((i) => i >= 0);
+  const combos = 1 << optionalIndices.length;
+  const results: string[] = [];
+
+  for (let mask = 0; mask < combos; mask++) {
+    let out = '';
+    let optBit = 0;
+    for (const part of parts) {
+      if (!part.optional) {
+        out += part.text;
+      } else {
+        const include = (mask >> optBit) & 1;
+        if (include) out += part.text;
+        optBit++;
+      }
+    }
+    // Collapse extra spaces introduced when optional words are omitted
+    results.push(out.replace(/\s+/g, ' ').trim());
+  }
+
+  return [...new Set(results)];
+}
+
+/**
+ * Split a single token on `/` and propagate any leading non-alphanumeric
+ * prefix (e.g. a currency symbol like `£`) from the first alternative to
+ * subsequent alternatives that don't already carry it.
+ * e.g. "£4.5/4.50"      → ["£4.5", "£4.50"]
+ *      "A.M./AM"         → ["A.M.", "AM"]   (no non-alpha prefix)
+ *      "THINKING/THOUGHT" → ["THINKING", "THOUGHT"]
+ */
+function expandSlashToken(token: string): string[] {
+  const parts = token.split('/').filter(Boolean);
+  if (parts.length === 1) return parts;
+
+  const prefixMatch = parts[0].match(/^([^a-zA-Z0-9]+)/);
+  const prefix = prefixMatch ? prefixMatch[1] : '';
+
+  if (!prefix) return parts;
+
+  return parts.map((p) => (p.startsWith(prefix) ? p : prefix + p));
+}
+
+/**
+ * Given a whitespace-separated phrase whose individual tokens may contain
+ * slashes (e.g. "THINKING/THOUGHT"), return all combinations produced by
+ * choosing one side of each slash for every token.
+ * e.g. "A/B C D/E" → ["A C D", "A C E", "B C D", "B C E"]
+ */
+function expandSlashVariants(phrase: string): string[] {
+  const tokens = phrase.split(' ').filter(Boolean);
+  const tokenVariants = tokens.map(expandSlashToken);
+
+  let results: string[] = [''];
+  for (const variants of tokenVariants) {
+    const next: string[] = [];
+    for (const prefix of results) {
+      for (const v of variants) {
+        next.push(prefix ? `${prefix} ${v}` : v);
+      }
+    }
+    results = next;
+  }
+  return results;
 }
 
 function compareScalar(submitted: any, correct: any): boolean {
   if (typeof correct === 'string' || typeof submitted === 'string') {
-    return normalizeString(submitted) === normalizeString(correct);
+    const norm = normalizeString(submitted);
+    return expandAnswerKey(String(correct ?? '')).some((c) => c === norm);
   }
   return submitted === correct;
 }

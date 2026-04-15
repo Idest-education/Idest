@@ -1,0 +1,67 @@
+[
+  {
+    "url": "https://study4.com/tests/2010/ielts-simulation-listening-test-1/",
+    "skill": "listening",
+    "slug": "ielts-simulation-listening-test-1",
+    "file": "scraper/output/listening/ielts-simulation-listening-test-1.json",
+    "status": "ok"
+  },
+  {
+    "url": "https://study4.com/tests/2009/ielts-simulation-reading-test-1/",
+    "skill": "reading",
+    "slug": "ielts-simulation-reading-test-1",
+    "file": "scraper/output/reading/ielts-simulation-reading-test-1.json",
+    "status": "ok"
+  },
+  {
+    "url": "https://study4.com/tests/2012/ielts-simulation-listening-test-2/",
+    "skill": "listening",
+    "slug": "ielts-simulation-listening-test-2",
+    "file": "scraper/output/listening/ielts-simulation-listening-test-2.json",
+    "status": "ok"
+  },
+  {
+    "url": "https://study4.com/tests/2011/ielts-simulation-reading-test-2/",
+    "skill": "reading",
+    "slug": "ielts-simulation-reading-test-2",
+    "file": "scraper/output/reading/ielts-simulation-reading-test-2.json",
+    "status": "ok"
+  },
+  {
+    "url": "https://study4.com/tests/2014/ielts-simulation-listening-test-3/",
+    "skill": "listening",
+    "slug": "ielts-simulation-listening-test-3",
+    "file": "scraper/output/listening/ielts-simulation-listening-test-3.json",
+    "status": "ok"
+  },
+  {
+    "url": "https://study4.com/tests/2013/ielts-simulation-reading-test-3/",
+    "skill": "reading",
+    "status": "error",
+    "error": "No question IDs found on the test page (session may have expired). URL: https://study4.com/tests/2013/ielts-simulation-reading-test-3/ — HTML preview:  <!DOCTYPE html> <html lang='vi'> <head> <script type=\"application/ld+json\"> { \"@context\" : \"http://schema.org\", \"@type\" : \"Organization\", \"name\" : \"STUDY4\", \"url\" : \"https://study4.com\", \"sameAs\" : [ \"https://facebook.com/study4.official\" ] } </script> <meta name=\"google-site-verification\" content=\"eQDQHsBrLtonmX1Sdl8ZGEM2Fh-UWbISNiVb2cFluYI\" /> <meta name=\"facebook-domain-verification\" con"
+  },
+  {
+    "url": "https://study4.com/tests/2016/ielts-simulation-listening-test-4/",
+    "skill": "listening",
+    "status": "error",
+    "error": "No question IDs found on the test page (session may have expired). URL: https://study4.com/tests/2016/ielts-simulation-listening-test-4/ — HTML preview:  <!DOCTYPE html> <html lang='vi'> <head> <script type=\"application/ld+json\"> { \"@context\" : \"http://schema.org\", \"@type\" : \"Organization\", \"name\" : \"STUDY4\", \"url\" : \"https://study4.com\", \"sameAs\" : [ \"https://facebook.com/study4.official\" ] } </script> <meta name=\"google-site-verification\" content=\"eQDQHsBrLtonmX1Sdl8ZGEM2Fh-UWbISNiVb2cFluYI\" /> <meta name=\"facebook-domain-verification\" con"
+  },
+  {
+    "url": "https://study4.com/tests/2015/ielts-simulation-reading-test-4/",
+    "skill": "reading",
+    "status": "error",
+    "error": "No question IDs found on the test page (session may have expired). URL: https://study4.com/tests/2015/ielts-simulation-reading-test-4/ — HTML preview:  <!DOCTYPE html> <html lang='vi'> <head> <script type=\"application/ld+json\"> { \"@context\" : \"http://schema.org\", \"@type\" : \"Organization\", \"name\" : \"STUDY4\", \"url\" : \"https://study4.com\", \"sameAs\" : [ \"https://facebook.com/study4.official\" ] } </script> <meta name=\"google-site-verification\" content=\"eQDQHsBrLtonmX1Sdl8ZGEM2Fh-UWbISNiVb2cFluYI\" /> <meta name=\"facebook-domain-verification\" con"
+  },
+  {
+    "url": "https://study4.com/tests/2018/ielts-simulation-listening-test-5/",
+    "skill": "listening",
+    "status": "error",
+    "error": "No question IDs found on the test page (session may have expired). URL: https://study4.com/tests/2018/ielts-simulation-listening-test-5/ — HTML preview:  <!DOCTYPE html> <html lang='vi'> <head> <script type=\"application/ld+json\"> { \"@context\" : \"http://schema.org\", \"@type\" : \"Organization\", \"name\" : \"STUDY4\", \"url\" : \"https://study4.com\", \"sameAs\" : [ \"https://facebook.com/study4.official\" ] } </script> <meta name=\"google-site-verification\" content=\"eQDQHsBrLtonmX1Sdl8ZGEM2Fh-UWbISNiVb2cFluYI\" /> <meta name=\"facebook-domain-verification\" con"
+  },
+  {
+    "url": "https://study4.com/tests/2017/ielts-simulation-reading-test-5/",
+    "skill": "reading",
+    "status": "error",
+    "error": "No question IDs found on the test page (session may have expired). URL: https://study4.com/tests/2017/ielts-simulation-reading-test-5/ — HTML preview:  <!DOCTYPE html> <html lang='vi'> <head> <script type=\"application/ld+json\"> { \"@context\" : \"http://schema.org\", \"@type\" : \"Organization\", \"name\" : \"STUDY4\", \"url\" : \"https://study4.com\", \"sameAs\" : [ \"https://facebook.com/study4.official\" ] } </script> <meta name=\"google-site-verification\" content=\"eQDQHsBrLtonmX1Sdl8ZGEM2Fh-UWbISNiVb2cFluYI\" /> <meta name=\"facebook-domain-verification\" con"
+  }
+]

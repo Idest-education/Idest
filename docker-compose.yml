@@ -5,18 +5,6 @@ services:
     build:
       context: .
       dockerfile: apps/website/Dockerfile
-      args:
-        NEXT_PUBLIC_SUPABASE_URL: "${NEXT_PUBLIC_SUPABASE_URL:-https://example.supabase.co}"
-        NEXT_PUBLIC_SUPABASE_PUBLISHABLE_OR_ANON_KEY: "${NEXT_PUBLIC_SUPABASE_PUBLISHABLE_OR_ANON_KEY:-placeholder-anon-key}"
-        NEXT_PUBLIC_API_URL: "${NEXT_PUBLIC_API_URL:-http://localhost:8000}"
-        NEXT_PUBLIC_ASSIGNMENT_API_URL: "${NEXT_PUBLIC_ASSIGNMENT_API_URL:-http://localhost:8000/hehe}"
-        NEXT_PUBLIC_MEET_URL: "${NEXT_PUBLIC_MEET_URL:-http://localhost:8000}"
-        NEXT_PUBLIC_CONVERSATION_URL: "${NEXT_PUBLIC_CONVERSATION_URL:-http://localhost:8000}"
-        NEXT_PUBLIC_API_WS_URL: "${NEXT_PUBLIC_API_WS_URL:-http://localhost:8000}"
-        NEXT_PUBLIC_MEET_WS_URL: "${NEXT_PUBLIC_MEET_WS_URL:-}"
-        NEXT_PUBLIC_TURN_SERVER_URL: "${NEXT_PUBLIC_TURN_SERVER_URL:-}"
-        NEXT_PUBLIC_TURN_USERNAME: "${NEXT_PUBLIC_TURN_USERNAME:-}"
-        NEXT_PUBLIC_TURN_CREDENTIAL: "${NEXT_PUBLIC_TURN_CREDENTIAL:-}"
     container_name: idest-website
     init: true
     env_file:
@@ -26,17 +14,6 @@ services:
       NODE_ENV: production
       PORT: 3000
       HOSTNAME: 0.0.0.0
-      NEXT_PUBLIC_SUPABASE_URL: "${NEXT_PUBLIC_SUPABASE_URL:-https://example.supabase.co}"
-      NEXT_PUBLIC_SUPABASE_PUBLISHABLE_OR_ANON_KEY: "${NEXT_PUBLIC_SUPABASE_PUBLISHABLE_OR_ANON_KEY:-placeholder-anon-key}"
-      NEXT_PUBLIC_API_URL: "${NEXT_PUBLIC_API_URL:-http://localhost:8000}"
-      NEXT_PUBLIC_ASSIGNMENT_API_URL: "${NEXT_PUBLIC_ASSIGNMENT_API_URL:-http://localhost:8000/hehe}"
-      NEXT_PUBLIC_MEET_URL: "${NEXT_PUBLIC_MEET_URL:-http://localhost:8000}"
-      NEXT_PUBLIC_CONVERSATION_URL: "${NEXT_PUBLIC_CONVERSATION_URL:-http://localhost:8000}"
-      NEXT_PUBLIC_API_WS_URL: "${NEXT_PUBLIC_API_WS_URL:-http://localhost:8000}"
-      NEXT_PUBLIC_MEET_WS_URL: "${NEXT_PUBLIC_MEET_WS_URL:-}"
-      NEXT_PUBLIC_TURN_SERVER_URL: "${NEXT_PUBLIC_TURN_SERVER_URL:-}"
-      NEXT_PUBLIC_TURN_USERNAME: "${NEXT_PUBLIC_TURN_USERNAME:-}"
-      NEXT_PUBLIC_TURN_CREDENTIAL: "${NEXT_PUBLIC_TURN_CREDENTIAL:-}"
     depends_on:
       server:
         condition: service_healthy
@@ -68,9 +45,6 @@ services:
     environment:
       NODE_ENV: production
       PORT: 8000
-      ASSIGNMENT_URL: "${ASSIGNMENT_URL:-http://assignments:8008}"
-      AI_URL: "${AI_URL:-http://ai:8001}"
-      KOKORO_URL: "${KOKORO_URL:-http://kokoro:8880}"
     depends_on:
       assignments:
         condition: service_healthy
@@ -102,12 +76,10 @@ services:
     environment:
       NODE_ENV: production
       PORT: 8008
-      API_URL: "${API_URL:-http://localhost:8000}"
-      FRONTEND_URL: "${FRONTEND_URL:-http://localhost:3000}"
-      AI_URL: "${AI_URL:-http://ai:8001}"
-      KOKORO_URL: "${KOKORO_URL:-http://kokoro:8880}"
     expose:
       - "8008"
+    ports:
+      - "8008:8008"
     healthcheck:
       test:
         - CMD
