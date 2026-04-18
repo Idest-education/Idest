@@ -98,16 +98,23 @@ services:
     build:
       context: .
       dockerfile: apps/ai/Dockerfile
+      args:
+        PRELOAD_MODELS: "0"
     container_name: idest-ai
     init: true
     environment:
       PORT: 8001
       PYTHONDONTWRITEBYTECODE: "1"
       PYTHONUNBUFFERED: "1"
+      OLLAMA_HOST: http://host.docker.internal:11434
+      FEEDBACK_OLLAMA_HOST: http://host.docker.internal:11434
+      FEEDBACK_OLLAMA_MODEL: llama3.1:8b
       HF_HOME: /data/huggingface
       TRANSFORMERS_CACHE: /data/huggingface
       SENTENCE_TRANSFORMERS_HOME: /data/sentence-transformers
       XDG_CACHE_HOME: /data/xdg
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     expose:
       - "8001"
     ports:

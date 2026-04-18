@@ -88,6 +88,9 @@ def get_spacy_model():
         except OSError as exc:
             raise RuntimeError(
                 f"spaCy model '{SPACY_MODEL_NAME}' is not installed. "
-                f"Run: python -m spacy download {SPACY_MODEL_NAME}"
+                f"Install via wheel or CLI, e.g. "
+                f"pip install https://github.com/explosion/spacy-models/releases/download/"
+                f"{SPACY_MODEL_NAME}-3.8.0/{SPACY_MODEL_NAME}-3.8.0-py3-none-any.whl "
+                f"or run: python -m spacy download {SPACY_MODEL_NAME}"
             ) from exc
     return _spacy_model

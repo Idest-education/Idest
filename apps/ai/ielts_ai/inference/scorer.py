@@ -14,6 +14,7 @@ except ImportError:
     CatBoostRegressor = None
 
 from ielts_ai.paths import ARTIFACT_DIR
+from ielts_ai.inference.feedback_generator import generate_detailed_feedback
 RUBRIC_TARGETS = ("TA", "CC", "LR", "GR")
 DIRECT_OVERALL_TARGET = "overall_direct"
 DERIVED_OVERALL_TARGET = "overall_from_rubrics"
@@ -350,6 +351,12 @@ class ArtifactBackedScorer:
         if conf_value is not None:
             response_scores["confidence"] = round(conf_value, 3)
         description = build_score_description(response_scores)
+        detailed_feedback, feedback_meta = generate_detailed_feedback(
+            task="task2",
+            question=prompt,
+            essay=essay,
+            scores=response_scores,
+        )
         metadata = {
             "artifact_dir": str(self.artifact_dir),
             "feature_count": len(self.feature_names),
@@ -361,7 +368,10 @@ class ArtifactBackedScorer:
             "abstained": abstained,
             "confidence": conf_value,
             "confidence_enabled": bool(self.confidence_policy.get("enabled", False)),
+            **feedback_meta,
         }
+        if detailed_feedback is not None:
+            metadata["detailed_feedback"] = detailed_feedback
         return ScoringResult(scores=response_scores, description=description, metadata=metadata)
 
     def score_overall_direct(self, prompt: str, essay: str) -> ScoringResult:

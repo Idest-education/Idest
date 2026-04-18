@@ -18,6 +18,21 @@ class GradeRequest(BaseModel):
     essay: str
 
 
+class RubricFeedbackItem(BaseModel):
+    strengths: list[str] = Field(default_factory=list)
+    flaws: list[str] = Field(default_factory=list)
+    improvements: list[str] = Field(default_factory=list)
+    example_rewrite: str | None = None
+    evidence_quote: str | None = None
+
+
+class DetailedFeedback(BaseModel):
+    task_achievement: RubricFeedbackItem
+    coherence: RubricFeedbackItem
+    lexical: RubricFeedbackItem
+    grammar: RubricFeedbackItem
+
+
 class GradeResponse(BaseModel):
     task_achievement: float
     coherence: float
@@ -26,6 +41,7 @@ class GradeResponse(BaseModel):
     overall: float
     overall_display: str | None = None
     description: str
+    detailed_feedback: DetailedFeedback | None = None
     confidence: float | None = None
     abstained: bool = False
     metadata: dict = Field(default_factory=dict)
@@ -60,6 +76,7 @@ class Task1GradeResponse(BaseModel):
     overall: float
     overall_display: str | None = None
     description: str
+    detailed_feedback: DetailedFeedback | None = None
     figure_description_source: str
     image_description_used: str | None = None
     confidence: float | None = None
@@ -73,6 +90,7 @@ def grade_writing(req: GradeRequest) -> GradeResponse:
     metadata = scores.get("metadata", {})
     scores["confidence"] = metadata.get("confidence")
     scores["abstained"] = bool(metadata.get("abstained", False))
+    scores["detailed_feedback"] = metadata.get("detailed_feedback")
     return GradeResponse(**scores)
 
 
@@ -96,6 +114,7 @@ def _task1_grade_response(result, fig_meta: dict) -> Task1GradeResponse:
     return Task1GradeResponse(
         **raw,
         description=result.description,
+        detailed_feedback=metadata.get("detailed_feedback"),
         figure_description_source=str(fig_meta.get("figure_description_source", "unknown")),
         image_description_used=preview or None,
         confidence=metadata.get("confidence") if metadata.get("confidence") is not None else conf,
