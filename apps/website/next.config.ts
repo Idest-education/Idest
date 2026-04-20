@@ -20,6 +20,12 @@ const nextConfig: NextConfig = {
         hostname: "s4-media1.study4.com",
         pathname: "/**",
       },
+      {
+        protocol: 'https',
+        hostname: 'i.pinimg.com',
+        port: '',
+        pathname: '/**',
+      },
     ],
   },
 };

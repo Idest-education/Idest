@@ -12,6 +12,8 @@ import Logo from "@/assets/logo.png";
 const navItems = [
   { href: "/classes", label: "Lớp học" },
   { href: "/sessions", label: "Buổi học" },
+  { href: "/assignment", label: "Bài tập" },
+  { href: "/assignment/submissions", label: "Bài nộp" },
   { href: "/service-status", label: "Trạng thái dịch vụ" },
 ];
 
@@ -82,9 +84,8 @@ export default function Navbar() {
 
       {/* Mobile menu */}
       <div
-        className={`lg:hidden absolute top-16 left-0 right-0 bg-white border-b border-gray-200 shadow-md transition-all duration-200 ${
-          isMenuOpen ? "opacity-100 visible" : "opacity-0 invisible"
-        }`}
+        className={`lg:hidden absolute top-16 left-0 right-0 bg-white border-b border-gray-200 shadow-md transition-all duration-200 ${isMenuOpen ? "opacity-100 visible" : "opacity-0 invisible"
+          }`}
       >
         <div className="px-6 py-4 flex flex-col gap-2 text-sm">
           {navItems.map((item) => (
