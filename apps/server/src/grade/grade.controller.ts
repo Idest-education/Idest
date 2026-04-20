@@ -26,8 +26,9 @@ async submitJson(
 async submitWriting(
   @Body() body: CreateWritingSubmissionDto
 ) {
-  await this.rabbitService.send('grade_queue', {
+  await this.rabbitService.send('writing_grade_queue', {
     skill: 'writing',
+    submissionId: body.id,
     assignmentId: body.assignment_id,
     userId: body.user_id,
     contentOne: body.contentOne,

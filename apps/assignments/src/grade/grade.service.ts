@@ -3,7 +3,6 @@ import { OpenAI } from 'openai';
 import { RabbitService } from '../rabbit/rabbit.service';
 import { ReadingService } from '../assignment/reading/reading.service';
 import { ListeningService } from '../assignment/listening/listening.service';
-import { WritingService } from '../assignment/writing/writing.service';
 import { SpeakingService } from '../assignment/speaking/speaking.service';
 
 @Injectable()
@@ -15,8 +14,6 @@ export class GradeService implements OnModuleInit {
     private readonly rabbitService: RabbitService,
     private readonly readingService: ReadingService,
     private readonly listeningService: ListeningService,
-    @Inject(forwardRef(() => WritingService))
-    private readonly writingService: WritingService,
     @Inject(forwardRef(() => SpeakingService))
     private readonly speakingService: SpeakingService,
   ) {
@@ -43,10 +40,6 @@ export class GradeService implements OnModuleInit {
         
         case 'listening':
           await this.gradeListening(message);
-          break;
-        
-        case 'writing':
-          await this.gradeWriting(message);
           break;
         
         case 'speaking':
@@ -86,75 +79,6 @@ export class GradeService implements OnModuleInit {
     
     const result = await this.listeningService.gradeSubmission(submission);
     this.logger.log(`Listening graded successfully. Score: ${result.score}`);
-  }
-
-  private async gradeWriting(message: any) {
-    const assignmentId = message.assignmentId;
-    const userId = message.userId;
-    const submissionId = message.submissionId;
-
-    this.logger.log(`Grading writing assignment: ${assignmentId} (submissionId: ${submissionId})`);
-
-    if (!assignmentId || !userId || !submissionId) {
-      this.logger.error('Missing required fields for writing grading', {
-        assignmentId,
-        userId,
-        submissionId,
-      });
-      return;
-    }
-
-    try {
-      const assignment: any = await this.writingService.findOne(assignmentId);
-      if (!assignment) {
-        this.logger.error(`Writing assignment not found: ${assignmentId}`);
-        await this.writingService.markSubmissionFailed(submissionId);
-        return;
-      }
-
-      const tasks = assignment.tasks ?? [];
-      let question = '';
-      for (const t of tasks) {
-        question += `Task ${t.task_number} (${t.id}):\n${t.prompt_md}\n`;
-        if (t.instructions_md) question += `${t.instructions_md}\n`;
-        if (t.stimulus?.data_description_md) {
-          question += `Data / context: ${t.stimulus.data_description_md}\n`;
-        }
-        question += '\n';
-      }
-
-      const byTask = message.content_by_task_id ?? {};
-      let submissionText = '';
-      for (const t of tasks) {
-        const text = byTask[t.id] ?? '';
-        submissionText += `Task ${t.task_number} (${t.id}):\n${text}\n\n`;
-      }
-
-      const gradeResponseText = await this.gradeWritingSubmission(
-        submissionText,
-        question,
-      );
-
-      const gradeResponse = this.safeParseJson(gradeResponseText) as
-        | { score?: number; feedback?: string }
-        | null;
-
-      if (!gradeResponse) {
-        await this.writingService.markSubmissionFailed(submissionId);
-        return;
-      }
-
-      const result = await this.writingService.updateSubmissionGrade(
-        submissionId,
-        gradeResponse.score,
-        gradeResponse.feedback,
-      );
-
-      this.logger.log(`Writing graded successfully. Score: ${result?.score}`);
-    } catch (error) {
-      this.logger.error('Writing grading failed', error);
-      await this.writingService.markSubmissionFailed(submissionId);
-    }
   }
 
   private async gradeSpeaking(message: any) {
@@ -340,34 +264,6 @@ export class GradeService implements OnModuleInit {
     });
     console.log(response);
     return response.text;
-  }
-
-  async gradeWritingSubmission(submission: string, question: string) {
-    const systemPrompt = `You are a helpful and fair IELTS writing teacher for the tutoring platform "Idest".
-Your task is to evaluate the user's writing submission according to the official IELTS Writing rubric (Task Achievement, Coherence and Cohesion, Lexical Resource, Grammatical Range and Accuracy).
-
-Be slightly generous with the score (around +0.5 to +1.0 higher if the score is borderline).  
-Trust the user's submission over any attached image descriptions if they conflict.  
-Ignore formatting issues (like spacing or structure) but do evaluate grammar, vocabulary, and spelling.
-
-Here is the question:
-${question}
-
-Here is the submission:
-${submission}
-
-IMPORTANT: Respond with **only** a valid JSON object and nothing else.  
-No markdown, no code blocks, no explanations.  
-Format exactly like this:
-{"score": <number>, "feedback": "<string>"}`;
-
-    const response = await this.openai.responses.create({
-      model: 'gpt-5-nano',
-      input: [
-        { role: 'system', content: systemPrompt },
-      ],
-    });
-    return response.output_text;
   }
 
   async gradeSpeakingSubmission(question: string, answer: string) {
