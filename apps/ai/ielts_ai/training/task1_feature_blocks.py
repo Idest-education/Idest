@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import re
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Callable
 
 import numpy as np
 import pandas as pd
@@ -86,6 +86,7 @@ def _reference_feature_block(
     model: SentenceTransformer,
     *,
     batch_size: int,
+    log: Callable[[str], None],
 ) -> tuple[np.ndarray, list[str]]:
     prompts = df["prompt"].astype(str).tolist()
     essays = df["essay"].astype(str).tolist()
@@ -163,6 +164,7 @@ def build_task1_dataset_bundle(
             df_working,
             model,
             batch_size=batch_size,
+            log=log,
         )
         blocks.append(ref_block)
         feature_names.extend(ref_names)

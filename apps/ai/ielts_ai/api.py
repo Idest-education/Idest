@@ -8,9 +8,15 @@ from pydantic import BaseModel, Field
 
 from ielts_ai.inference.task1_scorer import decode_image_base64, get_task1_scorer
 from ielts_ai.main import grade_essay, grade_essay_overall_direct
+from ielts_ai.writing_queue_consumer import maybe_start_writing_queue_consumer
 
 app = FastAPI(title="AI", version="0.1.0")
 _task1_executor = ThreadPoolExecutor(max_workers=2)
+
+
+@app.on_event("startup")
+def startup_queue_consumers() -> None:
+    maybe_start_writing_queue_consumer()
 
 
 class GradeRequest(BaseModel):
