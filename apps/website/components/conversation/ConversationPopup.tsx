@@ -10,6 +10,7 @@ import CreateGroupConversation from "./CreateGroupConversation";
 import ParticipantList from "./ParticipantList";
 import EditGroupConversation from "./EditGroupConversation";
 import { searchUsers, type SearchUserSummary } from "@/services/user.service";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 interface ConversationPopupProps {
     onClose: () => void;
@@ -263,12 +264,23 @@ export default function ConversationPopup({
                         </button>
                     </div>
                 </div>
-                {showParticipants && conversationDetail && (
-                    <div className="p-3 border-b bg-white">
-                        <ParticipantList conversation={conversationDetail} onConversationUpdated={setConversationDetail} />
-                    </div>
-                )}
                 <ChatWindow conversationId={selectedId!} onBack={onClose} />
+                <Dialog open={showParticipants} onOpenChange={setShowParticipants}>
+                    <DialogContent
+                        className="z-[10010] w-[min(92vw,720px)] max-w-[720px]"
+                        overlayClassName="z-[10000]"
+                    >
+                        <DialogHeader>
+                            <DialogTitle>Participants</DialogTitle>
+                        </DialogHeader>
+                        {conversationDetail && (
+                            <ParticipantList
+                                conversation={conversationDetail}
+                                onConversationUpdated={setConversationDetail}
+                            />
+                        )}
+                    </DialogContent>
+                </Dialog>
             </div>
         );
     }
@@ -512,15 +524,6 @@ export default function ConversationPopup({
                             )}
                         </div>
                     </div>
-
-                    {showParticipants && conversationDetail && (
-                        <div className="px-5 pb-4 animate-fadeIn">
-                            <ParticipantList
-                                conversation={conversationDetail}
-                                onConversationUpdated={setConversationDetail}
-                            />
-                        </div>
-                    )}
                 </div>
 
                 <div className="flex-1 min-h-0 p-5">
@@ -538,6 +541,22 @@ export default function ConversationPopup({
                     )}
                 </div>
             </div>
+            <Dialog open={showParticipants} onOpenChange={setShowParticipants}>
+                <DialogContent
+                    className="z-[10010] w-[min(92vw,720px)] max-w-[720px]"
+                    overlayClassName="z-[10000]"
+                >
+                    <DialogHeader>
+                        <DialogTitle>Participants</DialogTitle>
+                    </DialogHeader>
+                    {conversationDetail && (
+                        <ParticipantList
+                            conversation={conversationDetail}
+                            onConversationUpdated={setConversationDetail}
+                        />
+                    )}
+                </DialogContent>
+            </Dialog>
         </div>
     );
 }

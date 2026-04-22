@@ -157,6 +157,7 @@ function makeEmptySection(skill: Skill): SectionForm {
 export default function CreateAssignmentPage() {
   const [skill, setSkill] = useState<Skill>("reading");
   const [assignmentTitle, setAssignmentTitle] = useState<string>("");
+  const [speakingTitle, setSpeakingTitle] = useState<string>("");
   const [description, setDescription] = useState<string>("");
   const [isPublic, setIsPublic] = useState<boolean>(true);
 
@@ -187,6 +188,7 @@ export default function CreateAssignmentPage() {
     setError(null);
     setResult(null);
     setAssignmentTitle("");
+    setSpeakingTitle("");
     setDescription("");
     setIsPublic(true);
     setSections([makeEmptySection(skill)]);
@@ -211,6 +213,7 @@ export default function CreateAssignmentPage() {
     setError(null);
     setResult(null);
     setAssignmentTitle("");
+    setSpeakingTitle("");
     setDescription("");
     setIsPublic(true);
     setSections([makeEmptySection(s)]);
@@ -472,11 +475,10 @@ export default function CreateAssignmentPage() {
                   <div className="md:col-span-2">
                     <label className="text-sm font-medium text-gray-700">Tiêu đề</label>
                     <Input
-                      value={skill === "writing" ? writing.title : skill === "speaking" ? speakingTitle : assignmentTitle}
+                      value={skill === "speaking" ? speakingTitle : assignmentTitle}
                       onChange={(e) => {
                         const v = e.target.value;
-                        if (skill === "writing") setWriting((p) => ({ ...p, title: v }));
-                        else if (skill === "speaking") setSpeakingTitle(v);
+                        if (skill === "speaking") setSpeakingTitle(v);
                         else setAssignmentTitle(v);
                       }}
                       placeholder="Tiêu đề bài tập"

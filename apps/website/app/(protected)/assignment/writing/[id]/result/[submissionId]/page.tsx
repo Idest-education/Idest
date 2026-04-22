@@ -4,7 +4,6 @@ import { use, useEffect, useState } from "react";
 import Image from "next/image";
 import { getWritingAssignment, getWritingSubmissionResult } from "@/services/assignment.service";
 import LoadingScreen from "@/components/loading-screen";
-import type { WritingAssignmentDetail, WritingSubmissionResult } from "@/types/assignment";
 
 interface Props {
     params: Promise<{ id: string; submissionId: string }>;
@@ -12,8 +11,8 @@ interface Props {
 
 export default function WritingResultPage(props: Props) {
     const { id, submissionId } = use(props.params);
-    const [result, setResult] = useState<WritingSubmissionResult | null>(null);
-    const [assignment, setAssignment] = useState<WritingAssignmentDetail | null>(null);
+    const [result, setResult] = useState<any>(null);
+    const [assignment, setAssignment] = useState<any>(null);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
@@ -23,8 +22,8 @@ export default function WritingResultPage(props: Props) {
                     getWritingAssignment(id),
                     getWritingSubmissionResult(submissionId),
                 ]);
-                setAssignment(aRes.data);
-                setResult(sRes.data);
+                setAssignment(aRes);
+                setResult((sRes as any)?.data ?? sRes);
             } finally {
                 setLoading(false);
             }

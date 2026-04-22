@@ -129,7 +129,7 @@ export default function AddClassModal({
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="max-w-4xl max-h-[90vh] bg-gradient-to-br from-gray-50 via-white to-orange-50 [&>button:last-child]:hidden overflow-hidden flex flex-col">
+      <DialogContent className="!max-w-5xl w-[90vw] max-h-[80vh] bg-gradient-to-br from-gray-50 via-white to-orange-50 [&>button:last-child]:hidden overflow-hidden flex flex-col">
         <DialogClose asChild>
           <button className="absolute right-4 top-4 rounded-full p-2 text-gray-500 hover:text-white hover:bg-orange-500 transition-colors z-10 shadow-sm">
             <X className="w-5 h-5" />
@@ -151,7 +151,7 @@ export default function AddClassModal({
           </div>
         </DialogHeader>
 
-        <div className="grid grid-cols-2 gap-6 mt-4 overflow-y-auto flex-1 pr-2">
+        <div className="grid grid-cols-2 gap-6 overflow-y-auto flex-1 min-h-0 pr-2">
           {/* Left Column */}
           <div className="space-y-6">
             {/* Basic Information Section */}
@@ -309,7 +309,7 @@ export default function AddClassModal({
           </div>
         </div>
         {/* Footer */}
-        <DialogFooter className="gap-2 pt-4 border-t border-orange-100 flex-shrink-0 mt-4 bg-gradient-to-r from-white via-orange-50 to-amber-50">
+        <DialogFooter className="gap-2 pt-4 border-t border-orange-100 flex-shrink-0 bg-gradient-to-r from-white via-orange-50 to-amber-50">
           <Button
             type="button"
             onClick={onClose}

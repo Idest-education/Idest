@@ -350,6 +350,22 @@ export interface SpeakingSubmissionPayload {
   // Files are handled via FormData in service
 }
 
+export interface SpeakingSubmissionResult {
+  id?: string;
+  _id?: string;
+  assignment_id: string;
+  user_id: string;
+  audio_url?: string;
+  score?: number;
+  feedback?: string;
+  status: "pending" | "graded" | "failed";
+  transcriptOne?: string;
+  transcriptTwo?: string;
+  transcriptThree?: string;
+  transcripts?: Array<{ part_number: number; text?: string }>;
+  created_at?: string;
+}
+
 // =======================
 // CREATE ASSIGNMENT PAYLOADS (ADMIN/TEACHER)
 // =======================

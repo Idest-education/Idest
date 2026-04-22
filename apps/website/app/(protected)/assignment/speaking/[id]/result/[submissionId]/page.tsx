@@ -23,8 +23,8 @@ export default function SpeakingResultPage(props: Props) {
                     getSpeakingAssignment(id),
                     getSpeakingSubmissionResult(submissionId),
                 ]);
-                setAssignment(aRes.data);
-                setResult(sRes.data);
+                setAssignment(aRes);
+                setResult((sRes as any)?.data ?? sRes);
             } finally {
                 setLoading(false);
             }
@@ -137,11 +137,22 @@ export default function SpeakingResultPage(props: Props) {
                                 <div key={part.part_number} className="space-y-2">
                                     <h3 className="font-semibold text-gray-900">Phần {part.part_number}</h3>
                                     <div className="rounded-xl border border-gray-200 bg-gray-50 p-4 space-y-2">
-                                        {part.questions.map((q) => (
-                                            <div key={q.id} className="text-gray-800">
-                                                • {q.prompt}
-                                            </div>
-                                        ))}
+                                        {part.part_number === 2 && part.cue_card ? (
+                                            <>
+                                                <div className="text-gray-800">• {part.cue_card.topic_md}</div>
+                                                {(part.cue_card.bullet_points || []).map((bullet, idx) => (
+                                                    <div key={`${part.part_number}-bullet-${idx}`} className="text-gray-700 ml-4">
+                                                        - {bullet}
+                                                    </div>
+                                                ))}
+                                            </>
+                                        ) : (
+                                            (part.items || []).map((item) => (
+                                                <div key={item.id} className="text-gray-800">
+                                                    • {item.prompt_md}
+                                                </div>
+                                            ))
+                                        )}
                                     </div>
                                 </div>
                             ))}
