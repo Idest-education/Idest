@@ -26,6 +26,10 @@ import { RolesGuard } from 'src/common/guard/role.guard';
 import { Roles } from 'src/common/decorator/role.decorator';
 import { Role } from 'src/common/enum/role.enum';
 import {
+  ClassCalendarEventsResponseDto,
+  ClassCalendarQueryDto,
+} from './dto/calendar-events.dto';
+import {
   ClassCountDto,
   ClassResponseDto,
   FullClassResponseDto,
@@ -476,6 +480,41 @@ export class ClassController {
   ): Promise<ClassResponseDto[]> {
     console.log('searchClasses route called:', { user, q });
     return this.classService.searchClasses(user.id, q || '');
+  }
+
+  @Get('calendar/events')
+  @ApiOperation({
+    summary: 'Get user calendar events',
+    description:
+      'Returns merged calendar events for the authenticated user from recurring class schedules and concrete class sessions. Supports optional date range filters.',
+  })
+  @ApiQuery({
+    name: 'from',
+    required: false,
+    description: 'Start of range in ISO-8601',
+    example: '2026-04-23T00:00:00.000Z',
+  })
+  @ApiQuery({
+    name: 'to',
+    required: false,
+    description: 'End of range in ISO-8601',
+    example: '2026-06-18T23:59:59.999Z',
+  })
+  @ApiOkResponse({
+    description: 'Successfully retrieved calendar events',
+    type: ClassCalendarEventsResponseDto,
+  })
+  @ApiUnauthorizedResponse({ description: 'Authentication required' })
+  @ApiInternalServerErrorResponse({ description: 'Internal server error' })
+  async getUserCalendarEvents(
+    @CurrentUser() user: userPayload,
+    @Query() query: ClassCalendarQueryDto,
+  ): Promise<ClassCalendarEventsResponseDto> {
+    return this.classService.getCalendarEventsForUser(
+      user.id,
+      query.from,
+      query.to,
+    );
   }
 
   @Get('slug/:slug')

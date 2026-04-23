@@ -4,6 +4,7 @@ import { CreateClassDto } from './dto/create-class.dto';
 import { UpdateClassDto } from './dto/update-class.dto';
 import { AddClassMemberDto, AddClassTeacherDto } from './dto/class-member.dto';
 import { BulkStudentIdsDto } from './dto/bulk-members.dto';
+import { ClassCalendarEventsResponseDto } from './dto/calendar-events.dto';
 import {
   ClassCountDto,
   ClassResponseDto,
@@ -141,6 +142,17 @@ export class ClassService {
    */
   async getPublicClasses(): Promise<ClassResponseDto[]> {
     return this.queryService.getPublicClasses();
+  }
+
+  /**
+   * Get merged calendar events for the current user.
+   */
+  async getCalendarEventsForUser(
+    userId: string,
+    from?: string,
+    to?: string,
+  ): Promise<ClassCalendarEventsResponseDto> {
+    return this.queryService.getCalendarEventsForUser(userId, from, to);
   }
 
   /**

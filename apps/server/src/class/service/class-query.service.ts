@@ -1,5 +1,6 @@
 import {
   Injectable,
+  BadRequestException,
   NotFoundException,
   ForbiddenException,
   InternalServerErrorException,
@@ -19,10 +20,117 @@ import {
   mapUsersToDto,
   toFullClassResponseDto,
 } from '../class.util';
+import {
+  ClassCalendarEventDto,
+  ClassCalendarEventsResponseDto,
+} from '../dto/calendar-events.dto';
+
+type ClassScheduleShape = {
+  days: string[];
+  time: string;
+  duration: number;
+  timezone?: string;
+};
 
 @Injectable()
 export class ClassQueryService {
   constructor(private readonly prisma: PrismaService) {}
+
+  private parseSchedule(value: unknown): ClassScheduleShape | null {
+    if (!value || typeof value !== 'object') return null;
+    const maybe = value as Record<string, unknown>;
+    const days = Array.isArray(maybe.days)
+      ? maybe.days.filter((d): d is string => typeof d === 'string')
+      : [];
+    const time = typeof maybe.time === 'string' ? maybe.time : undefined;
+    const duration =
+      typeof maybe.duration === 'number' && maybe.duration > 0
+        ? maybe.duration
+        : undefined;
+    const timezone =
+      typeof maybe.timezone === 'string' ? maybe.timezone : undefined;
+
+    if (!time || !duration || days.length === 0) return null;
+    return { days, time, duration, timezone };
+  }
+
+  private getWeekdayIndex(day: string): number | null {
+    const normalized = day.trim().toLowerCase();
+    const map: Record<string, number> = {
+      sunday: 0,
+      monday: 1,
+      tuesday: 2,
+      wednesday: 3,
+      thursday: 4,
+      friday: 5,
+      saturday: 6,
+      // Vietnamese aliases
+      'chủ nhật': 0,
+      'thu hai': 1,
+      'thứ hai': 1,
+      'thu ba': 2,
+      'thứ ba': 2,
+      'thu tu': 3,
+      'thứ tư': 3,
+      'thu nam': 4,
+      'thứ năm': 4,
+      'thu sau': 5,
+      'thứ sáu': 5,
+      'thu bay': 6,
+      'thứ bảy': 6,
+    };
+    return normalized in map ? map[normalized] : null;
+  }
+
+  private buildDateAtTime(
+    baseDate: Date,
+    time: string,
+    durationMinutes: number,
+  ): { start: Date; end: Date } | null {
+    const [hourRaw, minuteRaw] = time.split(':');
+    const hour = Number(hourRaw);
+    const minute = Number(minuteRaw);
+    if (
+      !Number.isInteger(hour) ||
+      !Number.isInteger(minute) ||
+      hour < 0 ||
+      hour > 23 ||
+      minute < 0 ||
+      minute > 59
+    ) {
+      return null;
+    }
+
+    const start = new Date(baseDate);
+    start.setHours(hour, minute, 0, 0);
+    const end = new Date(start.getTime() + durationMinutes * 60 * 1000);
+    return { start, end };
+  }
+
+  private normalizeRange(from?: string, to?: string): { fromDate: Date; toDate: Date } {
+    const fromDate = from ? new Date(from) : new Date();
+    if (Number.isNaN(fromDate.getTime())) {
+      throw new BadRequestException('Invalid "from" datetime');
+    }
+
+    const toDate = to
+      ? new Date(to)
+      : new Date(fromDate.getTime() + 8 * 7 * 24 * 60 * 60 * 1000);
+    if (Number.isNaN(toDate.getTime())) {
+      throw new BadRequestException('Invalid "to" datetime');
+    }
+    if (toDate <= fromDate) {
+      throw new BadRequestException('"to" must be after "from"');
+    }
+
+    // Keep range bounded to avoid heavy payloads.
+    const maxRangeMs = 180 * 24 * 60 * 60 * 1000;
+    if (toDate.getTime() - fromDate.getTime() > maxRangeMs) {
+      throw new BadRequestException('Date range is too large (max 180 days)');
+    }
+
+    return { fromDate, toDate };
+  }
 
   private async isAdmin(userId: string): Promise<boolean> {
     const user = await this.prisma.user.findUnique({
@@ -303,6 +411,127 @@ export class ClassQueryService {
     } catch (error) {
       console.error('Error getting user classes:', error);
       throw new InternalServerErrorException('Failed to retrieve classes');
+    }
+  }
+
+  async getCalendarEventsForUser(
+    userId: string,
+    from?: string,
+    to?: string,
+  ): Promise<ClassCalendarEventsResponseDto> {
+    try {
+      const { fromDate, toDate } = this.normalizeRange(from, to);
+      const eventMap = new Map<string, ClassCalendarEventDto>();
+
+      const userClasses = await this.prisma.class.findMany({
+        where: {
+          OR: [
+            { created_by: userId },
+            { teachers: { some: { teacher_id: userId } } },
+            { members: { some: { student_id: userId, status: 'active' } } },
+          ],
+        },
+        select: {
+          id: true,
+          name: true,
+          schedule: true,
+        },
+      });
+
+      if (userClasses.length === 0) {
+        return {
+          from: fromDate.toISOString(),
+          to: toDate.toISOString(),
+          total: 0,
+          events: [],
+        };
+      }
+
+      const classIds = userClasses.map((c) => c.id);
+      const sessions = await this.prisma.session.findMany({
+        where: {
+          class_id: { in: classIds },
+          start_time: { gte: fromDate, lte: toDate },
+        },
+        select: {
+          id: true,
+          class_id: true,
+          start_time: true,
+          end_time: true,
+          class: { select: { id: true, name: true } },
+        },
+        orderBy: { start_time: 'asc' },
+      });
+
+      // Add concrete sessions first so recurring events can be deduped against them.
+      for (const session of sessions) {
+        const endTime =
+          session.end_time ?? new Date(session.start_time.getTime() + 60 * 60 * 1000);
+        const key = `${session.class_id}|${session.start_time.toISOString()}`;
+        eventMap.set(key, {
+          id: `session_${session.id}`,
+          title: session.class.name,
+          start: session.start_time.toISOString(),
+          end: endTime.toISOString(),
+          source: 'session',
+          classId: session.class_id,
+          className: session.class.name,
+          timezone: null,
+        });
+      }
+
+      for (const classItem of userClasses) {
+        const schedule = this.parseSchedule(classItem.schedule);
+        if (!schedule) continue;
+        const { time, duration } = schedule;
+
+        const validWeekdays = schedule.days
+          .map((d) => this.getWeekdayIndex(d))
+          .filter((d): d is number => d !== null);
+        if (validWeekdays.length === 0) continue;
+
+        const cursor = new Date(fromDate);
+        cursor.setHours(0, 0, 0, 0);
+
+        while (cursor <= toDate) {
+          if (validWeekdays.includes(cursor.getDay())) {
+            const slot = this.buildDateAtTime(cursor, time, duration);
+            if (slot && slot.start >= fromDate && slot.start <= toDate) {
+              const key = `${classItem.id}|${slot.start.toISOString()}`;
+              if (!eventMap.has(key)) {
+                eventMap.set(key, {
+                  id: `recurring_${classItem.id}_${slot.start.toISOString()}`,
+                  title: classItem.name,
+                  start: slot.start.toISOString(),
+                  end: slot.end.toISOString(),
+                  source: 'recurring',
+                  classId: classItem.id,
+                  className: classItem.name,
+                  timezone: schedule.timezone ?? null,
+                });
+              }
+            }
+          }
+          cursor.setDate(cursor.getDate() + 1);
+        }
+      }
+
+      const events = Array.from(eventMap.values()).sort((a, b) =>
+        a.start.localeCompare(b.start),
+      );
+
+      return {
+        from: fromDate.toISOString(),
+        to: toDate.toISOString(),
+        total: events.length,
+        events,
+      };
+    } catch (error) {
+      if (error instanceof BadRequestException) {
+        throw error;
+      }
+      console.error('Error getting class calendar events:', error);
+      throw new InternalServerErrorException('Failed to retrieve calendar events');
     }
   }
 
