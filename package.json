@@ -5,7 +5,7 @@
   "description": "Idest",
   "scripts": {
     "prep": "pnpm install",
-    "docker": "docker compose up",
+    "docker": "docker compose up --build",
     "db:generate": "pnpm --filter idest-server prisma:generate",
     "db:push": "pnpm --filter idest-server prisma:push",
     "python": "python3 -m pip install -r apps/ai/requirements.txt",
