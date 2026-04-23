@@ -125,6 +125,7 @@ export default function SessionsPage() {
                 key={session.id}
                 session={session}
                 currentUserId={currentUserId}
+                allowReviewAction={filter === "past"}
                 // Add handlers if needed
               />
             ))}

@@ -15,6 +15,7 @@ interface SessionCardProps {
   canExportAttendance?: boolean;
   onExportAttendance?: (session: SessionData) => void;
   isExportingAttendance?: boolean;
+  allowReviewAction?: boolean;
 }
 
 export default function SessionCard({
@@ -27,6 +28,7 @@ export default function SessionCard({
   canExportAttendance = false,
   onExportAttendance,
   isExportingAttendance = false,
+  allowReviewAction = false,
 }: SessionCardProps) {
   const router = useRouter();
   
@@ -135,6 +137,17 @@ export default function SessionCard({
             >
               <Download className="w-4 h-4 mr-2" />
               {isExportingAttendance ? "Đang tải..." : "See attendance"}
+            </Button>
+          )}
+
+          {allowReviewAction && isPast && (
+            <Button
+              onClick={() => router.push(`/sessions/${session.id}/review`)}
+              variant="outline"
+              size="sm"
+              className="text-sm"
+            >
+              Xem lại buổi học
             </Button>
           )}
 

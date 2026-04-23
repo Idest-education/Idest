@@ -133,6 +133,15 @@ export class MeetGateway
         this.attendanceTimers.delete(timerKey);
       }
 
+      // Best effort: finalize attendance when socket disconnects unexpectedly.
+      this.sessionService
+        .recordLeave(disconnectedUser.sessionId, disconnectedUser.userId)
+        .catch((error: unknown) =>
+          this.logger.warn(
+            `Failed to record leave for user ${disconnectedUser.userId} in session ${disconnectedUser.sessionId} on disconnect: ${error instanceof Error ? error.message : String(error)}`,
+          ),
+        );
+
       this.handleUserLeft(disconnectedUser);
     }
   }
@@ -423,6 +432,17 @@ export class MeetGateway
 
       // Remove from tracking
       this.meetService.removeConnectedUserBySocket(client.id);
+
+      // Clear attendance timer if user leaves before 5 minutes
+      const timerKey = `${sessionId}_${user.userId}`;
+      const timer = this.attendanceTimers.get(timerKey);
+      if (timer) {
+        clearTimeout(timer);
+        this.attendanceTimers.delete(timerKey);
+      }
+
+      // Best effort: finalize attendance on explicit leave.
+      await this.sessionService.recordLeave(sessionId, user.userId);
 
       // Notify other users
       this.handleUserLeft(user);

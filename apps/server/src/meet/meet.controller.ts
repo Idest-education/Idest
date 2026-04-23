@@ -103,7 +103,6 @@ export class MeetController {
     @Param('sessionId') sessionId: string,
     @CurrentUser() user: userPayload,
   ): Promise<MeetRecordingListResponseDto> {
-    await this.meetService.validateSession(sessionId);
     await this.meetService.validateUserSessionAccess(user.id, sessionId);
 
     const items = await this.meetService.listRecordings(sessionId);
@@ -124,7 +123,6 @@ export class MeetController {
   ): Promise<{ recordingId: string; url: string | null; location: string | null }> {
     const { sessionId, url, location } =
       await this.meetService.getRecordingUrl(recordingId);
-    await this.meetService.validateSession(sessionId);
     await this.meetService.validateUserSessionAccess(user.id, sessionId);
     return { recordingId, url, location };
   }
