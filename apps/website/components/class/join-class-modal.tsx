@@ -1,7 +1,13 @@
 "use client";
 
 import { useState } from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -42,19 +48,19 @@ export default function JoinClassModal({ open, onClose, onJoined }: JoinClassMod
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-lg bg-gradient-to-br from-blue-50 via-white to-indigo-50 [&>button:last-child]:hidden">
+      <DialogContent className="w-[92vw] !sm:max-w-3xl bg-gradient-to-br from-gray-50 via-white to-orange-50 [&>button:last-child]:hidden overflow-hidden">
         <DialogClose asChild>
-          <button className="absolute right-4 top-4 rounded-full p-2 text-gray-600 hover:text-white hover:bg-indigo-600 transition-colors">
+          <button className="absolute right-4 top-4 rounded-full p-2 text-gray-500 hover:text-white hover:bg-orange-500 transition-colors z-10 shadow-sm">
             <X className="w-5 h-5" />
           </button>
         </DialogClose>
-        <DialogHeader className="space-y-3 pb-4 border-b border-blue-100">
+        <DialogHeader className="space-y-3 pb-4 border-b border-orange-100">
           <div className="flex items-center gap-3">
-            <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-indigo-600 to-purple-600 flex items-center justify-center shadow-lg">
+            <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-gray-900 via-orange-700 to-orange-500 flex items-center justify-center shadow-lg">
               <LogIn className="w-6 h-6 text-white" />
             </div>
             <div>
-              <DialogTitle className="text-2xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
+              <DialogTitle className="text-2xl font-bold bg-gradient-to-r from-gray-900 via-orange-900 to-orange-500 bg-clip-text text-transparent">
                 Tham gia lớp học
               </DialogTitle>
               <p className="text-sm text-gray-500 mt-1">
@@ -64,14 +70,12 @@ export default function JoinClassModal({ open, onClose, onJoined }: JoinClassMod
           </div>
         </DialogHeader>
 
-        <div className="space-y-6 mt-4">
+        <div className="py-5">
+          <div className="bg-white rounded-xl p-5 shadow-sm border border-orange-100 space-y-4">
 
-
-          {/* Input section */}
-          <div className="bg-white rounded-xl p-5 shadow-sm border border-blue-100 space-y-4">
             <div className="space-y-2">
               <Label htmlFor="invite-code" className="text-sm font-medium text-gray-700 flex items-center gap-2">
-                <Key className="w-4 h-4 text-blue-500" />
+                <Key className="w-4 h-4 text-orange-500" />
                 Mã mời
               </Label>
               <Input
@@ -82,33 +86,43 @@ export default function JoinClassModal({ open, onClose, onJoined }: JoinClassMod
                 onKeyDown={(e) => {
                   if (e.key === "Enter") handleJoin();
                 }}
-                className="border-indigo-600 focus:indigo-600 focus:indigo-600 text-gray-900 font-mono text-base h-12"
+                className="border-gray-200 focus:border-blue-400 focus:ring-blue-400 text-gray-900 font-mono text-base h-12"
                 autoFocus
               />
               <p className="text-xs text-gray-500 flex items-center gap-1">
                 💡 Lấy mã từ giáo viên hoặc quản trị viên lớp học
               </p>
             </div>
-
-            <Button
-              onClick={handleJoin}
-              disabled={loading || !inviteCode.trim()}
-              className="w-full h-12 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-blue-600 hover:to-indigo-700 text-white shadow-lg hover:shadow-xl transition-all duration-200 text-base font-semibold"
-            >
-              {loading ? (
-                <span className="flex items-center gap-2">
-                  <span className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
-                  Đang tham gia...
-                </span>
-              ) : (
-                <span className="flex items-center gap-2">
-                  <LogIn className="w-5 h-5" />
-                  Tham gia lớp học
-                </span>
-              )}
-            </Button>
           </div>
         </div>
+        <DialogFooter className="gap-2 pt-4 border-t border-orange-100 bg-gradient-to-r from-white via-orange-50 to-amber-50">
+          <Button
+            type="button"
+            onClick={onClose}
+            disabled={loading}
+            className="border-gray-300 hover:bg-gray-50"
+          >
+            Hủy
+          </Button>
+          <Button
+            type="button"
+            onClick={handleJoin}
+            disabled={loading || !inviteCode.trim()}
+            className="min-w-40 bg-gradient-to-r from-gray-900 via-orange-700 to-orange-500 text-white shadow-lg transition-colors duration-700 ease-in-out hover:from-gray-900 hover:via-orange-600 hover:to-orange-400 hover:shadow-xl disabled:cursor-not-allowed disabled:from-gray-200 disabled:via-gray-200 disabled:to-gray-200 disabled:text-gray-500 disabled:shadow-none"
+          >
+            {loading ? (
+              <span className="flex items-center gap-2">
+                <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
+                Đang tham gia...
+              </span>
+            ) : (
+              <span className="flex items-center gap-2">
+                <LogIn className="w-4 h-4" />
+                Tham gia lớp học
+              </span>
+            )}
+          </Button>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );
