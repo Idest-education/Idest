@@ -228,12 +228,155 @@ export class MeetService {
     return Number.isFinite(d.getTime()) ? d : null;
   }
 
+  private extractFirstEgressFile(info: any): {
+    location?: string;
+    filename?: string;
+    duration?: unknown;
+    size?: unknown;
+  } | null {
+    if (!info) return null;
+    // LiveKit payloads vary by endpoint/version and can be nested.
+    const candidates = [
+      info.fileResults,
+      info.file_results,
+      info.files,
+      info.fileResult,
+      info.file_result,
+      info.file,
+      info.result?.value?.fileResults,
+      info.result?.value?.file_results,
+      info.result?.value?.files,
+      info.result?.value?.fileResult,
+      info.result?.value?.file_result,
+      info.result?.value?.file,
+      info.result?.fileResults,
+      info.result?.file_results,
+      info.result?.files,
+      info.result?.fileResult,
+      info.result?.file_result,
+      info.result?.file,
+      info.info?.fileResults,
+      info.info?.file_results,
+      info.info?.files,
+      info.info?.file,
+    ];
+    for (const list of candidates) {
+      if (Array.isArray(list) && list.length > 0 && list[0]) {
+        return list[0];
+      }
+      if (
+        list &&
+        typeof list === 'object' &&
+        ('location' in list || 'filename' in list)
+      ) {
+        return list as {
+          location?: string;
+          filename?: string;
+          duration?: unknown;
+          size?: unknown;
+        };
+      }
+    }
+    const oneofValue = info.result?.value;
+    if (
+      oneofValue &&
+      typeof oneofValue === 'object' &&
+      ('location' in oneofValue || 'filename' in oneofValue)
+    ) {
+      return oneofValue as {
+        location?: string;
+        filename?: string;
+        duration?: unknown;
+        size?: unknown;
+      };
+    }
+    return null;
+  }
+
+  private summarizeEgressInfo(info: any): Record<string, unknown> {
+    if (!info || typeof info !== 'object') return { type: typeof info };
+    const topKeys = Object.keys(info).slice(0, 30);
+    const resultKeys =
+      info.result && typeof info.result === 'object'
+        ? Object.keys(info.result).slice(0, 30)
+        : [];
+    const resultValueKeys =
+      info.result?.value && typeof info.result.value === 'object'
+        ? Object.keys(info.result.value).slice(0, 30)
+        : [];
+    const infoKeys =
+      info.info && typeof info.info === 'object'
+        ? Object.keys(info.info).slice(0, 30)
+        : [];
+    return {
+      topKeys,
+      resultKeys,
+      resultValueKeys,
+      infoKeys,
+      status: info.status ?? info.egressStatus ?? info.result?.status ?? null,
+      startedAt:
+        info.startedAt ??
+        info.started_at ??
+        info.result?.startedAt ??
+        info.result?.started_at ??
+        null,
+      endedAt:
+        info.endedAt ??
+        info.ended_at ??
+        info.result?.endedAt ??
+        info.result?.ended_at ??
+        null,
+      hasFileResults: Array.isArray(info.fileResults) ? info.fileResults.length : 0,
+      hasFile_results: Array.isArray(info.file_results) ? info.file_results.length : 0,
+      hasFiles: Array.isArray(info.files) ? info.files.length : 0,
+      hasResultFiles: Array.isArray(info.result?.files) ? info.result.files.length : 0,
+      hasResultFileResults: Array.isArray(info.result?.fileResults)
+        ? info.result.fileResults.length
+        : 0,
+    };
+  }
+
+  private safeJsonStringify(value: unknown): string {
+    return JSON.stringify(value, (_key, v) =>
+      typeof v === 'bigint' ? v.toString() : v,
+    );
+  }
+
   private resolvePublicUrl(
     fileLocation: string | null | undefined,
     publicBaseUrl: string | null | undefined,
   ): string | null {
     if (!fileLocation) return null;
     if (fileLocation.startsWith('http://') || fileLocation.startsWith('https://')) {
+      // R2 S3 API endpoint URLs are not publicly playable without auth.
+      // Convert `https://<acct>.r2.cloudflarestorage.com/<bucket>/<key>` into:
+      // 1) a presigned URL (preferred), or
+      // 2) public base URL rewrite when configured.
+      try {
+        const u = new URL(fileLocation);
+        if (u.hostname.endsWith('.r2.cloudflarestorage.com')) {
+          const path = u.pathname.replace(/^\/+/, '');
+          const firstSlash = path.indexOf('/');
+          const bucket = firstSlash >= 0 ? path.slice(0, firstSlash) : '';
+          const key = firstSlash >= 0 ? path.slice(firstSlash + 1) : '';
+          return (
+            (bucket && key
+              ? this.presignS3GetUrl({
+                  bucket,
+                  key,
+                  expiresSeconds: Number(
+                    process.env.RECORDING_URL_EXPIRES_SECONDS || 3600,
+                  ),
+                })
+              : null) ||
+            (key && publicBaseUrl
+              ? `${publicBaseUrl.replace(/\/$/, '')}/${key}`
+              : null)
+          );
+        }
+      } catch {
+        // malformed URL -> fall through
+      }
       return fileLocation;
     }
     if (fileLocation.startsWith('s3://')) {
@@ -1367,13 +1510,26 @@ export class MeetService {
     // Best-effort: sync final egress info immediately (status/endedAt/fileLocation) so UI stops showing "stuck".
     try {
       const info = await this.liveKitService.getEgressInfo(egressId);
-      const file0 =
-        info && Array.isArray(info.fileResults) ? info.fileResults[0] : undefined;
+      const file0 = this.extractFirstEgressFile(info);
       const inferredLocation: string | undefined = file0?.location || undefined;
       const inferredFilename: string | undefined = file0?.filename || undefined;
-      const inferredStatus = this.mapEgressStatusToRecordingStatus(info?.status);
-      const inferredStartedAt = this.normalizeEpochToDate(info?.startedAt) || undefined;
-      const inferredEndedAt = this.normalizeEpochToDate(info?.endedAt) || undefined;
+      const inferredStatus = this.mapEgressStatusToRecordingStatus(
+        info?.status ?? info?.egressStatus ?? info?.result?.status,
+      );
+      const inferredStartedAt =
+        this.normalizeEpochToDate(
+          info?.startedAt ??
+            info?.started_at ??
+            info?.result?.startedAt ??
+            info?.result?.started_at,
+        ) || undefined;
+      const inferredEndedAt =
+        this.normalizeEpochToDate(
+          info?.endedAt ??
+            info?.ended_at ??
+            info?.result?.endedAt ??
+            info?.result?.ended_at,
+        ) || undefined;
 
       if (inferredLocation || inferredStatus || inferredStartedAt || inferredEndedAt) {
         await prismaAny.recording.updateMany({
@@ -1458,6 +1614,33 @@ export class MeetService {
         fileLocation.startsWith('http://') ||
         fileLocation.startsWith('https://')
       ) {
+        try {
+          const u = new URL(fileLocation);
+          if (u.hostname.endsWith('.r2.cloudflarestorage.com')) {
+            const path = u.pathname.replace(/^\/+/, '');
+            const firstSlash = path.indexOf('/');
+            const bucket =
+              firstSlash >= 0 ? path.slice(0, firstSlash) : '';
+            const key =
+              firstSlash >= 0 ? path.slice(firstSlash + 1) : '';
+            return (
+              (bucket && key
+                ? this.presignS3GetUrl({
+                    bucket,
+                    key,
+                    expiresSeconds: Number(
+                      process.env.RECORDING_URL_EXPIRES_SECONDS || 3600,
+                    ),
+                  })
+                : null) ||
+              (key && publicBaseUrl
+                ? `${publicBaseUrl.replace(/\/$/, '')}/${key}`
+                : null)
+            );
+          }
+        } catch {
+          // malformed URL -> fall through
+        }
         return fileLocation;
       }
       if (fileLocation.startsWith('s3://')) {
@@ -1493,19 +1676,35 @@ export class MeetService {
         // - endedAt/status may be missing until egress is COMPLETE
         if ((!(r as any).fileLocation || !(r as any).endedAt) && r.egressId) {
           const info = await this.liveKitService.getEgressInfo(r.egressId);
-          const file0 =
-            info && Array.isArray(info.fileResults)
-              ? info.fileResults[0]
-              : undefined;
+          const file0 = this.extractFirstEgressFile(info);
+          if (!file0) {
+            this.logger.warn(
+              `[listRecordings] Unable to extract file for egressId=${r.egressId}: ${this.safeJsonStringify(
+                this.summarizeEgressInfo(info),
+              )}`,
+            );
+          }
           const inferredLocation: string | undefined =
             file0?.location || undefined;
           const inferredFilename: string | undefined =
             file0?.filename || undefined;
-          const inferredStatus = this.mapEgressStatusToRecordingStatus(info?.status);
+          const inferredStatus = this.mapEgressStatusToRecordingStatus(
+            info?.status ?? info?.egressStatus ?? info?.result?.status,
+          );
           const inferredStartedAt =
-            this.normalizeEpochToDate(info?.startedAt) || undefined;
+            this.normalizeEpochToDate(
+              info?.startedAt ??
+                info?.started_at ??
+                info?.result?.startedAt ??
+                info?.result?.started_at,
+            ) || undefined;
           const inferredEndedAt =
-            this.normalizeEpochToDate(info?.endedAt) || undefined;
+            this.normalizeEpochToDate(
+              info?.endedAt ??
+                info?.ended_at ??
+                info?.result?.endedAt ??
+                info?.result?.ended_at,
+            ) || undefined;
 
           if (inferredLocation || inferredStatus || inferredStartedAt || inferredEndedAt) {
             await prismaAny.recording.update({
@@ -1593,15 +1792,33 @@ export class MeetService {
     let inferredStatus: string | undefined;
     if (!recording.fileLocation && recording.egressId) {
       const info = await this.liveKitService.getEgressInfo(recording.egressId);
-      const file0 =
-        info && Array.isArray(info.fileResults) ? info.fileResults[0] : undefined;
+      const file0 = this.extractFirstEgressFile(info);
+      if (!file0) {
+        this.logger.warn(
+          `[getRecordingUrl] Unable to extract file for egressId=${recording.egressId}: ${this.safeJsonStringify(
+            this.summarizeEgressInfo(info),
+          )}`,
+        );
+      }
       const inferredLocation: string | undefined = file0?.location || undefined;
       const inferredFilename: string | undefined = file0?.filename || undefined;
-      inferredStatus = this.mapEgressStatusToRecordingStatus(info?.status);
+      inferredStatus = this.mapEgressStatusToRecordingStatus(
+        info?.status ?? info?.egressStatus ?? info?.result?.status,
+      );
       const inferredStartedAt =
-        this.normalizeEpochToDate(info?.startedAt) || undefined;
+        this.normalizeEpochToDate(
+          info?.startedAt ??
+            info?.started_at ??
+            info?.result?.startedAt ??
+            info?.result?.started_at,
+        ) || undefined;
       const inferredEndedAt =
-        this.normalizeEpochToDate(info?.endedAt) || undefined;
+        this.normalizeEpochToDate(
+          info?.endedAt ??
+            info?.ended_at ??
+            info?.result?.endedAt ??
+            info?.result?.ended_at,
+        ) || undefined;
 
       if (inferredLocation || inferredStatus || inferredStartedAt || inferredEndedAt) {
         await prismaAny.recording.update({
@@ -1627,7 +1844,32 @@ export class MeetService {
     const fileLocation = recording.fileLocation;
     if (fileLocation) {
       if (fileLocation.startsWith('http://') || fileLocation.startsWith('https://')) {
-        url = fileLocation;
+        try {
+          const u = new URL(fileLocation);
+          if (u.hostname.endsWith('.r2.cloudflarestorage.com')) {
+            const path = u.pathname.replace(/^\/+/, '');
+            const firstSlash = path.indexOf('/');
+            const bucket = firstSlash >= 0 ? path.slice(0, firstSlash) : '';
+            const key = firstSlash >= 0 ? path.slice(firstSlash + 1) : '';
+            url =
+              (bucket && key
+                ? this.presignS3GetUrl({
+                    bucket,
+                    key,
+                    expiresSeconds: Number(
+                      process.env.RECORDING_URL_EXPIRES_SECONDS || 3600,
+                    ),
+                  })
+                : null) ||
+              (key && publicBaseUrl
+                ? `${publicBaseUrl.replace(/\/$/, '')}/${key}`
+                : null);
+          } else {
+            url = fileLocation;
+          }
+        } catch {
+          url = fileLocation;
+        }
       } else if (fileLocation.startsWith('s3://')) {
         const withoutScheme = fileLocation.slice('s3://'.length);
         const firstSlash = withoutScheme.indexOf('/');

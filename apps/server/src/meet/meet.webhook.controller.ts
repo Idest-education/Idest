@@ -60,6 +60,20 @@ function resolvePublicUrl(
 ): string | null {
   if (!fileLocation) return null;
   if (fileLocation.startsWith('http://') || fileLocation.startsWith('https://')) {
+    // R2 S3 API endpoint URLs are private/authenticated by default.
+    // Prefer rewriting to public base URL if configured.
+    try {
+      const u = new URL(fileLocation);
+      if (u.hostname.endsWith('.r2.cloudflarestorage.com')) {
+        const path = u.pathname.replace(/^\/+/, '');
+        const firstSlash = path.indexOf('/');
+        const key = firstSlash >= 0 ? path.slice(firstSlash + 1) : '';
+        if (!key || !publicBaseUrl) return null;
+        return `${publicBaseUrl.replace(/\/$/, '')}/${key}`;
+      }
+    } catch {
+      // malformed URL -> keep old behavior
+    }
     return fileLocation;
   }
   if (fileLocation.startsWith('s3://')) {
@@ -69,6 +83,64 @@ function resolvePublicUrl(
     const key = firstSlash >= 0 ? withoutScheme.slice(firstSlash + 1) : '';
     if (!key || !publicBaseUrl) return null;
     return `${publicBaseUrl.replace(/\/$/, '')}/${key}`;
+  }
+  return null;
+}
+
+function extractFirstEgressFile(info: any): {
+  location?: string;
+  filename?: string;
+  duration?: unknown;
+  size?: unknown;
+} | null {
+  if (!info) return null;
+  const candidates = [
+    info.fileResults,
+    info.file_results,
+    info.files,
+    info.fileResult,
+    info.file_result,
+    info.file,
+    info.result?.value?.fileResults,
+    info.result?.value?.file_results,
+    info.result?.value?.files,
+    info.result?.value?.fileResult,
+    info.result?.value?.file_result,
+    info.result?.value?.file,
+    info.result?.fileResults,
+    info.result?.file_results,
+    info.result?.files,
+    info.result?.file,
+  ];
+  for (const list of candidates) {
+    if (Array.isArray(list) && list.length > 0 && list[0]) {
+      return list[0];
+    }
+    if (
+      list &&
+      typeof list === 'object' &&
+      ('location' in list || 'filename' in list)
+    ) {
+      return list as {
+        location?: string;
+        filename?: string;
+        duration?: unknown;
+        size?: unknown;
+      };
+    }
+  }
+  const oneofValue = info.result?.value;
+  if (
+    oneofValue &&
+    typeof oneofValue === 'object' &&
+    ('location' in oneofValue || 'filename' in oneofValue)
+  ) {
+    return oneofValue as {
+      location?: string;
+      filename?: string;
+      duration?: unknown;
+      size?: unknown;
+    };
   }
   return null;
 }
@@ -120,14 +192,27 @@ export class LiveKitWebhookController {
       return { received: true };
     }
 
-    const status = mapEgressStatusToRecordingStatus(egressInfo.status);
+    const status = mapEgressStatusToRecordingStatus(
+      egressInfo.status ?? egressInfo.egressStatus ?? egressInfo.result?.status,
+    );
     const startedAt =
-      normalizeEpochToDate(egressInfo.startedAt) ||
-      normalizeEpochToDate(event.createdAt) ||
+      normalizeEpochToDate(
+        egressInfo.startedAt ??
+          egressInfo.started_at ??
+          egressInfo.result?.startedAt ??
+          egressInfo.result?.started_at,
+      ) ||
+      normalizeEpochToDate(event.createdAt ?? event.created_at) ||
       null;
-    const endedAt = normalizeEpochToDate(egressInfo.endedAt) || null;
+    const endedAt =
+      normalizeEpochToDate(
+        egressInfo.endedAt ??
+          egressInfo.ended_at ??
+          egressInfo.result?.endedAt ??
+          egressInfo.result?.ended_at,
+      ) || null;
 
-    const file0 = Array.isArray(egressInfo.fileResults) ? egressInfo.fileResults[0] : undefined;
+    const file0 = extractFirstEgressFile(egressInfo);
     const fileLocation: string | undefined = file0?.location || undefined;
     const filename: string | undefined = file0?.filename || undefined;
     const durationSeconds =
