@@ -16,12 +16,12 @@ export interface ClassData {
     teachers: number;
     sessions: number;
   };
-  // schedule: {
-  //   days: string[];
-  //   time: string;
-  //   duration: number;
-  //   timezone: string;
-  // };
+  schedule?: {
+    days: string[];
+    time: string;
+    duration: number;
+    timezone?: string;
+  };
 }
 
 export interface ClassResponse {

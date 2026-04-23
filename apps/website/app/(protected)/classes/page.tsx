@@ -1,9 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { getClasses, searchClasses } from "@/services/class.service";
+import { getClassCalendarEvents } from "@/services/calendar.service";
 import ClassesSection from "@/components/class/class-section";
 import { ClassResponse, ClassData } from "@/types/class";
+import { ClassCalendarEventsResponse } from "@/types/calendar";
 import { GraduationCap, Users, Search, BookOpen, X } from "lucide-react";
 import LoadingScreen from "@/components/loading-screen";
 import { Button } from "@/components/ui/button";
@@ -11,6 +13,8 @@ import { Input } from "@/components/ui/input";
 import { PlusCircle } from "lucide-react";
 import AddClassModal from "@/components/class/add-class-modal";
 import JoinClassModal from "@/components/class/join-class-modal";
+import ClassScheduleCalendar from "@/components/calendar/ClassScheduleCalendar";
+import { toast } from "sonner";
 
 export default function ClassesPage() {
   const [classes, setClasses] = useState<ClassResponse>({
@@ -29,6 +33,9 @@ export default function ClassesPage() {
   const [showAddModal, setShowAddModal] = useState(false);
 
   const [showJoinModal, setShowJoinModal] = useState(false);
+  const [calendarData, setCalendarData] = useState<ClassCalendarEventsResponse | null>(null);
+  const [calendarLoading, setCalendarLoading] = useState(false);
+  const [savingCalendar, setSavingCalendar] = useState(false);
 
   useEffect(() => {
     const fetchSession = async () => {
@@ -52,6 +59,27 @@ export default function ClassesPage() {
       .finally(() => setLoading(false));
   }, []);
 
+  const loadCalendarData = useCallback(async () => {
+    try {
+      setCalendarLoading(true);
+      const now = new Date();
+      const from = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
+      const to = new Date(now.getFullYear(), now.getMonth() + 2, 0, 23, 59, 59).toISOString();
+      const data = await getClassCalendarEvents({ from, to });
+      setCalendarData(data);
+    } catch (error) {
+      console.error("Error fetching calendar events:", error);
+      setCalendarData({ from: "", to: "", total: 0, events: [] });
+      toast.error("Không thể tải lịch học. Vui lòng thử lại.");
+    } finally {
+      setCalendarLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    void loadCalendarData();
+  }, [loadCalendarData]);
+
   // --- Debounce search ---
   useEffect(() => {
     const delay = setTimeout(() => {
@@ -74,15 +102,48 @@ export default function ClassesPage() {
     classes.created.length > 0 ||
     classes.teaching.length > 0 ||
     classes.enrolled.length > 0;
+  const calendarEvents = calendarData?.events ?? [];
+  const nextClassEvent = [...calendarEvents]
+    .filter((event) => new Date(event.start).getTime() >= Date.now())
+    .sort(
+      (a, b) =>
+        new Date(a.start).getTime() - new Date(b.start).getTime(),
+    )[0];
+
+  const handleSaveCalendar = async () => {
+    try {
+      setSavingCalendar(true);
+      const response = await fetch("/api/calendar/classes", {
+        method: "GET",
+      });
+      if (!response.ok) throw new Error("Failed to download calendar");
+
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      const anchor = document.createElement("a");
+      anchor.href = url;
+      anchor.download = "classes-calendar.ics";
+      document.body.appendChild(anchor);
+      anchor.click();
+      anchor.remove();
+      URL.revokeObjectURL(url);
+      toast.success("Đã tải file lịch để lưu vào Calendar.");
+    } catch (error) {
+      console.error("Error saving calendar:", error);
+      toast.error("Không thể tải file lịch.");
+    } finally {
+      setSavingCalendar(false);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-white">
       <div className="px-6 py-10">
         {/* Header */}
         <div className="mb-8 animate-in fade-in slide-in-from-top-4">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-center">
-            {/* Left Column - Text Content */}
-            <div>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
+            {/* Left Column - Text + Stats */}
+            <div className="space-y-6">
               <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-gradient-to-r from-amber-100 via-orange-100 to-orange-100 text-xs font-medium text-gray-800 shadow-sm mb-4 hover:shadow-md transition-shadow duration-300">
                 <GraduationCap className="w-4 h-4 text-orange-500 animate-pulse" />
                 Học tập cùng nhau, phát triển cùng nhau
@@ -116,48 +177,73 @@ export default function ClassesPage() {
               <p className="text-gray-600 max-w-2xl mt-2">
                 Quản lý lớp học và hành trình học tập của bạn. Tạo, tham gia và khám phá các lớp học mới.
               </p>
-            </div>
 
-            {/* Right Column - Stats Summary */}
-            {hasClasses && (
-              <div className="relative h-64 lg:h-80 rounded-2xl overflow-hidden shadow-xl group bg-gradient-to-br from-orange-50 via-orange-50 to-amber-50 p-6 flex flex-col justify-center">
+              <div className="relative rounded-2xl overflow-hidden shadow-xl bg-gradient-to-br from-orange-50 via-orange-50 to-amber-50 p-6 flex flex-col justify-center">
                 <div className="space-y-4">
-                  {classes.created.length > 0 && (
-                    <div className="flex items-center gap-3 px-4 py-3 bg-white/80 backdrop-blur-sm rounded-xl shadow-sm hover:shadow-md transition-shadow">
-                      <div className="p-2 bg-orange-100 rounded-lg">
-                        <BookOpen className="w-5 h-5 text-orange-600" />
-                      </div>
-                      <div>
-                        <p className="text-2xl font-bold text-gray-900">{classes.created.length}</p>
-                        <p className="text-sm text-gray-600">Lớp đã tạo</p>
-                      </div>
+                  <div className="flex items-center gap-3 px-4 py-3 bg-white/80 backdrop-blur-sm rounded-xl shadow-sm hover:shadow-md transition-shadow">
+                    <div className="p-2 bg-orange-100 rounded-lg">
+                      <BookOpen className="w-5 h-5 text-orange-600" />
                     </div>
-                  )}
-                  {classes.teaching.length > 0 && (
-                    <div className="flex items-center gap-3 px-4 py-3 bg-white/80 backdrop-blur-sm rounded-xl shadow-sm hover:shadow-md transition-shadow">
-                      <div className="p-2 bg-orange-100 rounded-lg">
-                        <GraduationCap className="w-5 h-5 text-orange-600" />
-                      </div>
-                      <div>
-                        <p className="text-2xl font-bold text-gray-900">{classes.teaching.length}</p>
-                        <p className="text-sm text-gray-600">Đang giảng dạy</p>
-                      </div>
+                    <div>
+                      <p className="text-2xl font-bold text-gray-900">{classes.created.length}</p>
+                      <p className="text-sm text-gray-600">Lớp đã tạo</p>
                     </div>
-                  )}
-                  {classes.enrolled.length > 0 && (
-                    <div className="flex items-center gap-3 px-4 py-3 bg-white/80 backdrop-blur-sm rounded-xl shadow-sm hover:shadow-md transition-shadow">
-                      <div className="p-2 bg-orange-100 rounded-lg">
-                        <Users className="w-5 h-5 text-orange-600" />
-                      </div>
-                      <div>
-                        <p className="text-2xl font-bold text-gray-900">{classes.enrolled.length}</p>
-                        <p className="text-sm text-gray-600">Đã ghi danh</p>
-                      </div>
+                  </div>
+                  <div className="flex items-center gap-3 px-4 py-3 bg-white/80 backdrop-blur-sm rounded-xl shadow-sm hover:shadow-md transition-shadow">
+                    <div className="p-2 bg-orange-100 rounded-lg">
+                      <GraduationCap className="w-5 h-5 text-orange-600" />
                     </div>
+                    <div>
+                      <p className="text-2xl font-bold text-gray-900">{classes.teaching.length}</p>
+                      <p className="text-sm text-gray-600">Đang giảng dạy</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3 px-4 py-3 bg-white/80 backdrop-blur-sm rounded-xl shadow-sm hover:shadow-md transition-shadow">
+                    <div className="p-2 bg-orange-100 rounded-lg">
+                      <Users className="w-5 h-5 text-orange-600" />
+                    </div>
+                    <div>
+                      <p className="text-2xl font-bold text-gray-900">{classes.enrolled.length}</p>
+                      <p className="text-sm text-gray-600">Đã ghi danh</p>
+                    </div>
+                  </div>
+                </div>
+                <div className="mt-4 px-4 py-3 bg-white/80 backdrop-blur-sm rounded-xl shadow-sm">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+                    Lớp học tiếp theo
+                  </p>
+                  {nextClassEvent ? (
+                    <div className="mt-1">
+                      <p className="text-sm font-semibold text-gray-900 truncate">
+                        {nextClassEvent.className}
+                      </p>
+                      <p className="text-xs text-gray-600">
+                        {new Date(nextClassEvent.start).toLocaleString("vi-VN", {
+                          weekday: "short",
+                          day: "2-digit",
+                          month: "2-digit",
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })}
+                      </p>
+                    </div>
+                  ) : (
+                    <p className="mt-1 text-xs text-gray-500">
+                      Chưa có lịch học sắp tới.
+                    </p>
                   )}
                 </div>
               </div>
-            )}
+            </div>
+
+            {/* Right Column - Static Calendar */}
+            <div className="min-w-0">
+              <ClassScheduleCalendar
+                events={calendarEvents}
+                onSaveCalendar={() => void handleSaveCalendar()}
+                savingCalendar={savingCalendar}
+              />
+            </div>
           </div>
         </div>
 
