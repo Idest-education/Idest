@@ -13,9 +13,48 @@ from pydantic import BaseModel, ValidationError
 from pymongo import DESCENDING, MongoClient
 
 from ielts_ai.inference.task1_scorer import get_task1_scorer
-from ielts_ai.main import grade_essay_overall_direct
+from ielts_ai.main import grade_essay
 
 logger = logging.getLogger(__name__)
+RUBRIC_KEYS = ("task_achievement", "coherence", "lexical", "grammar")
+
+
+def _empty_rubric_feedback() -> dict[str, Any]:
+    return {
+        "strengths": [],
+        "flaws": [],
+        "improvements": [],
+        "example_rewrite": None,
+        "evidence_quote": None,
+    }
+
+
+def _normalize_rubric_feedback(raw: Any) -> dict[str, Any]:
+    if not isinstance(raw, dict):
+        return _empty_rubric_feedback()
+    return {
+        "strengths": list(raw.get("strengths") or []),
+        "flaws": list(raw.get("flaws") or []),
+        "improvements": list(raw.get("improvements") or []),
+        "example_rewrite": raw.get("example_rewrite"),
+        "evidence_quote": raw.get("evidence_quote"),
+    }
+
+
+def _normalize_task_breakdown(scores: dict[str, Any], metadata: dict[str, Any]) -> dict[str, Any]:
+    detailed_feedback = metadata.get("detailed_feedback")
+    rubrics: dict[str, Any] = {}
+    for rubric_key in RUBRIC_KEYS:
+        rubrics[rubric_key] = {
+            "band": float(scores.get(rubric_key, 0.0)),
+            "feedback": _normalize_rubric_feedback(
+                (detailed_feedback or {}).get(rubric_key) if isinstance(detailed_feedback, dict) else None
+            ),
+        }
+    return {
+        "band": float(scores.get("overall", 0.0)),
+        "rubrics": rubrics,
+    }
 
 
 class WritingGradeMessage(BaseModel):
@@ -97,10 +136,10 @@ class WritingQueueConsumer:
             image_description=task1_image_desc,
             image_bytes=None,
         )
-        task2_result = grade_essay_overall_direct(task2_prompt, payload.contentTwo)
+        task2_result = grade_essay(task2_prompt, payload.contentTwo)
 
         task1_overall = float(task1_result.scores.get("overall", 0.0))
-        task2_overall = float(task2_result.get("grade", 0.0))
+        task2_overall = float(task2_result.get("overall", 0.0))
         final_score = round((task1_overall + task2_overall) / 2, 1)
 
         feedback = (
@@ -118,15 +157,13 @@ class WritingQueueConsumer:
                     "status": "graded",
                     "updated_at": now,
                     "grading_breakdown": {
-                        "task1": {
-                            "score": task1_overall,
-                            "description": task1_result.description,
-                            "metadata": task1_result.metadata,
-                        },
-                        "task2": {
-                            "score": task2_overall,
-                            "description": task2_result.get("description"),
-                            "metadata": task2_result.get("metadata", {}),
+                        "overall_band": final_score,
+                        "tasks": {
+                            "task1": _normalize_task_breakdown(task1_result.scores, task1_result.metadata),
+                            "task2": _normalize_task_breakdown(
+                                task2_result,
+                                task2_result.get("metadata", {}),
+                            ),
                         },
                     },
                 }
