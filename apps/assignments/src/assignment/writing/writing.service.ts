@@ -82,6 +82,14 @@ export class WritingService {
     const assignment = await this.writingAssignmentModel.findOne({ _id: dto.assignment_id }).exec();
     if (!assignment) throw new BadRequestException('assignment_id must reference a writing assignment');
 
+    const tasks = assignment.tasks || [];
+    const task1 = tasks.find(t => t.task_number === 1);
+    const task2 = tasks.find(t => t.task_number === 2);
+    if (!task1 || !task2) throw new BadRequestException('Assignment must have task 1 and 2');
+
+    const contentOne = dto.content_by_task_id[task1.id] || '';
+    const contentTwo = dto.content_by_task_id[task2.id] || '';
+
     const created = new this.writingSubmissionModel({
       assignment_id: dto.assignment_id,
       user_id: dto.user_id,
@@ -93,12 +101,13 @@ export class WritingService {
     const saved = await created.save();
 
     try {
-      await this.rabbitService.send('grade_queue', {
+      await this.rabbitService.send('writing_grade_queue', {
         skill: 'writing',
         submissionId: saved.id,
         assignmentId: dto.assignment_id,
         userId: dto.user_id,
-        content_by_task_id: dto.content_by_task_id,
+        contentOne,
+        contentTwo,
       });
     } catch (error) {
       await this.writingSubmissionModel
