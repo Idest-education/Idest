@@ -69,7 +69,7 @@ export default function SidebarWriting({ onSubmit, activeTask, setActiveTask, on
                                     : "bg-slate-100 text-slate-600 border border-slate-300 hover:bg-slate-200"
                                 }`}
                         >
-                            Nhiệm vụ 1
+                            Task 1
                         </button>
 
                         <button
@@ -80,7 +80,7 @@ export default function SidebarWriting({ onSubmit, activeTask, setActiveTask, on
                                     : "bg-slate-100 text-slate-600 border border-slate-300 hover:bg-slate-200"
                                 }`}
                         >
-                            Nhiệm vụ 2
+                            Task 2
                         </button>
                     </div>
                 </div>

@@ -4,6 +4,7 @@ import { use, useEffect, useState } from "react";
 import { getSpeakingAssignment, getSpeakingSubmissionResult } from "@/services/assignment.service";
 import { SpeakingAssignmentDetail, SpeakingSubmissionResult } from "@/types/assignment";
 import LoadingScreen from "@/components/loading-screen";
+import ReactMarkdown from 'react-markdown';
 
 interface Props {
     params: Promise<{ id: string; submissionId: string }>;
@@ -24,7 +25,11 @@ export default function SpeakingResultPage(props: Props) {
                     getSpeakingSubmissionResult(submissionId),
                 ]);
                 setAssignment(aRes);
-                setResult((sRes as any)?.data ?? sRes);
+
+                const rawData = (sRes as any)?.data ?? sRes;
+                const finalResult = Array.isArray(rawData) ? rawData[0] : rawData;
+
+                setResult(finalResult);
             } finally {
                 setLoading(false);
             }
@@ -125,7 +130,7 @@ export default function SpeakingResultPage(props: Props) {
                     </>
                 )}
 
-                {/* Question (always show if available) */}
+                {/* Question (luôn hiển thị trường question từ backend) */}
                 {assignment && (
                     <div className="bg-white rounded-2xl shadow-xl overflow-hidden border-2 border-gray-200 mt-6">
                         <div className="bg-gradient-to-r from-red-600 to-blue-600 px-6 py-4">
@@ -136,23 +141,10 @@ export default function SpeakingResultPage(props: Props) {
                             {assignment.parts?.map((part) => (
                                 <div key={part.part_number} className="space-y-2">
                                     <h3 className="font-semibold text-gray-900">Phần {part.part_number}</h3>
-                                    <div className="rounded-xl border border-gray-200 bg-gray-50 p-4 space-y-2">
-                                        {part.part_number === 2 && part.cue_card ? (
-                                            <>
-                                                <div className="text-gray-800">• {part.cue_card.topic_md}</div>
-                                                {(part.cue_card.bullet_points || []).map((bullet, idx) => (
-                                                    <div key={`${part.part_number}-bullet-${idx}`} className="text-gray-700 ml-4">
-                                                        - {bullet}
-                                                    </div>
-                                                ))}
-                                            </>
-                                        ) : (
-                                            (part.items || []).map((item) => (
-                                                <div key={item.id} className="text-gray-800">
-                                                    • {item.prompt_md}
-                                                </div>
-                                            ))
-                                        )}
+                                    <div className="rounded-xl border border-gray-200 bg-gray-50 p-4">
+                                        <div className="prose prose-sm max-w-none text-gray-800">
+                                            <ReactMarkdown>{part.question}</ReactMarkdown>
+                                        </div>
                                     </div>
                                 </div>
                             ))}
@@ -173,33 +165,18 @@ export default function SpeakingResultPage(props: Props) {
                             <div className="text-gray-600">Không tìm thấy audio để phát.</div>
                         )}
 
-                        {(result.transcriptOne || result.transcriptTwo || result.transcriptThree) && (
+                        {/* Rendering Transcript based on new structure */}
+                        {result.transcripts && result.transcripts.length > 0 && (
                             <div className="space-y-4">
                                 <h3 className="font-semibold text-gray-900">Transcript (nếu có)</h3>
-                                {result.transcriptOne && (
-                                    <div>
-                                        <div className="text-sm font-medium text-gray-700 mb-1">Part 1</div>
+                                {result.transcripts.map((t: { part_number: number, text: string }, index: number) => (
+                                    <div key={`transcript-${t.part_number || index}`}>
+                                        <div className="text-sm font-medium text-gray-700 mb-1">Part {t.part_number}</div>
                                         <div className="rounded-xl border border-gray-200 bg-gray-50 p-4 whitespace-pre-wrap text-gray-800">
-                                            {result.transcriptOne}
+                                            {t.text}
                                         </div>
                                     </div>
-                                )}
-                                {result.transcriptTwo && (
-                                    <div>
-                                        <div className="text-sm font-medium text-gray-700 mb-1">Part 2</div>
-                                        <div className="rounded-xl border border-gray-200 bg-gray-50 p-4 whitespace-pre-wrap text-gray-800">
-                                            {result.transcriptTwo}
-                                        </div>
-                                    </div>
-                                )}
-                                {result.transcriptThree && (
-                                    <div>
-                                        <div className="text-sm font-medium text-gray-700 mb-1">Part 3</div>
-                                        <div className="rounded-xl border border-gray-200 bg-gray-50 p-4 whitespace-pre-wrap text-gray-800">
-                                            {result.transcriptThree}
-                                        </div>
-                                    </div>
-                                )}
+                                ))}
                             </div>
                         )}
                     </div>

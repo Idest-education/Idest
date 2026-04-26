@@ -12,6 +12,8 @@ import InteractionRenderer from "@/components/assignment/v2/InteractionRenderer"
 import LoadingScreen from "@/components/loading-screen";
 import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 
 interface Props {
     params: Promise<{ id: string }>;
@@ -173,7 +175,11 @@ export default function ListeningAssignmentPage(props: Props) {
                                             {/* Group Instructions */}
                                             {group.instructions_md ? (
                                                 <div className="bg-blue-50 border-l-4 border-blue-500 p-4 rounded-r-lg">
-                                                    <MarkdownRenderer content={group.instructions_md} className="text-sm text-gray-800" />
+                                                    <div className="prose prose-sm max-w-none text-gray-800">
+                                                        <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                                                            {group.instructions_md}
+                                                        </ReactMarkdown>
+                                                    </div>
                                                 </div>
                                             ) : null}
 

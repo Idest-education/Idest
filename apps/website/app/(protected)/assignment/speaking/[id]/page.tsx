@@ -7,6 +7,7 @@ import { SpeakingAssignmentDetail } from "@/types/assignment";
 import SidebarSpeaking from "@/components/assignment/SidebarSpeaking";
 import LoadingScreen from "@/components/loading-screen";
 import { Mic } from "lucide-react";
+import ReactMarkdown from "react-markdown";
 
 interface Props {
     params: Promise<{ id: string }>;
@@ -150,7 +151,7 @@ export default function SpeakingAssignmentPage(props: Props) {
         // Mark that we should show the "queued for grading" popup after redirect
         try {
             sessionStorage.setItem("assignment_grading_queued", "1");
-        } catch {}
+        } catch { }
         router.push("/assignment/submissions");
     }
 
@@ -200,14 +201,10 @@ export default function SpeakingAssignmentPage(props: Props) {
 
                     {activePart === 1 && part1 && (
                         <div className="space-y-4">
-                            <h2 className="text-lg font-semibold text-blue-800">Câu hỏi phần 1</h2>
-                            {part1.items?.map((item) => (
-                                <div key={item.id} className="p-4 bg-white/50 rounded-lg border border-slate-200">
-                                    <p className="text-gray-800 leading-relaxed font-medium">
-                                        {item.prompt_md}
-                                    </p>
-                                </div>
-                            ))}
+                            <h2 className="text-lg font-semibold text-blue-800">Phần 1: Trò chuyện chung (1-2 phút)</h2>
+                            <div className="p-4 bg-white/50 rounded-lg border border-slate-200 whitespace-pre-wrap text-gray-800 leading-relaxed">
+                                <ReactMarkdown>{part1.question}</ReactMarkdown>
+                            </div>
                         </div>
                     )}
 
@@ -215,41 +212,19 @@ export default function SpeakingAssignmentPage(props: Props) {
                         <div className="space-y-6">
                             {part2 && (
                                 <div className="space-y-4">
-                                    <h2 className="text-lg font-semibold text-purple-800">Phần 2: Cue Card</h2>
-                                    {part2.cue_card && (
-                                        <div className="p-6 bg-white border-2 border-purple-100 rounded-xl shadow-sm">
-                                            <p className="font-bold text-lg mb-3 text-slate-900">{part2.cue_card.topic_md}</p>
-                                            <p className="text-sm text-slate-600 mb-2">You should say:</p>
-                                            <ul className="list-disc list-inside space-y-1 text-slate-700 ml-2">
-                                                {part2.cue_card.bullet_points.map((bp, i) => (
-                                                    <li key={i}>{bp}</li>
-                                                ))}
-                                            </ul>
-                                            {part2.cue_card.explanation_md && (
-                                                <p className="mt-4 text-sm italic text-slate-500">{part2.cue_card.explanation_md}</p>
-                                            )}
-                                        </div>
-                                    )}
+                                    <h2 className="text-lg font-semibold text-purple-800">Phần 2: Bài nói dài (1-2 phút)</h2>
+                                    <div className="p-6 bg-white border-2 border-purple-100 rounded-xl shadow-sm whitespace-pre-wrap text-gray-800 leading-relaxed">
+                                        <ReactMarkdown>{part2.question}</ReactMarkdown>
+                                    </div>
                                 </div>
                             )}
 
                             {part3 && (
                                 <div className="space-y-4">
-                                    <h2 className="text-lg font-semibold text-teal-800">Phần 3: Discussion</h2>
-                                    {part3.items?.map((item) => (
-                                        <div key={item.id} className="p-4 bg-white/50 rounded-lg border border-slate-200">
-                                            <p className="text-gray-800 leading-relaxed font-medium">
-                                                {item.prompt_md}
-                                            </p>
-                                            {item.follow_up_prompts?.length && (
-                                                <div className="mt-2 pl-4 border-l-2 border-teal-200">
-                                                    {item.follow_up_prompts.map((fu, i) => (
-                                                        <p key={i} className="text-sm text-slate-600 italic mt-1">• {fu}</p>
-                                                    ))}
-                                                </div>
-                                            )}
-                                        </div>
-                                    ))}
+                                    <h2 className="text-lg font-semibold text-teal-800">Phần 3: Thảo luận (4-5 phút)</h2>
+                                    <div className="p-6 bg-white border-2 border-teal-100 rounded-xl shadow-sm whitespace-pre-wrap text-gray-800 leading-relaxed">
+                                        <ReactMarkdown>{part3.question}</ReactMarkdown>
+                                    </div>
                                 </div>
                             )}
                         </div>

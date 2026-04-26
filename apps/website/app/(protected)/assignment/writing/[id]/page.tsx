@@ -6,6 +6,8 @@ import { getWritingAssignment, submitWriting } from "@/services/assignment.servi
 import { WritingAssignmentDetail } from "@/types/assignment";
 import SidebarWriting from "@/components/assignment/SidebarWriting";
 import LoadingScreen from "@/components/loading-screen";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 
 interface PageProps {
     params: Promise<{ id: string }>;
@@ -65,7 +67,7 @@ export default function WritingAssignmentPage(props: PageProps) {
         // Mark that we should show the "queued for grading" popup after redirect
         try {
             sessionStorage.setItem("assignment_grading_queued", "1");
-        } catch {}
+        } catch { }
         router.push("/assignment/submissions");
     }
 
@@ -92,7 +94,7 @@ export default function WritingAssignmentPage(props: PageProps) {
                                 className={`px-4 py-2 rounded-full border ${activeTaskIndex === idx ? "bg-blue-600 text-white" : "bg-gray-200"}`}
                                 onClick={() => setActiveTaskIndex(idx)}
                             >
-                                Nhiệm vụ {idx + 1}
+                                Task {idx + 1}
                             </button>
                         ))}
                     </div>
@@ -101,13 +103,15 @@ export default function WritingAssignmentPage(props: PageProps) {
                     {activeTask && (
                         <div>
                             <div className="prose prose-slate max-w-none mb-4">
-                                <p className="text-gray-800 whitespace-pre-line">{activeTask.prompt_md}</p>
+                                <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                                    {activeTask.prompt_md}
+                                </ReactMarkdown>
                             </div>
 
                             {activeTask.stimulus?.images?.map((img) => (
                                 <img key={img.id} src={img.url} alt={img.alt} className="rounded mb-4 max-w-full shadow-sm" />
                             ))}
-                            
+
                             {activeTask.stimulus?.data_description_md && (
                                 <div className="p-4 bg-blue-50/50 rounded-lg border border-blue-100 text-sm text-slate-700">
                                     {activeTask.stimulus.data_description_md}

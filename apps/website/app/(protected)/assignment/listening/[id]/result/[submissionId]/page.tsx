@@ -164,10 +164,16 @@ export default function ListeningResultPage(props: Props) {
 
                         {/* Questions Review (v2) */}
                         <div className="space-y-6">
-                            {sectionResult?.questions?.map((q) => (
+                            {/* Thêm tham số index vào hàm map */}
+                            {sectionResult?.questions?.map((q, index) => (
                                 <div key={q.question_id} className="bg-white rounded-xl shadow-md border border-gray-200 overflow-hidden">
                                     <div className="bg-gradient-to-r from-gray-50 to-gray-100 px-5 py-4 border-b border-gray-200 flex items-center justify-between">
-                                        <p className="text-sm font-semibold text-gray-800">Question {q.question_id}</p>
+
+                                        {/* Thay q.question_id bằng index + 1 */}
+                                        <p className="text-sm font-semibold text-gray-800">
+                                            Question {index + 1}
+                                        </p>
+
                                         <span className={`text-xs font-semibold ${q.correct ? "text-green-700" : "text-red-700"}`}>
                                             {q.correct ? "Correct" : "Incorrect"}
                                         </span>

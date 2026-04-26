@@ -1,5 +1,6 @@
 import { SectionV2Client } from "@/types/assignment";
-import MarkdownRenderer from "@/components/conversation/MarkdownRenderer";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 
 interface Props {
     section: SectionV2Client;
@@ -22,8 +23,10 @@ export default function PassageContent({ section }: Props) {
             ) : null}
 
             {rm?.type === "reading" ? (
-                <div className="text-sm text-gray-800 leading-relaxed">
-                    <MarkdownRenderer content={rm.document_md || ""} />
+                <div className="prose prose-sm max-w-none text-gray-800 leading-relaxed">
+                    <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                        {rm.document_md || ""}
+                    </ReactMarkdown>
                 </div>
             ) : null}
         </div>
