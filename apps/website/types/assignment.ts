@@ -293,15 +293,56 @@ export interface WritingSubmissionPayload {
   content_by_task_id: Record<string, string>; // Map task id -> essay text
 }
 
+export interface WritingSubmissionResponse {
+    status: boolean;
+    message: string;
+    data: WritingSubmissionResult;
+}
+
+export interface RubricFeedback {
+  strengths: string[];
+  flaws: string[];
+  improvements: string[];
+  example_rewrite: string;
+  evidence_quote: string;
+}
+
+export interface RubricDetail {
+  band: number;
+  feedback: RubricFeedback;
+}
+
+export interface TaskGrading {
+  band: number;
+  rubrics: {
+    task_achievement: RubricDetail;
+    coherence: RubricDetail;
+    lexical: RubricDetail;
+    grammar: RubricDetail;
+  };
+}
+
+export interface GradingBreakdown {
+  overall_band: number;
+  tasks: {
+    task1: TaskGrading;
+    task2: TaskGrading;
+  };
+}
+
 export interface WritingSubmissionResult {
-  id: string;
+  _id: string;
   assignment_id: string;
-  submitted_by: string;
-  skill: "writing";
+  user_id: string;
+  content_by_task_id: Record<string, string>;
+  status: string;
+  
+  created_at: string | { $date: string };
+  updated_at: string | { $date: string };
+  
+  feedback: string;
   score: number;
-  is_passed: boolean;
-  details: any;
-  created_at: string;
+  grading_breakdown: GradingBreakdown;
 }
 
 // =======================
@@ -325,6 +366,7 @@ export interface SpeakingCueCardDto {
 
 export interface SpeakingPartDto {
   part_number: number; // 1, 2, 3
+  question: string;
   items?: SpeakingPartItemDto[];
   cue_card?: SpeakingCueCardDto;
   media?: MediaAssetV2[];
@@ -335,10 +377,11 @@ export interface SpeakingAssignmentDetail {
   _id: string;
   title: string;
   description?: string;
-  skill: "speaking";
+  skill?: "speaking";
   slug: string;
   is_public: boolean;
   created_by: string;
+  schema_version?: number;
   created_at: string;
   updated_at: string;
   parts: SpeakingPartDto[];
@@ -359,10 +402,10 @@ export interface SpeakingSubmissionResult {
   score?: number;
   feedback?: string;
   status: "pending" | "graded" | "failed";
-  transcriptOne?: string;
-  transcriptTwo?: string;
-  transcriptThree?: string;
-  transcripts?: Array<{ part_number: number; text?: string }>;
+  transcripts: {
+  part_number: number;
+  text: string;
+}[];
   created_at?: string;
 }
 
@@ -396,6 +439,9 @@ export interface CreateReadingOrListeningAssignmentPayload {
 }
 
 export interface CreateWritingAssignmentPayload {
+  created_by?: string;
+  class_id?: string;
+  slug?: string;
   title: string;
   description?: string;
   is_public: boolean;
@@ -403,6 +449,9 @@ export interface CreateWritingAssignmentPayload {
 }
 
 export interface CreateSpeakingAssignmentPayload {
+  created_by?: string;
+  class_id?: string;
+  slug?: string;
   title: string;
   description?: string;
   is_public: boolean;
