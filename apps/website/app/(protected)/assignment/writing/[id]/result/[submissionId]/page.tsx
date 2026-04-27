@@ -234,7 +234,7 @@ export default function WritingResultPage(props: Props) {
                                     <div className={`text-sm font-bold ${info.color} mb-1`}>{info.label}</div>
                                     <div className="flex items-end gap-2">
                                         <span className="text-3xl font-extrabold text-gray-800 group-hover:text-indigo-600 transition-colors">
-                                            {rubricData?.band?.toFixed(1) || "-"}
+                                            {rubricData?.band !== undefined ? roundIeltsScore(rubricData.band).toFixed(1) : "-"}
                                         </span>
                                     </div>
                                     <div className="text-xs text-gray-400 mt-2">Click xem chi tiết & lỗi</div>
@@ -269,7 +269,7 @@ export default function WritingResultPage(props: Props) {
                                             {RUBRIC_INFO[activeHighlight].label}
                                         </h3>
                                         <span className={`px-3 py-1 rounded-lg font-bold text-lg bg-white border ${RUBRIC_INFO[activeHighlight].color} ${RUBRIC_INFO[activeHighlight].border}`}>
-                                            {currentTaskData.rubrics[activeHighlight].band.toFixed(1)}
+                                            {roundIeltsScore(currentTaskData.rubrics[activeHighlight].band).toFixed(1)}
                                         </span>
                                     </div>
 
