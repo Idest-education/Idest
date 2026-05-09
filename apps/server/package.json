@@ -4,7 +4,6 @@
   "description": "Idest API Server",
   "author": "huynhchihen2005@gmail.com",
   "private": true,
-  "license": "MIT",
   "scripts": {
     "dev": "nest start --watch",
     "build": "prisma generate && nest build",
