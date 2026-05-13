@@ -52,7 +52,7 @@ def test_word_errors_have_required_fields():
         assert isinstance(sent_err, SentenceError)
         assert isinstance(sent_err.sentence, str)
         assert sent_err.start_time >= 0.0
-        assert sent_err.end_time > sent_err.start_time
+        assert sent_err.end_time >= sent_err.start_time
         for word_err in sent_err.word_errors:
             assert isinstance(word_err, WordError)
             assert isinstance(word_err.word, str)

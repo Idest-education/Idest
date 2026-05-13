@@ -4,7 +4,6 @@ import sys
 import tempfile
 from dataclasses import dataclass
 from pathlib import Path
-from typing import List
 
 from ielts_ai.paths import REPO_ROOT
 from ielts_ai.writing_scorer.features.task_achievement_features import discourse_marker_features
@@ -17,6 +16,8 @@ from src.pipeline import PronunciationPipeline, PronunciationReport  # noqa: E40
 from src.scoring import PhoneAssessment, WordAssessment  # noqa: E402
 
 _WORD_ERROR_THRESHOLD = 60.0
+
+_WAV_MIMETYPES = {"audio/wav", "audio/x-wav", "audio/wave"}
 
 _PHONE_FIX_HINTS: dict[str, str] = {
     "θ": "Place the tip of your tongue between your teeth for 'th' (as in 'think').",
@@ -50,7 +51,7 @@ class WordError:
     word: str
     score: float
     reference_ipa: str
-    problematic_phones: List[ProblematicPhone]
+    problematic_phones: list[ProblematicPhone]
     fix_hint: str
 
 
@@ -59,7 +60,7 @@ class SentenceError:
     sentence: str
     start_time: float
     end_time: float
-    word_errors: List[WordError]
+    word_errors: list[WordError]
 
 
 @dataclass
@@ -73,7 +74,7 @@ class AcousticFeatures:
     rhythm: float
     discourse_marker_density: float  # 0-100 scaled
     transcript: str
-    sentence_errors: List[SentenceError]
+    sentence_errors: list[SentenceError]
 
 
 _pipeline: PronunciationPipeline | None = None
@@ -86,7 +87,7 @@ def _get_pipeline() -> PronunciationPipeline:
     return _pipeline
 
 
-def _build_fix_hint(bad_phones: List[PhoneAssessment]) -> str:
+def _build_fix_hint(bad_phones: list[PhoneAssessment]) -> str:
     if not bad_phones:
         return "Focus on producing each sound clearly and distinctly."
     worst = min(bad_phones, key=lambda p: p.score)
@@ -94,17 +95,16 @@ def _build_fix_hint(bad_phones: List[PhoneAssessment]) -> str:
     return hint or f"Practice the /{worst.token}/ sound — try it slowly in isolation first."
 
 
-def _build_sentence_errors(report: PronunciationReport, time_offset: float = 0.0) -> List[SentenceError]:
-    errors: List[SentenceError] = []
+def _build_sentence_errors(report: PronunciationReport, time_offset: float = 0.0) -> list[SentenceError]:
+    errors: list[SentenceError] = []
     for seg in report.transcript_segments:
         seg_words = [
             w for w in report.words
             if w.start is not None
             and w.end is not None
-            and w.start >= seg.start - 0.1
-            and w.end <= seg.end + 0.1
+            and seg.start <= (w.start + w.end) / 2 <= seg.end
         ]
-        word_errors: List[WordError] = []
+        word_errors: list[WordError] = []
         for word in seg_words:
             if not word.reliable or word.segmental_score >= _WORD_ERROR_THRESHOLD:
                 continue
@@ -133,8 +133,8 @@ def _build_sentence_errors(report: PronunciationReport, time_offset: float = 0.0
 
 
 def _merge_features(
-    reports: List[PronunciationReport],
-    durations: List[float],
+    reports: list[PronunciationReport],
+    durations: list[float],
 ) -> AcousticFeatures:
     total_dur = max(sum(durations), 1e-6)
     weights = [d / total_dur for d in durations]
@@ -143,10 +143,13 @@ def _merge_features(
         return sum(getattr(r.scores, attr) * w for r, w in zip(reports, weights))
 
     transcript = " ".join(r.transcript for r in reports if r.transcript)
+    # TODO: discourse_marker_features is tuned for written essays; applying it to
+    # speech transcripts is an approximation. Replace with a speech-specific
+    # discourse marker ratio once 50+ graded submissions exist for recalibration.
     dm = discourse_marker_features(transcript)
     discourse_density = min(100.0, dm["discourse_marker_density_score"] * 100.0)
 
-    sentence_errors: List[SentenceError] = []
+    sentence_errors: list[SentenceError] = []
     time_offset = 0.0
     for report, dur in zip(reports, durations):
         sentence_errors.extend(_build_sentence_errors(report, time_offset))
@@ -167,19 +170,19 @@ def _merge_features(
 
 
 def extract_acoustic_features(
-    audio_parts: List[bytes],
-    mimetypes: List[str],
+    audio_parts: list[bytes],
+    mimetypes: list[str],
 ) -> AcousticFeatures:
     """Run pronunciation pipeline on one or more audio parts; merge and return features."""
     if not audio_parts:
         raise ValueError("No audio parts provided")
 
     pipeline = _get_pipeline()
-    reports: List[PronunciationReport] = []
-    durations: List[float] = []
+    reports: list[PronunciationReport] = []
+    durations: list[float] = []
 
     for audio_bytes, mimetype in zip(audio_parts, mimetypes):
-        suffix = ".wav" if "wav" in mimetype else ".webm"
+        suffix = ".wav" if mimetype in _WAV_MIMETYPES else ".webm"
         with tempfile.NamedTemporaryFile(suffix=suffix, delete=False) as tmp:
             tmp.write(audio_bytes)
             tmp_path = Path(tmp.name)
