@@ -91,7 +91,7 @@ class SpeakingQueueConsumer:
             result = self._scorer.score(audio_parts, mimetypes)
         except Exception as exc:
             self._mark_failed(payload.responseId, str(exc))
-            raise
+            return   # _mark_failed already logged and updated status; ack to avoid redelivery loops
 
         grading_breakdown = {
             "overall_band": result.overall_band,
