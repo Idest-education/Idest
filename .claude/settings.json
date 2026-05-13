@@ -1,0 +1,30 @@
+{
+  "cleanupPeriodDays": 365,
+  "includeCoAuthoredBy": false,
+  "permissions": {
+    "deny": [
+      "Read:(node_modules/**)",
+      "Read:(dist/**)",
+      "Read:(.next/**)",
+      "Read:(coverage/**)",
+      "Read:(.lock)"
+    ]
+  },
+  "model": "sonnet",
+  "hooks": {
+    "Stop": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "terminal-notifier -title \"Claude Code\" -subtitle \"Session Complete\" -message \"Finished working in $(basename \"$PWD\")\" -sound Glass"
+          }
+        ]
+      }
+    ]
+  },
+  "enabledPlugins": {
+    "superpowers@claude-plugins-official": true
+  }
+}
