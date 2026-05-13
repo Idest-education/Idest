@@ -6,7 +6,7 @@ from functools import lru_cache
 from wordfreq import word_frequency
 
 _CONTENT_POS = {"NOUN", "VERB", "ADJ", "ADV"}
-_B2_FREQ_THRESHOLD = 1e-5  # words with frequency below this are CEFR B2+
+_B2_FREQ_THRESHOLD = 1e-5  # rough proxy for low-frequency / advanced vocabulary
 
 
 @dataclass
@@ -30,7 +30,7 @@ def extract_lexical_features(transcript: str) -> LexicalFeatures:
     nlp = _get_nlp()
     doc = nlp(transcript)
 
-    tokens = [t for t in doc if not t.is_punct and not t.is_space and t.text.strip()]
+    tokens = [t for t in doc if not t.is_punct and not t.is_space]
     if not tokens:
         return LexicalFeatures(ttr_lemma=0.0, freq_tier_ratio=0.0, lexical_density=0.0, mean_word_length=0.0)
 
@@ -42,8 +42,10 @@ def extract_lexical_features(transcript: str) -> LexicalFeatures:
 
     low_freq_count = sum(
         1 for t in content_tokens
-        if word_frequency(t.text.lower(), "en") < _B2_FREQ_THRESHOLD
+        if word_frequency(t.lemma_.lower(), "en") < _B2_FREQ_THRESHOLD
     )
+    # When content_tokens is empty (e.g., input is all function words like "the the the"),
+    # freq_tier_ratio is 0.0 by convention (no content words to evaluate).
     freq_tier_ratio = low_freq_count / max(len(content_tokens), 1)
 
     mean_word_length = sum(len(t.text) for t in tokens) / max(len(tokens), 1)

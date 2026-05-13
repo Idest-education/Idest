@@ -43,5 +43,13 @@ def test_academic_vocabulary_raises_freq_tier_ratio():
 
 
 def test_mean_word_length_positive():
-    result = extract_lexical_features("I think education is important.")
-    assert result.mean_word_length > 0.0
+    short_words = extract_lexical_features("I go eat run.")
+    long_words = extract_lexical_features("electromagnetic biodiversity unprecedented amalgamation.")
+    assert short_words.mean_word_length > 0.0
+    assert long_words.mean_word_length > short_words.mean_word_length
+
+
+def test_function_words_only_returns_zero_freq_tier_ratio():
+    # When transcript has no content words, freq_tier_ratio is 0.0 by convention
+    result = extract_lexical_features("the the the and and and")
+    assert result.freq_tier_ratio == 0.0
