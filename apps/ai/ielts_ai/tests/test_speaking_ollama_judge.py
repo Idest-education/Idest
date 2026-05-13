@@ -23,7 +23,7 @@ def _ok_response(data: dict) -> MagicMock:
 
 
 def test_happy_path_returns_judgment():
-    with patch("requests.post", return_value=_ok_response({
+    with patch("ielts_ai.speaking_scorer.ollama_judge.requests.post",return_value=_ok_response({
         "lr_band": 6.0, "lr_feedback": "Good vocabulary.",
         "gr_band": 5.5, "gr_feedback": "Some errors.",
         "pronunciation_tips": {"environment": "Stress the second syllable."},
@@ -43,7 +43,7 @@ def test_returns_none_when_model_is_empty():
 
 
 def test_returns_none_on_connection_refused():
-    with patch("requests.post", side_effect=ConnectionError("refused")):
+    with patch("ielts_ai.speaking_scorer.ollama_judge.requests.post",side_effect=ConnectionError("refused")):
         result = judge(_TRANSCRIPT, _LEXICAL, _GRAMMAR, [], model="llama3")
     assert result is None
 
@@ -52,19 +52,19 @@ def test_returns_none_on_malformed_json():
     mock = MagicMock()
     mock.raise_for_status.return_value = None
     mock.json.return_value = {"message": {"content": "not valid json {"}}
-    with patch("requests.post", return_value=mock):
+    with patch("ielts_ai.speaking_scorer.ollama_judge.requests.post",return_value=mock):
         result = judge(_TRANSCRIPT, _LEXICAL, _GRAMMAR, [], model="llama3")
     assert result is None
 
 
 def test_returns_none_when_required_keys_missing():
-    with patch("requests.post", return_value=_ok_response({"lr_band": 5.0})):
+    with patch("ielts_ai.speaking_scorer.ollama_judge.requests.post",return_value=_ok_response({"lr_band": 5.0})):
         result = judge(_TRANSCRIPT, _LEXICAL, _GRAMMAR, [], model="llama3")
     assert result is None
 
 
 def test_pronunciation_tips_defaults_to_empty_dict():
-    with patch("requests.post", return_value=_ok_response({
+    with patch("ielts_ai.speaking_scorer.ollama_judge.requests.post",return_value=_ok_response({
         "lr_band": 6.0, "lr_feedback": "OK.",
         "gr_band": 5.5, "gr_feedback": "Fine.",
     })):
