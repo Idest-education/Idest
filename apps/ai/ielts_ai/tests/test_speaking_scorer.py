@@ -32,8 +32,8 @@ def _patch_features(ollama_result=None):
 
 
 def test_returns_scoring_result():
-    with _patch_features(_OLLAMA)[0], _patch_features(_OLLAMA)[1], \
-         _patch_features(_OLLAMA)[2], _patch_features(_OLLAMA)[3]:
+    patches = _patch_features(_OLLAMA)
+    with patches[0], patches[1], patches[2], patches[3]:
         scorer = SpeakingScorer()
         result = scorer.score([b"audio"], ["audio/webm"])
     assert isinstance(result, SpeakingScoringResult)

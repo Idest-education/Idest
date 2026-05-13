@@ -74,7 +74,7 @@ class SpeakingScorer:
                 for sent in acoustic.sentence_errors
                 for w in sent.word_errors
             ],
-            key=lambda w: w.score,
+            key=lambda w: w.score,  # ascending: lowest score = worst pronunciation
         )[:5]
 
         judgment: OllamaJudgment | None = judge(
@@ -119,8 +119,14 @@ class SpeakingScorer:
         )
         overall_band = max(1.0, min(9.0, overall_band))
 
-        p_feedback = f"Pronunciation band: {p_band}."
-        fc_feedback = f"Fluency and coherence band: {fc_band}."
+        p_feedback = (
+            f"Pronunciation score: {p_band}. "
+            "Based on phoneme accuracy, speech intelligibility, and prosody."
+        )
+        fc_feedback = (
+            f"Fluency and coherence score: {fc_band}. "
+            "Based on speaking rate, rhythm, and use of discourse markers."
+        )
         feedback = " ".join([fc_feedback, lr_feedback, gr_feedback, p_feedback])
 
         rubrics = {
