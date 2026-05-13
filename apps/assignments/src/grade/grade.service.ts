@@ -74,68 +74,6 @@ export class GradeService implements OnModuleInit {
     this.logger.log(`Listening graded successfully. Score: ${result.score}`);
   }
 
-  private base64ToMulterFile(
-    payload: any,
-    fallbackFilename: string,
-  ): Express.Multer.File | undefined {
-    if (!payload) return undefined;
-
-    // Backward-compat: payload can be a base64 string.
-    if (typeof payload === 'string') {
-      const buffer = Buffer.from(payload, 'base64');
-      return {
-        fieldname: fallbackFilename.split('.')[0],
-        originalname: fallbackFilename,
-        encoding: '7bit',
-        mimetype: 'audio/webm',
-        buffer,
-        size: buffer.length,
-      } as Express.Multer.File;
-    }
-
-    // New format: { data: base64, mimetype, originalname }
-    const base64 = payload.data;
-    if (typeof base64 !== 'string') return undefined;
-
-    const buffer = Buffer.from(base64, 'base64');
-    const originalname =
-      typeof payload.originalname === 'string' ? payload.originalname : fallbackFilename;
-    const mimetype =
-      typeof payload.mimetype === 'string' ? payload.mimetype : 'audio/webm';
-
-    return {
-      fieldname: fallbackFilename.split('.')[0],
-      originalname,
-      encoding: '7bit',
-      mimetype,
-      buffer,
-      size: buffer.length,
-    } as Express.Multer.File;
-  }
-
-  private safeParseJson(text: string): any | null {
-    try {
-      let jsonText = (text ?? '').trim();
-      const codeBlockMatch = jsonText.match(
-        /```(?:json)?\s*(\{[\s\S]*?\})\s*```/,
-      );
-      if (codeBlockMatch) {
-        jsonText = codeBlockMatch[1];
-      } else {
-        const jsonMatch = jsonText.match(/\{[\s\S]*\}/);
-        if (jsonMatch) {
-          jsonText = jsonMatch[0];
-        }
-      }
-      return JSON.parse(jsonText);
-    } catch (e) {
-      this.logger.error('Failed to parse JSON from model output', {
-        textPreview: (text ?? '').slice(0, 500),
-      });
-      return null;
-    }
-  }
-
   async generateText(prompt: string) {
     console.log(prompt);
     const response = await this.openai.responses.create({
