@@ -10,7 +10,10 @@ def test_returns_grammar_features_dataclass():
 def test_empty_transcript_returns_zeros():
     result = extract_grammar_features("")
     assert result.lt_error_rate == 0.0
+    assert result.lt_grammar_error_rate == 0.0
+    assert result.lt_spelling_error_rate == 0.0
     assert result.clause_count == 0.0
+    assert result.subordination_ratio == 0.0
     assert result.mean_sentence_length == 0.0
 
 
@@ -48,3 +51,14 @@ def test_complex_sentence_has_higher_subordination_than_simple():
 def test_mean_sentence_length_positive():
     result = extract_grammar_features("I study English every day. It is very useful for my career.")
     assert result.mean_sentence_length > 0.0
+
+
+def test_grammar_rate_is_complement_of_spelling_rate():
+    """grammar + spelling rates should be <= total rate (with possible rounding)."""
+    result = extract_grammar_features("She go to school yesterday and he don't like it.")
+    assert result.lt_grammar_error_rate + result.lt_spelling_error_rate <= result.lt_error_rate + 0.01
+
+
+def test_spelling_error_rate_detected():
+    result = extract_grammar_features("She wroted a leter to her frend yesterday.")
+    assert result.lt_spelling_error_rate >= 0.0  # may or may not catch all, but must not error

@@ -21,7 +21,14 @@ class GrammarFeatures:
 @lru_cache(maxsize=1)
 def _get_nlp():
     import spacy
+    # parser required for dep parse; only ner disabled
     return spacy.load("en_core_web_sm", disable=["ner"])
+
+
+def _is_spelling(match) -> bool:
+    cat = getattr(match, "category", None) or ""
+    rit = getattr(match, "rule_issue_type", None) or ""
+    return cat == "TYPOS" or rit == "misspelling"
 
 
 def extract_grammar_features(transcript: str) -> GrammarFeatures:
@@ -41,19 +48,12 @@ def extract_grammar_features(transcript: str) -> GrammarFeatures:
     lt = get_languagetool()
     matches = lt.check(transcript)
 
-    grammar_errors = [
-        m for m in matches
-        if "GRAMMAR" in (getattr(m, "rule_issue_type", None) or "").upper()
-    ]
-    spelling_errors = [
-        m for m in matches
-        if "SPELLING" in (getattr(m, "rule_issue_type", None) or "").upper()
-        or getattr(m, "rule_id", "").startswith("MORFOLOGIK")
-    ]
+    spelling_count = sum(1 for m in matches if _is_spelling(m))
+    grammar_count = len(matches) - spelling_count  # everything non-spelling is grammar
 
     lt_error_rate = len(matches) / word_count * 100
-    lt_grammar_error_rate = len(grammar_errors) / word_count * 100
-    lt_spelling_error_rate = len(spelling_errors) / word_count * 100
+    lt_grammar_error_rate = grammar_count / word_count * 100
+    lt_spelling_error_rate = spelling_count / word_count * 100
 
     nlp = _get_nlp()
     doc = nlp(transcript)
@@ -81,7 +81,8 @@ def extract_grammar_features(transcript: str) -> GrammarFeatures:
     n_sents = len(sentences)
     mean_clause_count = total_clauses / max(n_sents, 1)
     subordination_ratio = total_sub_clauses / max(total_clauses, 1)
-    mean_sentence_length = word_count / max(n_sents, 1)
+    spacy_words = sum(1 for t in doc if not t.is_space and not t.is_punct)
+    mean_sentence_length = spacy_words / max(n_sents, 1)
 
     return GrammarFeatures(
         lt_error_rate=round(lt_error_rate, 4),
