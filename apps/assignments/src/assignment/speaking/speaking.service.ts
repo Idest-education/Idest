@@ -127,8 +127,7 @@ export class SpeakingService {
     const saved = await created.save();
 
     try {
-      await this.rabbitService.send('grade_queue', {
-        skill: 'speaking',
+      await this.rabbitService.send('speaking_grade_queue', {
         responseId: submissionId,
         assignmentId: dto.assignment_id,
         userId: dto.user_id,
