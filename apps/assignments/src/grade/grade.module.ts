@@ -4,7 +4,6 @@ import { RabbitModule } from '../rabbit/rabbit.module';
 import { ReadingModule } from '../assignment/reading/reading.module';
 import { ListeningModule } from '../assignment/listening/listening.module';
 import { WritingModule } from '../assignment/writing/writing.module';
-import { SpeakingModule } from '../assignment/speaking/speaking.module';
 
 @Module({
   imports: [
@@ -12,7 +11,6 @@ import { SpeakingModule } from '../assignment/speaking/speaking.module';
     ReadingModule,
     ListeningModule,
     forwardRef(() => WritingModule),
-    forwardRef(() => SpeakingModule),
   ],
   providers: [GradeService],
   exports: [GradeService],

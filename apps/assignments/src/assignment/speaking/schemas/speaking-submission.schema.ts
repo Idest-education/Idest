@@ -42,6 +42,9 @@ export class SpeakingSubmission {
   @Prop()
   feedback?: string;
 
+  @Prop({ type: SchemaTypes.Mixed })
+  grading_breakdown?: Record<string, any>;
+
   @Prop({ default: 'pending', enum: ['pending', 'graded', 'failed'] })
   status: SubmissionStatus;
 }
