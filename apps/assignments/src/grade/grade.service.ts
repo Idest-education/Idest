@@ -84,21 +84,35 @@ export class GradeService implements OnModuleInit {
     return response.output_text;
   }
 
-  async speechToText(file: Express.Multer.File) {
-    console.log(file);
+  private detectAudioFormat(buf: Buffer): { extension: string; mimetype: string } {
+    if (buf.length >= 12 && buf.slice(0, 4).toString() === 'RIFF' && buf.slice(8, 12).toString() === 'WAVE')
+      return { extension: 'wav', mimetype: 'audio/wav' };
+    if (buf.length >= 8 && buf.slice(4, 8).toString() === 'ftyp')
+      return { extension: 'm4a', mimetype: 'audio/mp4' };
+    if (buf.length >= 4 && buf.slice(0, 4).toString() === 'OggS')
+      return { extension: 'ogg', mimetype: 'audio/ogg' };
+    if (buf.length >= 4 && buf.slice(0, 4).toString() === 'fLaC')
+      return { extension: 'flac', mimetype: 'audio/flac' };
+    if (buf.length >= 4 && buf[0] === 0x1a && buf[1] === 0x45 && buf[2] === 0xdf && buf[3] === 0xa3)
+      return { extension: 'webm', mimetype: 'audio/webm' };
+    if (buf.length >= 3 && buf.slice(0, 3).toString() === 'ID3')
+      return { extension: 'mp3', mimetype: 'audio/mpeg' };
+    if (buf.length >= 2 && buf[0] === 0xff && (buf[1] & 0xe0) === 0xe0)
+      return { extension: 'mp3', mimetype: 'audio/mpeg' };
+    return { extension: 'wav', mimetype: 'audio/wav' };
+  }
 
+  async speechToText(file: Express.Multer.File) {
+    const { extension, mimetype } = this.detectAudioFormat(file.buffer);
     const uint8Array = new Uint8Array(file.buffer);
-    const blob = new Blob([uint8Array], { type: file.mimetype });
-    const audioFile = new File([blob], file.originalname, {
-      type: file.mimetype,
-    });
+    const blob = new Blob([uint8Array], { type: mimetype });
+    const audioFile = new File([blob], `audio.${extension}`, { type: mimetype });
 
     const response = await this.openai.audio.transcriptions.create({
       file: audioFile,
       model: 'whisper-1',
       language: 'en',
     });
-    console.log(response);
     return response.text;
   }
 }
