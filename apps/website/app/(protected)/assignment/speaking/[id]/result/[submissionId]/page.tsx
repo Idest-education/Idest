@@ -1,196 +1,453 @@
 "use client";
 
-import { use, useEffect, useState } from "react";
+import { use, useEffect, useRef, useState } from "react";
 import { getSpeakingAssignment, getSpeakingSubmissionResult } from "@/services/assignment.service";
-import { SpeakingAssignmentDetail, SpeakingSubmissionResult } from "@/types/assignment";
+import {
+  SpeakingAssignmentDetail,
+  SpeakingSubmissionResult,
+  SpeakingGradingBreakdown,
+  RubricScore,
+  SentenceError,
+} from "@/types/assignment";
 import LoadingScreen from "@/components/loading-screen";
-import ReactMarkdown from 'react-markdown';
+import ReactMarkdown from "react-markdown";
 
 interface Props {
-    params: Promise<{ id: string; submissionId: string }>;
+  params: Promise<{ id: string; submissionId: string }>;
 }
 
-export default function SpeakingResultPage(props: Props) {
-    const { id, submissionId } = use(props.params);
+// ── helpers ──────────────────────────────────────────────────────────────────
 
-    const [result, setResult] = useState<SpeakingSubmissionResult | null>(null);
-    const [assignment, setAssignment] = useState<SpeakingAssignmentDetail | null>(null);
-    const [loading, setLoading] = useState(true);
+function bandColor(score: number) {
+  if (score >= 8) return { text: "text-green-600", border: "border-green-400", bg: "from-green-50 to-emerald-50" };
+  if (score >= 6.5) return { text: "text-blue-600", border: "border-blue-400", bg: "from-blue-50 to-indigo-50" };
+  if (score >= 5) return { text: "text-yellow-600", border: "border-yellow-400", bg: "from-yellow-50 to-amber-50" };
+  return { text: "text-red-600", border: "border-red-400", bg: "from-red-50 to-rose-50" };
+}
 
-    useEffect(() => {
-        async function load() {
-            try {
-                const [aRes, sRes] = await Promise.all([
-                    getSpeakingAssignment(id),
-                    getSpeakingSubmissionResult(submissionId),
-                ]);
-                setAssignment(aRes);
+function bandLabel(score: number) {
+  if (score >= 8) return "🎉 Xuất sắc! Người dùng rất tốt";
+  if (score >= 6.5) return "👏 Tốt! Người dùng thành thạo";
+  if (score >= 5) return "💪 Khá! Người dùng trung bình";
+  return "📚 Cần cải thiện! Người dùng hạn chế";
+}
 
-                const rawData = (sRes as any)?.data ?? sRes;
-                const finalResult = Array.isArray(rawData) ? rawData[0] : rawData;
+function formatTime(seconds: number) {
+  const m = Math.floor(seconds / 60);
+  const s = String(Math.floor(seconds % 60)).padStart(2, "0");
+  return `${m}:${s}`;
+}
 
-                setResult(finalResult);
-            } finally {
-                setLoading(false);
-            }
-        }
-        load();
-    }, [id, submissionId]);
+// ── rubric config ─────────────────────────────────────────────────────────────
 
-    if (loading) {
-        return <LoadingScreen />;
-    }
+const RUBRIC_CONFIG = {
+  FC: {
+    label: "Fluency & Coherence",
+    sublabel: "Speaking rate · rhythm · discourse markers",
+    color: { card: "bg-blue-50 border-blue-200", band: "text-blue-700", bar: "bg-blue-500", track: "bg-blue-100", label: "text-blue-600 font-bold uppercase tracking-wide text-xs" },
+  },
+  LR: {
+    label: "Lexical Resource",
+    sublabel: "Vocab range · word choice · density",
+    color: { card: "bg-green-50 border-green-200", band: "text-green-700", bar: "bg-green-500", track: "bg-green-100", label: "text-green-600 font-bold uppercase tracking-wide text-xs" },
+  },
+  GR: {
+    label: "Grammar Range & Accuracy",
+    sublabel: "Error rate · sentence complexity",
+    color: { card: "bg-purple-50 border-purple-200", band: "text-purple-700", bar: "bg-purple-500", track: "bg-purple-100", label: "text-purple-600 font-bold uppercase tracking-wide text-xs" },
+  },
+  P: {
+    label: "Pronunciation",
+    sublabel: "Phoneme accuracy · intelligibility · prosody",
+    color: { card: "bg-orange-50 border-orange-200", band: "text-orange-700", bar: "bg-orange-400", track: "bg-orange-100", label: "text-orange-600 font-bold uppercase tracking-wide text-xs" },
+  },
+} as const;
 
-    if (!result) {
-        return (
-            <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 flex items-center justify-center p-6">
-                <div className="bg-white rounded-lg shadow-xl p-8 max-w-md text-center">
-                    <div className="text-6xl mb-4">🔍</div>
-                    <p className="text-xl font-semibold text-gray-800">Không tìm thấy kết quả</p>
-                </div>
-            </div>
-        );
-    }
+function normalizeEvidence(key: string, value: number): number {
+  if (value > 1) return Math.min(value, 100);
+  return Math.round(value * 100);
+}
 
-    const getScoreColor = (score: number) => {
-        if (score >= 8) return "text-green-600";
-        if (score >= 6.5) return "text-blue-600";
-        if (score >= 5) return "text-yellow-600";
-        return "text-red-600";
-    };
+// ── sub-components ────────────────────────────────────────────────────────────
 
-    const getScoreBgColor = (score: number) => {
-        if (score >= 8) return "from-green-50 to-emerald-50";
-        if (score >= 6.5) return "from-blue-50 to-indigo-50";
-        if (score >= 5) return "from-yellow-50 to-amber-50";
-        return "from-red-50 to-rose-50";
-    };
-
-    return (
-        <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 py-6 px-4 sm:px-6 lg:px-8">
-            <div className="max-w-4xl mx-auto">
-                {/* Header */}
-                <div className="text-center mb-3">
-                    <div className="inline-block bg-gradient-to-r from-red-600 to-blue-600 text-white px-6 py-2 rounded-full text-sm font-bold mb-4">
-                        KẾT QUẢ BÀI THI NÓI IELTS
-                    </div>
-                    <h1 className="text-4xl font-bold text-gray-900 mb-2">Kết Quả Bài Thi</h1>
-                    <p className="text-gray-600">Đánh giá chi tiết kỹ năng Speaking của bạn</p>
-                </div>
-
-                {result.status === "pending" || typeof result.score !== "number" ? (
-                    <div className="bg-white rounded-2xl shadow-xl overflow-hidden border-2 border-gray-200 mb-6">
-                        <div className="bg-gradient-to-r from-red-600 to-blue-600 px-6 py-4">
-                            <h2 className="text-2xl font-bold text-white">Trạng thái</h2>
-                            <p className="text-white/80 text-sm mt-1">Bài nói của bạn đang được hệ thống chấm điểm.</p>
-                        </div>
-                        <div className="p-8">
-                            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-amber-50 text-amber-800 border border-amber-200 font-semibold">
-                                Đang chấm điểm
-                            </div>
-                        </div>
-                    </div>
-                ) : (
-                    <>
-                        {/* Score Card */}
-                        <div className={`bg-gradient-to-br ${getScoreBgColor(result.score)} rounded-2xl shadow-2xl p-8 mb-6 border-2 border-gray-200`}>
-                            <div className="text-center">
-                                <p className="text-lg font-medium text-gray-700 mb-3">Điểm số</p>
-                                <div className="relative inline-block">
-                                    <div className="absolute inset-0 bg-white rounded-full blur-xl opacity-50"></div>
-                                    <div className={`relative text-7xl font-black ${getScoreColor(result.score)} bg-white rounded-full w-40 h-40 flex items-center justify-center mx-auto shadow-lg border-4 ${getScoreColor(result.score).replace('text-', 'border-')}`}>
-                                        {result.score}
-                                    </div>
-                                </div>
-                                <p className="text-sm text-gray-600 mt-4 font-medium">
-                                    {result.score >= 8 && "🎉 Xuất sắc! Người dùng rất tốt"}
-                                    {result.score >= 6.5 && result.score < 8 && "👏 Tốt! Người dùng thành thạo"}
-                                    {result.score >= 5 && result.score < 6.5 && "💪 Khá! Người dùng trung bình"}
-                                    {result.score < 5 && "📚 Cần cải thiện! Người dùng hạn chế"}
-                                </p>
-                            </div>
-                        </div>
-
-                        {/* Feedback Card */}
-                        <div className="bg-white rounded-2xl shadow-xl overflow-hidden border-2 border-gray-200">
-                            <div className="bg-gradient-to-r from-red-600 to-blue-600 px-6 py-4">
-                                <h2 className="text-2xl font-bold text-white flex items-center gap-2">
-                                    <span>📝</span>
-                                    Nhận Xét Chi Tiết
-                                </h2>
-                            </div>
-                            <div className="p-8">
-                                <div className="prose prose-lg max-w-none">
-                                    <p className="whitespace-pre-line leading-relaxed text-gray-700 text-base">
-                                        {result.feedback}
-                                    </p>
-                                </div>
-                            </div>
-                        </div>
-                    </>
-                )}
-
-                {/* Question (luôn hiển thị trường question từ backend) */}
-                {assignment && (
-                    <div className="bg-white rounded-2xl shadow-xl overflow-hidden border-2 border-gray-200 mt-6">
-                        <div className="bg-gradient-to-r from-red-600 to-blue-600 px-6 py-4">
-                            <h2 className="text-2xl font-bold text-white">Đề bài</h2>
-                            <p className="text-white/80 text-sm mt-1">Câu hỏi Speaking Parts 1–3</p>
-                        </div>
-                        <div className="p-8 space-y-6">
-                            {assignment.parts?.map((part) => (
-                                <div key={part.part_number} className="space-y-2">
-                                    <h3 className="font-semibold text-gray-900">Phần {part.part_number}</h3>
-                                    <div className="rounded-xl border border-gray-200 bg-gray-50 p-4">
-                                        <div className="prose prose-sm max-w-none text-gray-800">
-                                            <ReactMarkdown>{part.question}</ReactMarkdown>
-                                        </div>
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-                )}
-
-                {/* My audio (always show) */}
-                <div className="bg-white rounded-2xl shadow-xl overflow-hidden border-2 border-gray-200 mt-6">
-                    <div className="bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 px-6 py-4">
-                        <h2 className="text-2xl font-bold text-white">Bài nói bạn đã nộp</h2>
-                        <p className="text-white/80 text-sm mt-1">Nghe lại bản ghi âm của bạn</p>
-                    </div>
-                    <div className="p-8 space-y-6">
-                        {result.audio_url ? (
-                            <audio controls src={result.audio_url} className="w-full" />
-                        ) : (
-                            <div className="text-gray-600">Không tìm thấy audio để phát.</div>
-                        )}
-
-                        {/* Rendering Transcript based on new structure */}
-                        {result.transcripts && result.transcripts.length > 0 && (
-                            <div className="space-y-4">
-                                <h3 className="font-semibold text-gray-900">Transcript (nếu có)</h3>
-                                {result.transcripts.map((t: { part_number: number, text: string }, index: number) => (
-                                    <div key={`transcript-${t.part_number || index}`}>
-                                        <div className="text-sm font-medium text-gray-700 mb-1">Part {t.part_number}</div>
-                                        <div className="rounded-xl border border-gray-200 bg-gray-50 p-4 whitespace-pre-wrap text-gray-800">
-                                            {t.text}
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
-                        )}
-                    </div>
-                </div>
-
-                {/* Footer Info */}
-                <div className="mt-8 text-center">
-                    <div className="inline-flex items-center gap-2 bg-white rounded-full px-6 py-3 shadow-md border border-gray-200">
-                        <span className="text-sm text-gray-600">
-                            💡 Lưu ý: Điểm IELTS Speaking được đánh giá theo 4 tiêu chí: Fluency & Coherence, Lexical Resource, Grammatical Range & Accuracy, Pronunciation
-                        </span>
-                    </div>
-                </div>
-            </div>
+function RubricCard({
+  rubricKey,
+  rubric,
+  degraded,
+}: {
+  rubricKey: keyof typeof RUBRIC_CONFIG;
+  rubric: RubricScore;
+  degraded: boolean;
+}) {
+  const cfg = RUBRIC_CONFIG[rubricKey];
+  return (
+    <div className={`rounded-xl p-4 border ${cfg.color.card}`}>
+      <div className="flex justify-between items-start mb-2">
+        <div>
+          <div className={cfg.color.label}>{cfg.label}</div>
+          <div className="text-xs text-slate-500">{cfg.sublabel}</div>
         </div>
+        <div className="flex flex-col items-end gap-1">
+          <span className={`text-2xl font-black ${cfg.color.band}`}>{rubric.band}</span>
+          {degraded && (
+            <span className="text-xs bg-amber-100 text-amber-700 border border-amber-300 rounded px-1.5 py-0.5">
+              ⚠ heuristic
+            </span>
+          )}
+        </div>
+      </div>
+      <p className="text-xs text-slate-600 mb-3 leading-relaxed">{rubric.feedback}</p>
+      <div className="space-y-1.5">
+        {Object.entries(rubric.feature_evidence).map(([key, val]) => (
+          <div key={key} className="flex items-center justify-between gap-2">
+            <span className="text-xs text-slate-500 w-28 truncate capitalize">{key.replace(/_/g, " ")}</span>
+            <div className="flex items-center gap-2 flex-1">
+              <div className={`flex-1 h-1.5 rounded-full ${cfg.color.track}`}>
+                <div
+                  className={`h-1.5 rounded-full ${cfg.color.bar}`}
+                  style={{ width: `${normalizeEvidence(key, val)}%` }}
+                />
+              </div>
+              <span className={`text-xs font-semibold ${cfg.color.band} w-12 text-right`}>
+                {typeof val === "number" && val < 2 ? val.toFixed(2) : Math.round(val)}
+              </span>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function PronunciationSection({
+  sentences,
+  audioRef,
+  hasAudio,
+}: {
+  sentences: SentenceError[];
+  audioRef: React.RefObject<HTMLAudioElement | null>;
+  hasAudio: boolean;
+}) {
+  const stopAtRef = useRef<number | null>(null);
+
+  function playSentence(startTime: number, endTime: number) {
+    const audio = audioRef.current;
+    if (!audio) return;
+    stopAtRef.current = endTime;
+    audio.currentTime = startTime;
+    audio.play();
+    const onTimeUpdate = () => {
+      if (stopAtRef.current !== null && audio.currentTime >= stopAtRef.current) {
+        audio.pause();
+        stopAtRef.current = null;
+        audio.removeEventListener("timeupdate", onTimeUpdate);
+      }
+    };
+    audio.addEventListener("timeupdate", onTimeUpdate);
+  }
+
+  function highlightSentence(sentence: string, errors: SentenceError["word_errors"]) {
+    if (!errors.length) return <span>{sentence}</span>;
+
+    const wordSeverity = new Map<string, "red" | "amber">();
+    for (const e of errors) {
+      const w = e.word.toLowerCase();
+      const severity = e.score < 40 ? "red" : "amber";
+      if (!wordSeverity.has(w) || (severity === "red" && wordSeverity.get(w) === "amber")) {
+        wordSeverity.set(w, severity);
+      }
+    }
+
+    const tokens = sentence.split(/(\s+)/);
+    return (
+      <>
+        {tokens.map((tok, i) => {
+          const clean = tok.replace(/[^a-zA-Z']/g, "").toLowerCase();
+          const sev = wordSeverity.get(clean);
+          if (!sev) return <span key={i}>{tok}</span>;
+          return (
+            <span
+              key={i}
+              className={
+                sev === "red"
+                  ? "bg-red-100 border-b-2 border-red-500 text-red-900 font-semibold rounded-sm px-0.5"
+                  : "bg-amber-100 border-b-2 border-amber-500 text-amber-900 font-semibold rounded-sm px-0.5"
+              }
+            >
+              {tok}
+            </span>
+          );
+        })}
+      </>
     );
+  }
+
+  return (
+    <div className="bg-white rounded-2xl shadow-sm border-2 border-orange-200 overflow-hidden">
+      <div className="bg-gradient-to-r from-orange-500 to-amber-500 px-6 py-4 flex justify-between items-center">
+        <div>
+          <h2 className="text-lg font-bold text-white">🔊 Pronunciation — Sentence Errors</h2>
+          <p className="text-white/80 text-xs mt-0.5">Underlined words had pronunciation issues</p>
+        </div>
+        {hasAudio && (
+          <span className="text-white/70 text-xs">▶ buttons seek the audio player below</span>
+        )}
+      </div>
+      <div className="p-6 space-y-4">
+        {sentences.map((sent, si) => (
+          <div
+            key={si}
+            className="border-l-4 border-orange-300 pl-4 pr-2 py-2 bg-orange-50 rounded-r-lg"
+          >
+            <div className="flex justify-between items-start gap-3 mb-3">
+              <p className="text-sm text-slate-700 leading-7 flex-1">
+                {highlightSentence(sent.sentence, sent.word_errors)}
+              </p>
+              <button
+                onClick={() => playSentence(sent.start_time, sent.end_time)}
+                disabled={!hasAudio}
+                className="flex-shrink-0 flex items-center gap-1.5 bg-orange-500 hover:bg-orange-600 disabled:opacity-40 disabled:cursor-not-allowed text-white text-xs font-bold px-3 py-1.5 rounded-lg transition-colors"
+                title={hasAudio ? `Play from ${formatTime(sent.start_time)}` : "No audio available"}
+              >
+                ▶ {formatTime(sent.start_time)}
+              </button>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {sent.word_errors.map((w, wi) => (
+                <div
+                  key={wi}
+                  className={`flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs ${
+                    w.score < 40
+                      ? "bg-white border-red-200"
+                      : "bg-white border-amber-200"
+                  }`}
+                >
+                  <span className={`font-bold ${w.score < 40 ? "text-red-700" : "text-amber-700"}`}>
+                    {w.word}
+                  </span>
+                  <span className="font-mono text-slate-500">/{w.reference_ipa}/</span>
+                  <span className="text-slate-600">→ {w.fix_hint}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ── main page ──────────────────────────────────────────────────────────────────
+
+export default function SpeakingResultPage(props: Props) {
+  const { id, submissionId } = use(props.params);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+
+  const [result, setResult] = useState<SpeakingSubmissionResult | null>(null);
+  const [assignment, setAssignment] = useState<SpeakingAssignmentDetail | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [activeTranscriptPart, setActiveTranscriptPart] = useState(1);
+
+  useEffect(() => {
+    async function load() {
+      try {
+        const [aRes, sRes] = await Promise.all([
+          getSpeakingAssignment(id),
+          getSpeakingSubmissionResult(submissionId),
+        ]);
+        setAssignment(aRes);
+        const rawData = (sRes as any)?.data ?? sRes;
+        setResult(Array.isArray(rawData) ? rawData[0] : rawData);
+      } finally {
+        setLoading(false);
+      }
+    }
+    load();
+  }, [id, submissionId]);
+
+  if (loading) return <LoadingScreen />;
+
+  if (!result) {
+    return (
+      <div className="min-h-screen flex items-center justify-center p-6">
+        <div className="bg-white rounded-xl shadow p-8 text-center">
+          <p className="text-xl font-semibold text-slate-800">Không tìm thấy kết quả</p>
+        </div>
+      </div>
+    );
+  }
+
+  const bd: SpeakingGradingBreakdown | undefined = result.grading_breakdown;
+  const overallScore = bd?.overall_band ?? result.score;
+  const colors = overallScore != null ? bandColor(overallScore) : null;
+  const degraded = new Set(bd?.metadata?.degraded_features ?? []);
+  const sentenceErrors = bd?.rubrics?.P?.sentence_errors ?? [];
+  const hasAudio = !!result.audio_url;
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-orange-50 to-amber-50 py-8 px-4">
+      <div className="max-w-4xl mx-auto space-y-6">
+
+        {/* Header */}
+        <div className="text-center">
+          <div className="inline-block bg-gradient-to-r from-orange-500 to-amber-500 text-white px-6 py-1.5 rounded-full text-xs font-bold mb-4 tracking-wide">
+            KẾT QUẢ BÀI THI NÓI IELTS
+          </div>
+          <h1 className="text-4xl font-black text-slate-900 mb-1">Kết Quả Bài Thi</h1>
+          <p className="text-slate-500 text-sm">Đánh giá chi tiết kỹ năng Speaking của bạn</p>
+        </div>
+
+        {/* ── PENDING ── */}
+        {(result.status === "pending" || overallScore == null) && (
+          <div className="bg-white rounded-2xl shadow-sm border-2 border-slate-200 p-8 text-center">
+            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-amber-50 text-amber-800 border border-amber-200 font-semibold text-sm">
+              ⏳ Đang chấm điểm — tải lại trang sau ít phút
+            </div>
+          </div>
+        )}
+
+        {/* ── FAILED ── */}
+        {result.status === "failed" && (
+          <div className="bg-white rounded-2xl shadow-sm border-2 border-red-200 p-8">
+            <p className="text-red-700 font-semibold">❌ Chấm điểm thất bại</p>
+            {result.feedback && <p className="text-sm text-slate-600 mt-2">{result.feedback}</p>}
+          </div>
+        )}
+
+        {/* ── GRADED ── */}
+        {result.status === "graded" && overallScore != null && (
+          <>
+            {/* Section 1: Overall score */}
+            <div className={`bg-gradient-to-br ${colors!.bg} rounded-2xl shadow-sm p-8 text-center border-2 ${colors!.border}`}>
+              <p className="text-sm font-semibold text-slate-600 mb-3">Overall Band Score</p>
+              <div
+                className={`relative inline-flex items-center justify-center w-28 h-28 rounded-full bg-white border-4 ${colors!.border} shadow-lg`}
+              >
+                <span className={`text-4xl font-black ${colors!.text}`}>{overallScore}</span>
+              </div>
+              <p className={`mt-4 text-sm font-medium ${colors!.text}`}>{bandLabel(overallScore)}</p>
+            </div>
+
+            {/* Section 2: Rubric grid */}
+            {bd && (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {(["FC", "LR", "GR", "P"] as const).map((key) => (
+                  <RubricCard
+                    key={key}
+                    rubricKey={key}
+                    rubric={bd.rubrics[key]}
+                    degraded={degraded.has(key.toLowerCase()) || degraded.has(`ollama_${key.toLowerCase()}_gr`) || degraded.has("ollama_lr_gr")}
+                  />
+                ))}
+              </div>
+            )}
+
+            {/* Section 2 fallback: legacy plain feedback */}
+            {!bd && result.feedback && (
+              <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+                <div className="bg-gradient-to-r from-orange-500 to-amber-500 px-6 py-4">
+                  <h2 className="text-lg font-bold text-white">📝 Nhận Xét Chi Tiết</h2>
+                </div>
+                <div className="p-6">
+                  <p className="text-slate-700 whitespace-pre-line leading-relaxed text-sm">{result.feedback}</p>
+                </div>
+              </div>
+            )}
+
+            {/* Section 3: Pronunciation sentence highlights */}
+            {sentenceErrors.length > 0 && (
+              <PronunciationSection
+                sentences={sentenceErrors}
+                audioRef={audioRef}
+                hasAudio={hasAudio}
+              />
+            )}
+
+            {/* Section 4: Transcripts */}
+            {result.transcripts.length > 0 && (
+              <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+                <div className="bg-slate-800 px-6 py-4">
+                  <h2 className="text-lg font-bold text-white">📝 Bài nói (Transcript)</h2>
+                </div>
+                <div className="p-6">
+                  <div className="flex gap-2 mb-4">
+                    {result.transcripts.map((t) => (
+                      <button
+                        key={t.part_number}
+                        onClick={() => setActiveTranscriptPart(t.part_number)}
+                        className={`px-4 py-1.5 rounded-full text-xs font-semibold transition-colors ${
+                          activeTranscriptPart === t.part_number
+                            ? "bg-orange-500 text-white"
+                            : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                        }`}
+                      >
+                        Part {t.part_number}
+                      </button>
+                    ))}
+                  </div>
+                  {result.transcripts
+                    .filter((t) => t.part_number === activeTranscriptPart)
+                    .map((t) => (
+                      <div key={t.part_number} className="bg-slate-50 rounded-xl p-4 text-sm text-slate-700 leading-relaxed whitespace-pre-wrap">
+                        {t.text}
+                      </div>
+                    ))}
+                </div>
+              </div>
+            )}
+
+            {/* Section 5: Audio player */}
+            <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+              <div className="bg-gradient-to-r from-slate-800 to-slate-700 px-6 py-4">
+                <h2 className="text-lg font-bold text-white">🎧 Bài nói bạn đã nộp</h2>
+                <p className="text-white/70 text-xs mt-0.5">Nhấn ▶ trên từng câu ở trên để nghe đoạn đó</p>
+              </div>
+              <div className="p-6">
+                {hasAudio ? (
+                  <audio
+                    ref={audioRef}
+                    controls
+                    src={result.audio_url}
+                    className="w-full"
+                  />
+                ) : (
+                  <p className="text-slate-500 text-sm">Không tìm thấy audio để phát.</p>
+                )}
+              </div>
+            </div>
+
+            {/* Section 6: Assignment questions */}
+            {assignment && (
+              <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+                <div className="bg-gradient-to-r from-orange-500 to-amber-500 px-6 py-4">
+                  <h2 className="text-lg font-bold text-white">📋 Đề bài</h2>
+                  <p className="text-white/70 text-xs mt-0.5">Câu hỏi Speaking Parts 1–3</p>
+                </div>
+                <div className="p-6 space-y-5">
+                  {assignment.parts?.map((part) => (
+                    <div key={part.part_number}>
+                      <h3 className="font-semibold text-slate-800 mb-2">Phần {part.part_number}</h3>
+                      <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 prose prose-sm max-w-none text-slate-700">
+                        <ReactMarkdown>{part.question}</ReactMarkdown>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </>
+        )}
+
+        {/* Footer */}
+        <div className="text-center pb-4">
+          <div className="inline-flex items-center gap-2 bg-white rounded-full px-6 py-2.5 shadow-sm border border-slate-200">
+            <span className="text-xs text-slate-500">
+              💡 IELTS Speaking: Fluency &amp; Coherence · Lexical Resource · Grammar · Pronunciation
+            </span>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  );
 }
