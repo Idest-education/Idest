@@ -145,26 +145,33 @@ export default function SpeakingAssignmentPage(props: Props) {
 
         setSubmitting(true);
 
-        const res = await submitSpeaking(
-            {
-                assignment_id: assignment.id,
-                user_id: userId,
-            },
-            {
-                audioOne: audio1,
-                audioTwo: audio2,
-                audioThree: audio3,
+        try {
+            const res = await submitSpeaking(
+                {
+                    assignment_id: assignment.id,
+                    user_id: userId,
+                },
+                {
+                    audioOne: audio1,
+                    audioTwo: audio2,
+                    audioThree: audio3,
+                }
+            );
+
+            const submissionId = res?.data?._id ?? res?.data?.id ?? res?._id ?? res?.id;
+
+            if (submissionId) {
+                router.push(`/assignment/speaking/${id}/result/${submissionId}`);
+            } else {
+                // fallback if id not in response
+                try { sessionStorage.setItem("assignment_grading_queued", "1"); } catch {}
+                router.push("/assignment/submissions");
             }
-        );
-
-        const submissionId = res?.data?._id ?? res?.data?.id ?? res?._id ?? res?.id;
-
-        if (submissionId) {
-            router.push(`/assignment/speaking/${id}/result/${submissionId}`);
-        } else {
-            // fallback if id not in response
-            try { sessionStorage.setItem("assignment_grading_queued", "1"); } catch {}
-            router.push("/assignment/submissions");
+        } catch (err) {
+            console.error("Failed to submit speaking:", err);
+            alert("Nộp bài thất bại. Vui lòng thử lại.");
+        } finally {
+            setSubmitting(false);
         }
     }
 
