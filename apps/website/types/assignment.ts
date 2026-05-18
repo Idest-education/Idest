@@ -393,6 +393,46 @@ export interface SpeakingSubmissionPayload {
   // Files are handled via FormData in service
 }
 
+export interface ProblematicPhone {
+  phone: string;
+  score: number;
+}
+
+export interface WordError {
+  word: string;
+  score: number;
+  reference_ipa: string;
+  problematic_phones: ProblematicPhone[];
+  fix_hint: string;
+}
+
+export interface SentenceError {
+  sentence: string;
+  start_time: number;
+  end_time: number;
+  word_errors: WordError[];
+}
+
+export interface RubricScore {
+  band: number;
+  feedback: string;
+  feature_evidence: Record<string, number>;
+  sentence_errors?: SentenceError[];
+}
+
+export interface SpeakingGradingBreakdown {
+  overall_band: number;
+  rubrics: {
+    FC: RubricScore;
+    LR: RubricScore;
+    GR: RubricScore;
+    P: RubricScore;
+  };
+  metadata: {
+    degraded_features?: string[];
+  };
+}
+
 export interface SpeakingSubmissionResult {
   id?: string;
   _id?: string;
@@ -407,6 +447,7 @@ export interface SpeakingSubmissionResult {
   text: string;
 }[];
   created_at?: string;
+  grading_breakdown?: SpeakingGradingBreakdown;
 }
 
 // =======================
