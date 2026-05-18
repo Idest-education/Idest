@@ -129,10 +129,15 @@ function PronunciationSection({
   hasAudio: boolean;
 }) {
   const stopAtRef = useRef<number | null>(null);
+  const onTimeUpdateRef = useRef<(() => void) | null>(null);
 
   function playSentence(startTime: number, endTime: number) {
     const audio = audioRef.current;
     if (!audio) return;
+    if (onTimeUpdateRef.current) {
+      audio.removeEventListener("timeupdate", onTimeUpdateRef.current);
+      onTimeUpdateRef.current = null;
+    }
     stopAtRef.current = endTime;
     audio.currentTime = startTime;
     audio.play();
@@ -141,8 +146,10 @@ function PronunciationSection({
         audio.pause();
         stopAtRef.current = null;
         audio.removeEventListener("timeupdate", onTimeUpdate);
+        onTimeUpdateRef.current = null;
       }
     };
+    onTimeUpdateRef.current = onTimeUpdate;
     audio.addEventListener("timeupdate", onTimeUpdate);
   }
 
@@ -246,6 +253,7 @@ export default function SpeakingResultPage(props: Props) {
   const [result, setResult] = useState<SpeakingSubmissionResult | null>(null);
   const [assignment, setAssignment] = useState<SpeakingAssignmentDetail | null>(null);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [activeTranscriptPart, setActiveTranscriptPart] = useState(1);
 
   useEffect(() => {
@@ -258,6 +266,9 @@ export default function SpeakingResultPage(props: Props) {
         setAssignment(aRes);
         const rawData = (sRes as any)?.data ?? sRes;
         setResult(Array.isArray(rawData) ? rawData[0] : rawData);
+      } catch (err) {
+        console.error("Failed to load speaking result:", err);
+        setLoadError("Không thể tải kết quả. Vui lòng thử lại.");
       } finally {
         setLoading(false);
       }
@@ -266,6 +277,16 @@ export default function SpeakingResultPage(props: Props) {
   }, [id, submissionId]);
 
   if (loading) return <LoadingScreen />;
+
+  if (loadError) {
+    return (
+      <div className="min-h-screen flex items-center justify-center p-6">
+        <div className="bg-white rounded-xl shadow p-8 text-center">
+          <p className="text-xl font-semibold text-red-700">⚠️ {loadError}</p>
+        </div>
+      </div>
+    );
+  }
 
   if (!result) {
     return (
@@ -336,7 +357,11 @@ export default function SpeakingResultPage(props: Props) {
                     key={key}
                     rubricKey={key}
                     rubric={bd.rubrics[key]}
-                    degraded={degraded.has(key.toLowerCase()) || degraded.has(`ollama_${key.toLowerCase()}_gr`) || degraded.has("ollama_lr_gr")}
+                    degraded={
+                      degraded.has(key.toLowerCase()) ||
+                      degraded.has(`ollama_${key.toLowerCase()}_gr`) ||
+                      ((key === "LR" || key === "GR") && degraded.has("ollama_lr_gr"))
+                    }
                   />
                 ))}
               </div>
