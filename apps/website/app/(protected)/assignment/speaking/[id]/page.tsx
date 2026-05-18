@@ -3,6 +3,7 @@
 import { use, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { getSpeakingAssignment, submitSpeaking } from "@/services/assignment.service";
+import { createClient } from "@/lib/supabase/client";
 import { SpeakingAssignmentDetail } from "@/types/assignment";
 import SidebarSpeaking from "@/components/assignment/SidebarSpeaking";
 import LoadingScreen from "@/components/loading-screen";
@@ -133,14 +134,21 @@ export default function SpeakingAssignmentPage(props: Props) {
             return;
         }
 
-        const userId = localStorage.getItem("user_id");
+        const supabase = createClient();
+        const { data: { session } } = await supabase.auth.getSession();
+        const userId = session?.user?.id ?? localStorage.getItem("user_id");
 
-        setSubmitting(true); // bật loading
+        if (!userId) {
+            alert("Không thể xác định người dùng. Vui lòng đăng nhập lại.");
+            return;
+        }
 
-        await submitSpeaking(
+        setSubmitting(true);
+
+        const res = await submitSpeaking(
             {
                 assignment_id: assignment.id,
-                user_id: userId!,
+                user_id: userId,
             },
             {
                 audioOne: audio1,
@@ -148,11 +156,16 @@ export default function SpeakingAssignmentPage(props: Props) {
                 audioThree: audio3,
             }
         );
-        // Mark that we should show the "queued for grading" popup after redirect
-        try {
-            sessionStorage.setItem("assignment_grading_queued", "1");
-        } catch { }
-        router.push("/assignment/submissions");
+
+        const submissionId = res?.data?._id ?? res?.data?.id ?? res?._id ?? res?.id;
+
+        if (submissionId) {
+            router.push(`/assignment/speaking/${id}/result/${submissionId}`);
+        } else {
+            // fallback if id not in response
+            try { sessionStorage.setItem("assignment_grading_queued", "1"); } catch {}
+            router.push("/assignment/submissions");
+        }
     }
 
     if (submitting) {
