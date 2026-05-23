@@ -10,6 +10,9 @@ import { getReadingAssignment, getReadingSubmissionResult } from "@/services/ass
 import PassageTabs from "@/components/assignment/passagetabs";
 import PassageContent from "@/components/assignment/passage-content";
 import LoadingScreen from "@/components/loading-screen";
+import ScoreReveal from "@/components/score-reveal";
+import Image from "next/image";
+import readingImage from "@/assets/assignment-reading.png";
 
 interface PageProps {
     params: Promise<{ id: string; submissionId: string }>;
@@ -56,12 +59,9 @@ export default function ReadingResultPage(props: PageProps) {
         const map = new Map<string, any>();
         result?.details?.forEach((sec) =>
             sec.questions?.forEach((q: any) => {
-                // Extract answer from parts if available, otherwise use a default
                 if (q.parts && q.parts.length > 0) {
-                    // For questions with parts, store the first part's submitted_answer
                     map.set(q.question_id, q.parts[0]?.submitted_answer);
                 } else {
-                    // Fallback: try to get answer from question directly if available
                     map.set(q.question_id, (q as any).answer);
                 }
             }),
@@ -83,15 +83,9 @@ export default function ReadingResultPage(props: PageProps) {
         const question = questionsById.get(questionId);
         const submitted = submittedAnswersByQuestion.get(questionId);
         const key = question?.answer_key;
-
-        // Try common fields
-        const correctAnswer =
-            key?.choice ?? key?.choices ?? key?.correct_answer ?? key?.text ?? key?.map ?? key;
-
+        const correctAnswer = key?.choice ?? key?.choices ?? key?.correct_answer ?? key?.text ?? key?.map ?? key;
         const submittedAnswer = submitted?.choice ?? submitted?.choices ?? submitted?.text ?? submitted;
-
         if (submittedAnswer === undefined && correctAnswer === undefined) return [];
-
         return [
             {
                 key: "answer",
@@ -107,7 +101,6 @@ export default function ReadingResultPage(props: PageProps) {
             try {
                 const r1 = await getReadingAssignment(id);
                 const r2 = await getReadingSubmissionResult(submissionId);
-
                 setAssignment(r1);
                 setResult(r2);
             } catch (err) {
@@ -123,14 +116,20 @@ export default function ReadingResultPage(props: PageProps) {
 
     if (!assignment || !result) {
         return (
-            <div className="flex items-center justify-center h-screen bg-gradient-to-br from-red-50 to-orange-50">
-                <div className="text-center space-y-3 p-8 bg-white rounded-2xl shadow-lg">
-                    <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto">
-                        <svg className="w-8 h-8 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                        </svg>
-                    </div>
-                    <p className="text-xl font-semibold text-gray-800">Không tìm thấy dữ liệu</p>
+            <div
+                className="flex items-center justify-center h-screen"
+                style={{ backgroundColor: "var(--color-surface-app)" }}
+            >
+                <div
+                    className="text-center p-8 rounded-2xl"
+                    style={{
+                        backgroundColor: "var(--color-surface-card)",
+                        border: "1px solid var(--color-border-default)",
+                    }}
+                >
+                    <p className="text-xl font-semibold" style={{ color: "var(--color-text-primary)" }}>
+                        Không tìm thấy dữ liệu
+                    </p>
                 </div>
             </div>
         );
@@ -140,7 +139,6 @@ export default function ReadingResultPage(props: PageProps) {
     const sectionResult =
         result.details.find((sec) => sec.section_id === section.id) ?? result.details[activePassage];
 
-    // Prefer API band score; fall back to recompute if absent
     const bandScore =
         result.score ??
         (() => {
@@ -149,12 +147,30 @@ export default function ReadingResultPage(props: PageProps) {
             return Math.max(0, Math.min(9, Math.round(rawBand * 2) / 2));
         })();
 
+    const getCorrectAnswer = (val: any) => {
+        if (val && typeof val === "object" && "correct_answer" in val) {
+            return (val as any).correct_answer;
+        }
+        return val;
+    };
+
     return (
-        <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 py-1 px-1">
-            <div className="flex h-screen border border-gray-300 mx-2 mt-9 mb-19">
-                {/* LEFT - Passage Panel */}
-                <div className="flex-1 flex flex-col border-r border-gray-200 bg-white/80 backdrop-blur-sm shadow-sm">
-                    <div className="p-6 overflow-y-auto">
+        <div style={{ minHeight: "100vh", backgroundColor: "var(--color-surface-app)" }}>
+            <div
+                className="flex border mx-2 mt-9 mb-8"
+                style={{
+                    height: "calc(100vh - 80px)",
+                    border: "1px solid var(--color-border-default)",
+                    borderRadius: "16px",
+                    overflow: "hidden",
+                }}
+            >
+                {/* LEFT — Passage panel */}
+                <div
+                    className="flex-1 flex flex-col overflow-hidden"
+                    style={{ borderRight: "1px solid var(--color-border-subtle)", backgroundColor: "var(--color-surface-card)" }}
+                >
+                    <div className="p-6 overflow-y-auto h-full">
                         <PassageTabs
                             sections={assignment.sections as any}
                             active={activePassage}
@@ -166,75 +182,100 @@ export default function ReadingResultPage(props: PageProps) {
                     </div>
                 </div>
 
-                {/* RIGHT - Result Review */}
-                <div className="w-[45%] flex flex-col bg-white/80 backdrop-blur-sm shadow-sm">
-
+                {/* RIGHT — Result review */}
+                <div
+                    className="w-[45%] flex flex-col overflow-hidden"
+                    style={{ backgroundColor: "var(--color-surface-card)" }}
+                >
                     <div className="flex-1 p-6 overflow-y-auto">
-                        {/* Score Card */}
-                        <div className="bg-gradient-to-br from-blue-500 to-indigo-600 rounded-2xl shadow-xl p-6 mb-6 text-white">
-                            <div className="flex items-center justify-between mb-4">
-                                <div>
-                                    <p className="text-sm opacity-90 mb-1">Tổng điểm</p>
-                                    <p className="text-4xl font-bold">
-                                        {bandScore.toFixed(1)}
-                                        <span className="text-sm opacity-80">/9.0</span>
-                                    </p>
+
+                        {/* Score card — warm */}
+                        <div
+                            className="rounded-2xl p-5 mb-6"
+                            style={{
+                                backgroundColor: "var(--color-surface-subtle)",
+                                border: "1.5px solid var(--color-border-default)",
+                            }}
+                        >
+                            <div className="flex items-center gap-4">
+                                <div className="animate-float flex-shrink-0">
+                                    <Image src={readingImage} alt="" width={52} height={52} className="object-contain" />
                                 </div>
-                                <div className="w-20 h-20 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center">
-                                    <div className="text-center">
-                                        <p className="text-sm font-bold">{result.percentage}%</p>
+                                <div className="flex-1">
+                                    <p
+                                        className="text-xs font-bold uppercase tracking-widest mb-1"
+                                        style={{ color: "var(--color-text-muted)", fontFamily: "var(--font-body)" }}
+                                    >
+                                        Tổng điểm
+                                    </p>
+                                    <ScoreReveal score={bandScore} />
+                                </div>
+                                <div className="text-right flex-shrink-0">
+                                    <div
+                                        className="text-2xl font-bold"
+                                        style={{ fontFamily: "var(--font-mono)", color: "var(--color-brand)" }}
+                                    >
+                                        {result.percentage}%
                                     </div>
+                                    <div className="text-xs" style={{ color: "var(--color-text-muted)" }}>Chính xác</div>
                                 </div>
                             </div>
-
-                            <div className="grid grid-cols-2 gap-4 pt-4 border-t border-white/20">
-                                <div className="bg-white/10 backdrop-blur-sm rounded-xl p-3">
-                                    <div className="flex items-center gap-2">
-                                        <div className="w-8 h-8 rounded-full bg-green-400/30 flex items-center justify-center">
-                                            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                                            </svg>
-                                        </div>
-                                        <div>
-                                            <p className="text-xs opacity-80">Đúng</p>
-                                            <p className="text-sm font-bold">{result.correct_answers}</p>
-                                        </div>
+                            <div
+                                className="grid grid-cols-2 gap-3 mt-4 pt-4"
+                                style={{ borderTop: "1px solid var(--color-border-subtle)" }}
+                            >
+                                <div
+                                    className="rounded-xl p-3"
+                                    style={{
+                                        backgroundColor: "var(--color-surface-card)",
+                                        border: "1px solid var(--color-border-default)",
+                                    }}
+                                >
+                                    <div className="text-xs mb-1" style={{ color: "var(--color-text-muted)" }}>Đúng</div>
+                                    <div
+                                        className="font-bold text-lg"
+                                        style={{ color: "var(--color-correct)", fontFamily: "var(--font-mono)" }}
+                                    >
+                                        {result.correct_answers}
                                     </div>
                                 </div>
-                                <div className="bg-white/10 backdrop-blur-sm rounded-xl p-3">
-                                    <div className="flex items-center gap-2">
-                                        <div className="w-8 h-8 rounded-full bg-red-400/30 flex items-center justify-center">
-                                            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                                            </svg>
-                                        </div>
-                                        <div>
-                                            <p className="text-xs opacity-80">Sai</p>
-                                            <p className="text-sm font-bold">{result.incorrect_answers}</p>
-                                        </div>
+                                <div
+                                    className="rounded-xl p-3"
+                                    style={{
+                                        backgroundColor: "var(--color-surface-card)",
+                                        border: "1px solid var(--color-border-default)",
+                                    }}
+                                >
+                                    <div className="text-xs mb-1" style={{ color: "var(--color-text-muted)" }}>Sai</div>
+                                    <div
+                                        className="font-bold text-lg"
+                                        style={{ color: "var(--color-error)", fontFamily: "var(--font-mono)" }}
+                                    >
+                                        {result.incorrect_answers}
                                     </div>
                                 </div>
                             </div>
                         </div>
 
-                        {/* Section Title */}
-                        <div className="mb-6">
-                            <h3 className="text-xl font-bold text-gray-800 flex items-center gap-2">
-                                <div className="w-1 h-6 bg-gradient-to-b from-blue-600 to-indigo-600 rounded-full"></div>
+                        {/* Section title */}
+                        <div className="mb-5">
+                            <h3
+                                className="text-xl font-bold"
+                                style={{ fontFamily: "var(--font-display)", color: "var(--color-text-primary)" }}
+                            >
                                 {section.title}
                             </h3>
                         </div>
 
-                        {/* Questions Review (v2) */}
-                        <div className="space-y-6">
+                        {/* Questions review */}
+                        <div className="space-y-5">
                             {sectionResult?.questions?.map((q) => {
                                 const meta = questionMeta.get(q.question_id);
                                 const label =
                                     meta?.order !== undefined
                                         ? `Question ${meta.order}`
                                         : `Question ${q.question_id}`;
-                                const prompt =
-                                    (meta?.prompt || "").replace(/<[^>]+>/g, "").slice(0, 200);
+                                const prompt = (meta?.prompt || "").replace(/<[^>]+>/g, "").slice(0, 200);
                                 const detailParts =
                                     (q.parts && q.parts.length
                                         ? q.parts
@@ -242,60 +283,93 @@ export default function ReadingResultPage(props: PageProps) {
                                 const getSubmittedAnswer = (part: any) => {
                                     if (part?.submitted_answer !== undefined) return part.submitted_answer;
                                     const fromMap = submittedAnswersByQuestion.get(q.question_id);
-                                    if (
-                                        fromMap &&
-                                        part?.key &&
-                                        typeof fromMap === "object" &&
-                                        fromMap !== null &&
-                                        part.key in (fromMap as any)
-                                    ) {
+                                    if (fromMap && part?.key && typeof fromMap === "object" && fromMap !== null && part.key in (fromMap as any)) {
                                         return (fromMap as any)[part.key];
                                     }
                                     return fromMap !== undefined ? fromMap : "Not answered";
                                 };
 
-                                const getCorrectAnswer = (val: any) => {
-                                    if (val && typeof val === "object" && "correct_answer" in val) {
-                                        return (val as any).correct_answer;
-                                    }
-                                    return val;
-                                };
-
                                 return (
-                                    <div key={q.question_id} className="bg-white rounded-xl shadow-md border border-gray-200 overflow-hidden">
-                                        <div className="bg-gradient-to-r from-gray-50 to-gray-100 px-5 py-4 border-b border-gray-200 flex items-center justify-between">
+                                    <div
+                                        key={q.question_id}
+                                        className="rounded-xl overflow-hidden"
+                                        style={{
+                                            backgroundColor: "var(--color-surface-card)",
+                                            border: "1px solid var(--color-border-default)",
+                                        }}
+                                    >
+                                        <div
+                                            className="px-5 py-4 flex items-center justify-between"
+                                            style={{
+                                                backgroundColor: "var(--color-surface-subtle)",
+                                                borderBottom: "1px solid var(--color-border-subtle)",
+                                            }}
+                                        >
                                             <div>
-                                                <p className="text-sm font-semibold text-gray-800">{label}</p>
+                                                <p className="text-sm font-semibold" style={{ color: "var(--color-text-primary)" }}>
+                                                    {label}
+                                                </p>
                                                 {prompt ? (
-                                                    <p className="text-xs text-gray-600 mt-1 line-clamp-2">{prompt}</p>
+                                                    <p className="text-xs mt-1 line-clamp-2" style={{ color: "var(--color-text-muted)" }}>
+                                                        {prompt}
+                                                    </p>
                                                 ) : null}
                                             </div>
-                                            <span className={`text-xs font-semibold ${q.correct ? "text-green-700" : "text-red-700"}`}>
+                                            <span
+                                                className="text-xs font-bold"
+                                                style={{ color: q.correct ? "var(--color-correct)" : "var(--color-error)" }}
+                                            >
                                                 {q.correct ? "Correct" : "Incorrect"}
                                             </span>
                                         </div>
                                         <div className="text-sm p-5 space-y-3">
-                                            {detailParts.map((p) => {
+                                            {detailParts.map((p: any) => {
                                                 const submittedAns = getSubmittedAnswer(p);
                                                 const correctAns = getCorrectAnswer(p.correct_answer);
                                                 const displaySubmitted = formatAnswer(submittedAns);
                                                 const displayCorrect = formatAnswer(correctAns);
                                                 return (
-                                                    <div key={p.key} className="rounded-lg border border-gray-200 p-3">
+                                                    <div
+                                                        key={p.key}
+                                                        className="rounded-lg p-3"
+                                                        style={{ border: "1px solid var(--color-border-subtle)" }}
+                                                    >
                                                         <div className="flex items-center justify-between">
-                                                            <div className="font-medium text-gray-800">{p.key}</div>
-                                                            <div className={`text-xs font-semibold ${p.correct ? "text-green-700" : "text-red-700"}`}>
+                                                            <div className="font-medium" style={{ color: "var(--color-text-primary)" }}>
+                                                                {p.key}
+                                                            </div>
+                                                            <div
+                                                                className="text-xs font-semibold"
+                                                                style={{ color: p.correct ? "var(--color-correct)" : "var(--color-error)" }}
+                                                            >
                                                                 {p.correct ? "OK" : "Wrong"}
                                                             </div>
                                                         </div>
                                                         <div className="mt-2 grid grid-cols-1 md:grid-cols-2 gap-2">
-                                                            <div className="bg-gray-50 rounded p-2">
-                                                                <div className="text-xs text-gray-500">Your answer</div>
-                                                                <div className="text-sm text-gray-800 break-words">{displaySubmitted || "Not answered"}</div>
+                                                            <div
+                                                                className="rounded p-2"
+                                                                style={{ backgroundColor: "var(--color-surface-subtle)" }}
+                                                            >
+                                                                <div className="text-xs" style={{ color: "var(--color-text-muted)" }}>
+                                                                    Your answer
+                                                                </div>
+                                                                <div className="text-sm break-words" style={{ color: "var(--color-text-primary)" }}>
+                                                                    {displaySubmitted || "Not answered"}
+                                                                </div>
                                                             </div>
-                                                            <div className="bg-green-50 rounded p-2 border border-green-200">
-                                                                <div className="text-xs text-gray-500">Correct</div>
-                                                                <div className="text-sm text-gray-800 break-words">{displayCorrect || "—"}</div>
+                                                            <div
+                                                                className="rounded p-2"
+                                                                style={{
+                                                                    backgroundColor: "#f0fdf4",
+                                                                    border: "1px solid #bbf7d0",
+                                                                }}
+                                                            >
+                                                                <div className="text-xs" style={{ color: "var(--color-text-muted)" }}>
+                                                                    Correct
+                                                                </div>
+                                                                <div className="text-sm break-words" style={{ color: "#166534" }}>
+                                                                    {displayCorrect || "-"}
+                                                                </div>
                                                             </div>
                                                         </div>
                                                     </div>
