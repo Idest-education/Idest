@@ -234,7 +234,7 @@ export default function AssignmentsPage() {
               <TabsTrigger
                 key={skill.value}
                 value={skill.value}
-                className="flex items-center justify-center gap-2 rounded-xl py-2.5 text-sm font-semibold transition-all duration-150"
+                className="flex items-center justify-center gap-0 sm:gap-2 rounded-xl py-2.5 text-sm font-semibold transition-all duration-150"
                 style={{
                   color: isActive ? "var(--color-brand)" : "var(--color-text-secondary)",
                   backgroundColor: isActive ? "var(--color-surface-card)" : "transparent",

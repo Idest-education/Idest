@@ -11,6 +11,7 @@ interface SkillConfig {
   label: string;
   accent: string;
   accentSubtle: string;
+  badgeText: string;
   image: StaticImageData;
 }
 
@@ -19,24 +20,28 @@ const SKILL_CONFIG: Record<string, SkillConfig> = {
     label: "Đọc hiểu",
     accent: "#FF6B35",
     accentSubtle: "rgba(255,107,53,0.06)",
+    badgeText: "#1a0a00", // dark: #FF6B35 bg gives only ~2.7:1 with white
     image: readingCat,
   },
   listening: {
     label: "Nghe",
     accent: "#fbbf24",
     accentSubtle: "rgba(251,191,36,0.07)",
+    badgeText: "#1a0a00", // dark: #fbbf24 bg gives only ~1.6:1 with white
     image: listeningCat,
   },
   writing: {
     label: "Viết",
     accent: "#dc2626",
     accentSubtle: "rgba(220,38,38,0.05)",
+    badgeText: "#ffffff", // white passes: #dc2626 gives ~5.3:1
     image: writingCat,
   },
   speaking: {
     label: "Nói",
     accent: "#f59e0b",
     accentSubtle: "rgba(245,158,11,0.06)",
+    badgeText: "#1a0a00", // dark: #f59e0b bg gives only ~2.1:1 with white
     image: speakingCat,
   },
 };
@@ -76,7 +81,7 @@ export default function AssignmentCard({ item }: { item: AssignmentOverview }) {
             className="self-start text-xs font-bold px-2.5 py-1 rounded-full"
             style={{
               backgroundColor: config.accent,
-              color: "#ffffff",
+              color: config.badgeText,
               fontFamily: "var(--font-body)",
             }}
           >
