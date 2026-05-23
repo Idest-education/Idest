@@ -20,7 +20,7 @@ export const metadata: Metadata = {
 
 const oswald = Oswald({
   variable: "--font-display",
-  weight: "700",
+  weight: ["700"],
   subsets: ["latin", "vietnamese"],
   display: "swap",
 });
@@ -34,7 +34,7 @@ const plusJakartaSans = Plus_Jakarta_Sans({
 
 const jetbrainsMono = JetBrains_Mono({
   variable: "--font-mono",
-  weight: "700",
+  weight: ["700"],
   subsets: ["latin"],
   display: "optional",
 });
@@ -48,7 +48,6 @@ export default function RootLayout({
     <html lang="vi" suppressHydrationWarning>
       <body
         className={`${oswald.variable} ${plusJakartaSans.variable} ${jetbrainsMono.variable} antialiased`}
-        style={{ fontFamily: "var(--font-body, system-ui, sans-serif)" }}
       >
         <ThemeProvider
           attribute="class"
@@ -65,7 +64,7 @@ export default function RootLayout({
                 background: "#1a0a00",
                 color: "#ffffff",
                 border: "1px solid #3d1800",
-                fontFamily: "var(--font-body)",
+                fontFamily: "var(--font-body, system-ui, sans-serif)",
                 fontSize: "14px",
               },
             }}
