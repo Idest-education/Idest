@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Nunito } from "next/font/google";
+import { Oswald, Plus_Jakarta_Sans, JetBrains_Mono } from "next/font/google";
 import { ThemeProvider } from "next-themes";
 import "./globals.css";
 import { Toaster } from "sonner";
@@ -18,10 +18,25 @@ export const metadata: Metadata = {
   },
 };
 
-const nunito = Nunito({
-  variable: "--font-nunito",
+const oswald = Oswald({
+  variable: "--font-display",
+  weight: "700",
+  subsets: ["latin", "vietnamese"],
   display: "swap",
+});
+
+const plusJakartaSans = Plus_Jakarta_Sans({
+  variable: "--font-body",
+  weight: ["400", "500", "600", "700", "800"],
   subsets: ["latin"],
+  display: "swap",
+});
+
+const jetbrainsMono = JetBrains_Mono({
+  variable: "--font-mono",
+  weight: "700",
+  subsets: ["latin"],
+  display: "optional",
 });
 
 export default function RootLayout({
@@ -31,15 +46,30 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="vi" suppressHydrationWarning>
-      <body className={`${nunito.className} antialiased`}>
+      <body
+        className={`${oswald.variable} ${plusJakartaSans.variable} ${jetbrainsMono.variable} antialiased`}
+        style={{ fontFamily: "var(--font-body, system-ui, sans-serif)" }}
+      >
         <ThemeProvider
           attribute="class"
           defaultTheme="light"
-          enableSystem
+          enableSystem={false}
           disableTransitionOnChange
         >
           {children}
-          <Toaster richColors position="top-center" />
+          <Toaster
+            richColors={false}
+            position="top-center"
+            toastOptions={{
+              style: {
+                background: "#1a0a00",
+                color: "#ffffff",
+                border: "1px solid #3d1800",
+                fontFamily: "var(--font-body)",
+                fontSize: "14px",
+              },
+            }}
+          />
         </ThemeProvider>
       </body>
     </html>
