@@ -14,6 +14,9 @@ import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import { toast } from "sonner";
+import ProcessingScreen from "@/components/processing-screen";
+import CustomAudioPlayer from "@/components/assignment/custom-audio-player";
 
 interface Props {
     params: Promise<{ id: string }>;
@@ -97,7 +100,7 @@ export default function ListeningAssignmentPage(props: Props) {
             const userId = session?.user?.id || localStorage.getItem("user_id");
 
             if (!userId) {
-                alert("Bạn chưa đăng nhập. Vui lòng đăng nhập lại.");
+                toast.error("Bạn chưa đăng nhập. Đăng nhập lại nha!");
                 return;
             }
 
@@ -120,17 +123,18 @@ export default function ListeningAssignmentPage(props: Props) {
             router.push(`/assignment/listening/${assignment._id}/result/${submissionId}`);
         } catch (err) {
             console.error("Submit failed:", err);
-            alert("Nộp bài thất bại. Vui lòng thử lại.");
+            toast.error("Nộp bài thất bại — thử lại nha!");
         } finally {
             setSubmitting(false);
         }
     }
 
-    if (loading || submitting) return <LoadingScreen />;
+    if (loading) return <LoadingScreen />;
+    if (submitting) return <ProcessingScreen skill="listening" />;
     if (!assignment || !activeSection) return <LoadingScreen />;
 
     return (
-        <div className="flex w-full h-screen overflow-hidden bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
+        <div className="flex w-full h-screen overflow-hidden" style={{ backgroundColor: "#fafaf9" }}>
             {/* MAIN CONTENT AREA */}
             <div className="flex flex-1 flex-col mb-20 mt-10 ml-3">
                 {/* STICKY TOP BAR - Audio Player */}
@@ -142,10 +146,12 @@ export default function ListeningAssignmentPage(props: Props) {
                                 <button
                                     key={sec.id}
                                     onClick={() => jumpToSection(i)}
-                                    className={`px-4 py-2 rounded-full border transition-all ${i === activeSectionIndex
-                                        ? "bg-blue-600 text-white border-blue-600"
-                                        : "bg-gray-100 border-gray-300 hover:bg-gray-200"
-                                        }`}
+                                    className="px-4 py-1.5 rounded-full text-sm font-semibold transition-all duration-200"
+                                    style={{
+                                        backgroundColor: i === activeSectionIndex ? "#FF6B35" : "var(--color-surface-subtle)",
+                                        color: i === activeSectionIndex ? "#ffffff" : "var(--color-text-secondary)",
+                                        border: i === activeSectionIndex ? "none" : "1px solid var(--color-border-default)",
+                                    }}
                                 >
                                     Recording {i + 1}
                                 </button>
@@ -154,11 +160,7 @@ export default function ListeningAssignmentPage(props: Props) {
 
                         {/* AUDIO PLAYER */}
                         {activeSection.material.type === "listening" && (
-                            <audio
-                                controls
-                                src={activeSection.material.audio.url}
-                                className="w-full"
-                            />
+                            <CustomAudioPlayer src={activeSection.material.audio.url} maxReplays={2} />
                         )}
                     </div>
                 </div>
@@ -174,7 +176,7 @@ export default function ListeningAssignmentPage(props: Props) {
                                         <div key={group.id} className="pb-6 border-b-2 border-gray-200 last:border-b-0 space-y-4">
                                             {/* Group Instructions */}
                                             {group.instructions_md ? (
-                                                <div className="bg-blue-50 border-l-4 border-blue-500 p-4 rounded-r-lg">
+                                                <div className="p-4 rounded-xl" style={{ backgroundColor: "var(--color-surface-subtle)", borderLeft: "3px solid #FF6B35" }}>
                                                     <div className="prose prose-sm max-w-none text-gray-800">
                                                         <ReactMarkdown remarkPlugins={[remarkGfm]}>
                                                             {group.instructions_md}
@@ -223,7 +225,7 @@ export default function ListeningAssignmentPage(props: Props) {
                                                         >
                                                             {/* Question Number and Prompt */}
                                                             <div className="space-y-2">
-                                                                <div className="text-sm font-semibold text-blue-700">
+                                                                <div className="text-sm font-semibold" style={{ color: "#FF6B35" }}>
                                                                     Câu hỏi {q.order_index}
                                                                 </div>
                                                                 {q.prompt_md && (
@@ -258,7 +260,8 @@ export default function ListeningAssignmentPage(props: Props) {
                                 {activeSectionIndex < assignment!.sections.length - 1 && (
                                     <button
                                         onClick={() => jumpToSection(activeSectionIndex + 1)}
-                                        className="w-full sm:w-auto px-6 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-medium rounded-xl shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 transition-all duration-200 flex items-center justify-center gap-2"
+                                        className="px-5 py-2.5 rounded-xl text-sm font-semibold transition-all hover:-translate-y-0.5 flex items-center gap-2"
+                                        style={{ backgroundColor: "#FF6B35", color: "#ffffff" }}
                                     >
                                         <span>Tiếp theo</span>
                                         <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
