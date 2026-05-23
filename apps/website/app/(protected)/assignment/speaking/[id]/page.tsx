@@ -195,24 +195,26 @@ export default function SpeakingAssignmentPage(props: Props) {
 
     return (
         <div
-            className="min-h-[calc(100vh-44px)] flex flex-col items-center justify-start py-10 px-6"
+            className="flex w-full h-[calc(100vh-44px)] overflow-hidden"
             style={{ backgroundColor: "#fafaf9" }}
         >
-            {/* Cat tip */}
-            <div className="flex flex-col items-center gap-2 mb-6">
-                <div className="animate-float">
-                    <Image src={speakingCat} alt="" width={64} height={64} className="object-contain" />
-                </div>
-                <p className="text-xs text-center" style={{ color: "var(--color-text-muted)", fontFamily: "var(--font-body)" }}>
-                    Nói rõ và tự nhiên — AI nghe được hết đâu!
-                </p>
-            </div>
-
-            {/* Main content */}
-            <div className="max-w-2xl mx-auto w-full flex flex-col gap-6">
-                <div className="flex w-full gap-4">
                     {/* LEFT CONTENT */}
-                    <div className="flex-1 flex flex-col border border-gray-200 bg-white shadow-sm p-4 rounded-2xl overflow-y-auto max-h-[70vh]">
+                    <div className="flex-1 flex flex-col overflow-hidden" style={{ borderRight: "1px solid var(--color-border-subtle)" }}>
+
+                        {/* Cat tip strip */}
+                        <div
+                            className="flex items-center gap-2.5 px-5 py-2.5 flex-shrink-0"
+                            style={{ borderBottom: "1px solid var(--color-border-subtle)" }}
+                        >
+                            <div className="animate-float">
+                                <Image src={speakingCat} alt="" width={22} height={22} className="object-contain" />
+                            </div>
+                            <p className="text-xs" style={{ color: "var(--color-text-muted)", fontFamily: "var(--font-body)" }}>
+                                Nói rõ và tự nhiên — AI nghe được hết đâu!
+                            </p>
+                        </div>
+
+                        <div className="flex-1 overflow-y-auto p-4">
                         <div className="flex gap-3 mb-4">
                             <button
                                 className={`px-4 py-2 rounded-full border transition-all ${activePart === 1
@@ -269,10 +271,11 @@ export default function SpeakingAssignmentPage(props: Props) {
                                 )}
                             </div>
                         )}
-                    </div>
+                        </div>{/* end left scrollable */}
+                    </div>{/* end left panel */}
 
                     {/* RIGHT – UPLOAD RECORDINGS */}
-                    <div className="w-[45%] flex flex-col border border-gray-200 bg-white shadow-sm rounded-2xl">
+                    <div className="w-[45%] flex flex-col overflow-hidden" style={{ borderRight: "1px solid var(--color-border-subtle)" }}>
                         <h2 className="text-xl font-semibold p-4">Ghi âm hoặc tải lên bản ghi âm nói của bạn</h2>
 
                         {recordingError && (
@@ -556,33 +559,34 @@ export default function SpeakingAssignmentPage(props: Props) {
                         </div>
 
                         {/* BOTTOM NEXT BUTTON */}
-                        <div className="border-t border-gray-200 bg-white/90 backdrop-blur-md px-6 py-4 mt-auto rounded-br-2xl">
+                        <div
+                            className="flex-shrink-0 px-6 py-4"
+                            style={{ borderTop: "1px solid var(--color-border-subtle)" }}
+                        >
                             {activePart < 2 && (
                                 <button
                                     onClick={() => setActivePart(2)}
-                                    className="w-full sm:w-auto px-6 py-3 text-white font-medium rounded-xl shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 transition-all duration-200 flex items-center justify-center gap-2"
-                                    style={{ backgroundColor: "#FF6B35" }}
+                                    className="px-5 py-2.5 rounded-xl text-sm font-semibold transition-all hover:-translate-y-0.5 flex items-center gap-2"
+                                    style={{ backgroundColor: "#FF6B35", color: "#ffffff" }}
                                 >
                                     <span>Tiếp theo</span>
-                                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
                                     </svg>
                                 </button>
                             )}
                         </div>
-                    </div>
-                </div>
+                    </div>{/* end right upload panel */}
 
-                {/* Sidebar row */}
-                <div className="w-full">
-                    <SidebarSpeaking
-                        activePart={activePart}
-                        setActivePart={setActivePart}
-                        onSubmit={handleSubmit}
-                        onExit={() => router.push("/assignment")}
-                    />
-                </div>
-            </div>
+                    {/* SIDEBAR */}
+                    <div className="flex-shrink-0">
+                        <SidebarSpeaking
+                            activePart={activePart}
+                            setActivePart={setActivePart}
+                            onSubmit={handleSubmit}
+                            onExit={() => router.push("/assignment")}
+                        />
+                    </div>
         </div>
     );
 }
