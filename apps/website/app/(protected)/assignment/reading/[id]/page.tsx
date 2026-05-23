@@ -13,6 +13,8 @@ import { use } from "react";
 import { useRouter } from "next/navigation";
 import LoadingScreen from "@/components/loading-screen";
 import { createClient } from "@/lib/supabase/client";
+import { toast } from "sonner";
+import ProcessingScreen from "@/components/processing-screen";
 import StimulusRenderer from "@/components/assignment/v2/StimulusRenderer";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -55,7 +57,7 @@ export default function ReadingAssignmentPage(props: ReadingAssignmentPageProps)
             const userId = session?.user?.id || localStorage.getItem("user_id");
 
             if (!userId) {
-                alert("Bạn chưa đăng nhập. Vui lòng đăng nhập lại.");
+                toast.error("Bạn chưa đăng nhập. Đăng nhập lại nha!");
                 return;
             }
 
@@ -63,7 +65,7 @@ export default function ReadingAssignmentPage(props: ReadingAssignmentPageProps)
             const assignmentId = id || assignment.id || assignment._id;
             if (!assignmentId) {
                 console.error("Missing assignment ID on assignment payload", assignment);
-                alert("Không xác định được mã bài đọc. Vui lòng tải lại trang.");
+                toast.error("Không xác định được mã bài đọc. Tải lại trang nha!");
                 return;
             }
             const payload = {
@@ -84,15 +86,14 @@ export default function ReadingAssignmentPage(props: ReadingAssignmentPageProps)
             router.push(`/assignment/reading/${assignmentId}/result/${res.data.id}`);
         } catch (err) {
             console.error("Submit failed:", err);
-            alert("Nộp bài thất bại. Vui lòng thử lại.");
+            toast.error("Nộp bài thất bại — thử lại nha!");
         } finally {
             setSubmitting(false);
         }
     }
 
-    if (loading || submitting) {
-        return <LoadingScreen />;
-    }
+    if (loading) return <LoadingScreen />;
+    if (submitting) return <ProcessingScreen skill="reading" />;
 
     if (!assignment) {
         return (
@@ -113,12 +114,12 @@ export default function ReadingAssignmentPage(props: ReadingAssignmentPageProps)
     const currentSection = sections[activePassage];
 
     return (
-        <div className="flex w-full h-screen overflow-hidden bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
+        <div className="flex w-full h-screen overflow-hidden" style={{ backgroundColor: "#fafaf9" }}>
             {/* LEFT GROUP — Passage + Questions */}
             <div className="flex flex-1 mb-20 mt-10 ml-3">
 
                 {/* LEFT - Passage Panel */}
-                <div className="flex-1 flex flex-col border border-gray-300 bg-white/80 backdrop-blur-sm shadow-sm rounded-l-2xl transition-all duration-300 hover:rounded-r-3x">
+                <div className="flex-1 flex flex-col overflow-hidden" style={{ borderRight: "1px solid var(--color-border-subtle)" }}>
                     <div className="p-4 overflow-y-auto">
                         <PassageTabs
                             sections={sections}
@@ -132,7 +133,7 @@ export default function ReadingAssignmentPage(props: ReadingAssignmentPageProps)
                 </div>
 
                 {/* MIDDLE - Questions Panel */}
-                <div className="w-[45%] flex border border-gray-300 flex-col bg-white/80 backdrop-blur-sm shadow-sm rounded-r-2xl transition-all duration-300 hover:rounded-r-3x">
+                <div className="w-[45%] flex flex-col overflow-hidden" style={{ backgroundColor: "var(--color-surface-card)", borderLeft: "1px solid var(--color-border-subtle)" }}>
                     <div className="flex-1 p-6 overflow-y-auto">
                         <div className="space-y-6">
                             {(currentSection.question_groups ?? []).map((group) => {
@@ -147,7 +148,7 @@ export default function ReadingAssignmentPage(props: ReadingAssignmentPageProps)
 
                                         {/* Group Instructions */}
                                         {group.instructions_md && (
-                                            <div className="bg-blue-50 border-l-4 border-blue-500 p-4 rounded-r-lg">
+                                            <div className="p-4 rounded-xl" style={{ backgroundColor: "var(--color-surface-subtle)", borderLeft: "3px solid #FF6B35" }}>
                                                 <div className="prose prose-sm max-w-none text-gray-800">
                                                     <ReactMarkdown remarkPlugins={[remarkGfm]}>
                                                         {group.instructions_md}
@@ -186,7 +187,8 @@ export default function ReadingAssignmentPage(props: ReadingAssignmentPageProps)
                         {activePassage < sections.length - 1 && (
                             <button
                                 onClick={() => setActivePassage((prev) => prev + 1)}
-                                className="w-full sm:w-auto px-6 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-medium rounded-xl shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 transition-all duration-200 flex items-center justify-center gap-2"
+                                className="px-5 py-2.5 rounded-xl text-sm font-semibold transition-all hover:-translate-y-0.5 flex items-center gap-2"
+                                style={{ backgroundColor: "#FF6B35", color: "#ffffff" }}
                             >
                                 <span>Tiếp theo</span>
                                 <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
