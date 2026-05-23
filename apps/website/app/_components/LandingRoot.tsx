@@ -45,19 +45,16 @@ const SKILLS = [
 
 const HOW_STEPS = [
   {
-    number: "01",
     title: "Chọn bài tập",
     desc: "Duyệt kho đề IELTS chuẩn theo kỹ năng. Có đề từ Band 5.0 đến 9.0.",
     image: readingCat,
   },
   {
-    number: "02",
     title: "Làm bài",
     desc: "Giao diện tập trung, không rối mắt. Timer thông minh nhắc trước khi hết giờ.",
     image: writingCat,
   },
   {
-    number: "03",
     title: "Nhận kết quả",
     desc: "AI trả kết quả trong 30 giây. Điểm từng tiêu chí, lỗi bôi màu, gợi ý cải thiện.",
     image: speakingCat,
@@ -138,7 +135,7 @@ export default function LandingRoot() {
           loop
           muted
           playsInline
-          preload="auto"
+          preload="none"
         >
           <source src={videoSrc} type="video/webm" />
         </video>
@@ -247,12 +244,11 @@ export default function LandingRoot() {
 
       {/* ── STRIPE DIVIDER ── */}
       <div
-        className="h-1.5 w-full"
+        className="h-1.5 w-full animate-stripe-flow"
         style={{
           background:
             "linear-gradient(90deg, #dc2626, #FF6B35, #fbbf24, #FF6B35, #dc2626)",
           backgroundSize: "200% 100%",
-          animation: "stripe-flow 3s linear infinite",
         }}
       />
 
@@ -356,7 +352,7 @@ export default function LandingRoot() {
 
           <div className="flex flex-col md:flex-row gap-8 items-start justify-center">
             {HOW_STEPS.map((step, i) => (
-              <div key={step.number} className="flex-1 flex flex-col items-center text-center gap-4">
+              <div key={step.title} className="flex-1 flex flex-col items-center text-center gap-4">
                 <div
                   className="w-12 h-12 rounded-full flex items-center justify-center font-bold text-lg"
                   style={{
@@ -397,7 +393,7 @@ export default function LandingRoot() {
                 style={{
                   fontFamily: "var(--font-display)",
                   fontSize: "clamp(36px, 5vw, 56px)",
-                  color: "#FF6B35",
+                  color: "var(--color-brand)",
                   lineHeight: 1,
                 }}
               >
