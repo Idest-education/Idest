@@ -1,108 +1,127 @@
 import { AssignmentOverview } from "@/types/assignment";
 import Link from "next/link";
-import { BookOpen, Calendar, ArrowRight } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import { Calendar, ArrowRight } from "lucide-react";
+import Image, { type StaticImageData } from "next/image";
+import readingCat from "@/assets/assignment-reading.png";
+import listeningCat from "@/assets/assignment-listening.png";
+import writingCat from "@/assets/assignment-writing.png";
+import speakingCat from "@/assets/assignment-speaking.png";
 
-export default function AssignmentCard({ item }: { item: AssignmentOverview }) {
-    const link = `/assignment/${item.skill}/${item.id}`;
-    const skillConfig = getSkillConfig(item.skill);
-
-    return (
-        <Link href={link}>
-            <div className="group relative overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm transition-all duration-500 hover:-translate-y-2 hover:shadow-2xl hover:border-transparent cursor-pointer animate-in fade-in slide-in-from-bottom-4">
-                {/* Dark gradient overlay on hover */}
-                <div className={`absolute inset-0 opacity-0 group-hover:opacity-100 transition-all duration-500 bg-gradient-to-br ${skillConfig.darkGradient} z-10`} />
-                
-                {/* Animated background pattern */}
-                <div className="absolute inset-0 opacity-0 group-hover:opacity-10 transition-opacity duration-500">
-                    <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(255,255,255,0.1),transparent_50%)]" />
-                </div>
-                
-                {/* Content */}
-                <div className="relative p-6 flex flex-col h-full z-20">
-                    {/* Header */}
-                    <div className="flex items-start justify-between mb-4">
-                        <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2 mb-3">
-                                <div className={`p-2.5 rounded-lg ${skillConfig.bgColor} ${skillConfig.textColor} group-hover:bg-white/20 group-hover:text-white group-hover:scale-110 group-hover:rotate-6 transition-all duration-500`}>
-                                    <BookOpen className="w-4 h-4" />
-                                </div>
-                                <Badge 
-                                    className={`${skillConfig.badgeClass} border-0 text-xs font-medium capitalize group-hover:bg-white/20 group-hover:text-white group-hover:backdrop-blur-sm transition-all duration-500`}
-                                >
-                                    {item.skill}
-                                </Badge>
-                            </div>
-                            <h3 className="text-xl font-bold text-gray-900 group-hover:text-white transition-all duration-500 line-clamp-2 group-hover:scale-[1.02]">
-                                {item.title}
-                            </h3>
-                        </div>
-                    </div>
-
-                    {/* Description */}
-                    <p className="text-gray-600 group-hover:text-white/90 line-clamp-3 mb-4 flex-1 transition-all duration-500 group-hover:translate-x-1">
-                        {item.description}
-                    </p>
-
-                    {/* Footer */}
-                    <div className="flex items-center justify-between pt-4 border-t border-gray-200 group-hover:border-white/20 transition-all duration-500">
-                        <div className="flex items-center gap-2 text-xs text-gray-500 group-hover:text-white/80 transition-all duration-500 group-hover:scale-105">
-                            <Calendar className="w-3 h-3 group-hover:rotate-12 transition-transform duration-500" />
-                            <span>{new Date(item.created_at).toLocaleDateString()}</span>
-                        </div>
-
-                        <Button
-                            variant="ghost"
-                            size="sm"
-                            className="group-hover:bg-white/20 group-hover:text-white group-hover:backdrop-blur-sm text-gray-700 hover:text-gray-900 transition-all duration-500 group-hover:scale-105 group-hover:shadow-lg"
-                        >
-                            Xem chi tiết
-                            <ArrowRight className="w-3 h-3 ml-1 group-hover:translate-x-2 transition-transform duration-500" />
-                        </Button>
-                    </div>
-                </div>
-            </div>
-        </Link>
-    );
+interface SkillConfig {
+  label: string;
+  accent: string;
+  accentSubtle: string;
+  image: StaticImageData;
 }
 
-function getSkillConfig(skill: string) {
-    switch (skill) {
-        case "reading":
-            return {
-                darkGradient: "from-gray-900 via-blue-900 to-indigo-900",
-                bgColor: "bg-blue-100",
-                textColor: "text-blue-600",
-                badgeClass: "bg-blue-500 text-white",
-            };
-        case "listening":
-            return {
-                darkGradient: "from-gray-900 via-emerald-900 to-teal-900",
-                bgColor: "bg-emerald-100",
-                textColor: "text-emerald-600",
-                badgeClass: "bg-emerald-500 text-white",
-            };
-        case "writing":
-            return {
-                darkGradient: "from-gray-900 via-amber-900 to-orange-900",
-                bgColor: "bg-amber-100",
-                textColor: "text-amber-600",
-                badgeClass: "bg-amber-500 text-white",
-            };
-        case "speaking":
-            return {
-                darkGradient: "from-gray-900 via-red-900 to-rose-900",
-                bgColor: "bg-red-100",
-                textColor: "text-red-600",
-                badgeClass: "bg-red-500 text-white",
-            };
-        default:
-            return {
-                darkGradient: "from-gray-900 to-gray-800",
-                bgColor: "bg-gray-100",
-                textColor: "text-gray-600",
-                badgeClass: "bg-gray-500 text-white",
-            };
-    }
+const SKILL_CONFIG: Record<string, SkillConfig> = {
+  reading: {
+    label: "Đọc hiểu",
+    accent: "#FF6B35",
+    accentSubtle: "rgba(255,107,53,0.06)",
+    image: readingCat,
+  },
+  listening: {
+    label: "Nghe",
+    accent: "#fbbf24",
+    accentSubtle: "rgba(251,191,36,0.07)",
+    image: listeningCat,
+  },
+  writing: {
+    label: "Viết",
+    accent: "#dc2626",
+    accentSubtle: "rgba(220,38,38,0.05)",
+    image: writingCat,
+  },
+  speaking: {
+    label: "Nói",
+    accent: "#f59e0b",
+    accentSubtle: "rgba(245,158,11,0.06)",
+    image: speakingCat,
+  },
+};
+
+export default function AssignmentCard({ item }: { item: AssignmentOverview }) {
+  const link = `/assignment/${item.skill}/${item.id}`;
+  const config = SKILL_CONFIG[item.skill] ?? SKILL_CONFIG.reading;
+
+  return (
+    <Link href={link} className="group block">
+      <div
+        className="flex flex-col rounded-2xl overflow-hidden transition-all duration-200 hover:-translate-y-1 hover:shadow-lg"
+        style={{
+          backgroundColor: "var(--color-surface-card)",
+          border: `1.5px solid ${config.accent}`,
+        }}
+      >
+        {/* Cat mascot */}
+        <div
+          className="relative h-36 flex items-center justify-center"
+          style={{ backgroundColor: config.accentSubtle }}
+        >
+          <div className="relative w-24 h-24 transition-transform duration-200 group-hover:-translate-y-0.5">
+            <Image
+              src={config.image}
+              alt=""
+              fill
+              className="object-contain"
+              sizes="96px"
+            />
+          </div>
+        </div>
+
+        {/* Content */}
+        <div className="flex flex-col flex-1 p-5 gap-3">
+          <div
+            className="self-start text-xs font-bold px-2.5 py-1 rounded-full"
+            style={{
+              backgroundColor: config.accent,
+              color: "#ffffff",
+              fontFamily: "var(--font-body)",
+            }}
+          >
+            {config.label}
+          </div>
+
+          <h3
+            className="font-bold leading-snug line-clamp-2"
+            style={{
+              fontFamily: "var(--font-display)",
+              fontSize: "18px",
+              color: "var(--color-text-primary)",
+            }}
+          >
+            {item.title}
+          </h3>
+
+          <p
+            className="text-sm leading-relaxed line-clamp-3 flex-1"
+            style={{ color: "var(--color-text-muted)" }}
+          >
+            {item.description}
+          </p>
+
+          <div
+            className="flex items-center justify-between pt-3"
+            style={{ borderTop: "1px solid var(--color-border-subtle)" }}
+          >
+            <div
+              className="flex items-center gap-1.5 text-xs"
+              style={{ color: "var(--color-text-muted)" }}
+            >
+              <Calendar className="w-3 h-3" />
+              {new Date(item.created_at).toLocaleDateString("vi-VN")}
+            </div>
+            <span
+              className="text-xs font-semibold flex items-center gap-1"
+              style={{ color: config.accent, fontFamily: "var(--font-body)" }}
+            >
+              Xem chi tiết
+              <ArrowRight className="w-3 h-3 transition-transform duration-150 group-hover:translate-x-0.5" />
+            </span>
+          </div>
+        </div>
+      </div>
+    </Link>
+  );
 }

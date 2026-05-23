@@ -8,7 +8,7 @@ import LoadingScreen from "@/components/loading-screen";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Search, ChevronLeft, ChevronRight, BookOpen, X } from "lucide-react";
+import { Search, ChevronLeft, ChevronRight, X } from "lucide-react";
 import Image, { type StaticImageData } from "next/image";
 import Link from "next/link";
 import readingImage from "@/assets/assignment-reading.png";
@@ -18,11 +18,11 @@ import speakingImage from "@/assets/assignment-speaking.png";
 
 type Skill = "reading" | "listening" | "writing" | "speaking";
 
-const SKILLS: { value: Skill; label: string; icon: string }[] = [
-  { value: "reading", label: "Đọc", icon: "📖" },
-  { value: "listening", label: "Nghe", icon: "🎧" },
-  { value: "writing", label: "Viết", icon: "✍️" },
-  { value: "speaking", label: "Nói", icon: "🎤" },
+const SKILLS: { value: Skill; label: string; image: StaticImageData }[] = [
+  { value: "reading", label: "Đọc", image: readingImage },
+  { value: "listening", label: "Nghe", image: listeningImage },
+  { value: "writing", label: "Viết", image: writingImage },
+  { value: "speaking", label: "Nói", image: speakingImage },
 ];
 
 const SKILL_IMAGES: Record<Skill, StaticImageData> = {
@@ -30,6 +30,13 @@ const SKILL_IMAGES: Record<Skill, StaticImageData> = {
   listening: listeningImage,
   writing: writingImage,
   speaking: speakingImage,
+};
+
+const SKILL_LABELS: Record<Skill, string> = {
+  reading: "Đọc hiểu",
+  listening: "Nghe",
+  writing: "Viết",
+  speaking: "Nói",
 };
 
 const ITEMS_PER_PAGE = 6;
@@ -47,52 +54,39 @@ export default function AssignmentsPage() {
     hasPrev: boolean;
   } | null>(null);
 
-  // Load assignments for the active skill
   useEffect(() => {
     async function load() {
       setLoading(true);
       try {
-        const paginationDto: PaginationDto = {
-          page: currentPage,
-          limit: ITEMS_PER_PAGE,
-        };
+        const paginationDto: PaginationDto = { page: currentPage, limit: ITEMS_PER_PAGE };
         const response = await getAssignmentsBySkill(activeSkill, paginationDto);
-        
-        if (response && typeof response === 'object' && 'data' in response && 'pagination' in response) {
+
+        if (response && typeof response === "object" && "data" in response && "pagination" in response) {
           const paginated = response as PaginatedAssignmentResponse;
           setAssignments(paginated.data);
           setPagination(paginated.pagination);
         } else {
           const items = Array.isArray(response) ? response : [];
           setAssignments(items);
-          setPagination({
-            total: items.length,
-            totalPages: 1,
-            hasNext: false,
-            hasPrev: false,
-          });
+          setPagination({ total: items.length, totalPages: 1, hasNext: false, hasPrev: false });
         }
       } catch (error) {
         console.error("Failed to load assignments:", error);
         setAssignments([]);
         setPagination(null);
       } finally {
-      setLoading(false);
+        setLoading(false);
       }
     }
     load();
   }, [activeSkill, currentPage]);
 
-  // Reset to page 1 when switching tabs or changing search
   useEffect(() => {
     setCurrentPage(1);
   }, [activeSkill, searchQuery]);
 
-  // Filter assignments based on search query
   const filteredAssignments = useMemo(() => {
-    if (!searchQuery.trim()) {
-      return assignments;
-    }
+    if (!searchQuery.trim()) return assignments;
     const query = searchQuery.toLowerCase();
     return assignments.filter(
       (item) =>
@@ -106,142 +100,155 @@ export default function AssignmentsPage() {
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
-  const clearSearch = () => {
-    setSearchQuery("");
-  };
+  const clearSearch = () => setSearchQuery("");
 
-  if (loading && assignments.length === 0) {
-    return <LoadingScreen />;
-  }
+  if (loading && assignments.length === 0) return <LoadingScreen />;
 
   const totalPages = pagination?.totalPages || 1;
   const totalItems = pagination?.total || filteredAssignments.length;
   const showingFrom = (currentPage - 1) * ITEMS_PER_PAGE + 1;
   const showingTo = Math.min(currentPage * ITEMS_PER_PAGE, totalItems);
+  const activeSkillLabel = SKILL_LABELS[activeSkill];
 
   return (
     <div className="px-6 py-10">
-      {/* Header */}
-      <div className="mb-8 animate-in fade-in slide-in-from-top-4">
+
+      {/* ── Header ── */}
+      <div className="mb-10">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-center">
-          {/* Left Column - Text Content */}
-          <div>
-            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-gradient-to-r from-amber-100 via-orange-100 to-orange-100 text-xs font-medium text-gray-800 shadow-sm mb-4 hover:shadow-md transition-shadow duration-300">
-              <BookOpen className="w-4 h-4 text-orange-500 animate-pulse" />
+
+          {/* Left: text */}
+          <div className="flex flex-col gap-4">
+            <div
+              className="self-start inline-flex items-center px-4 py-1.5 rounded-full text-xs font-bold uppercase"
+              style={{
+                backgroundColor: "var(--color-surface-subtle)",
+                color: "var(--color-brand)",
+                border: "1px solid var(--color-border-default)",
+                letterSpacing: "0.08em",
+                fontFamily: "var(--font-body)",
+              }}
+            >
               Luyện tập tạo nên sự hoàn hảo
             </div>
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-              <h1 className="text-4xl font-bold text-gray-900 tracking-tight mb-0 bg-gradient-to-r from-gray-900 via-orange-900 to-orange-800 bg-clip-text text-transparent">
+
+            <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3">
+              <h1
+                style={{
+                  fontFamily: "var(--font-display)",
+                  fontSize: "clamp(32px, 4vw, 48px)",
+                  color: "var(--color-text-primary)",
+                  lineHeight: 1,
+                }}
+              >
                 Bài tập
               </h1>
               <div className="flex items-center gap-2">
                 <Button asChild variant="outline" size="sm">
-                  <Link href="/assignment/submissions">My submissions</Link>
+                  <Link href="/assignment/submissions">Bài nộp</Link>
                 </Button>
                 <Button asChild size="sm">
-                  <Link href="/assignment/create">Create assignment</Link>
+                  <Link href="/assignment/create">Tạo bài</Link>
                 </Button>
               </div>
             </div>
-            <p className="text-gray-600 max-w-2xl">
+
+            <p
+              className="text-sm leading-relaxed max-w-md"
+              style={{ color: "var(--color-text-secondary)" }}
+            >
               Khám phá và luyện tập với bộ sưu tập bài tập IELTS được tuyển chọn qua tất cả các kỹ năng.
             </p>
           </div>
 
-          {/* Right Column - Skill Image */}
-          <div className="relative h-64 lg:h-80 rounded-2xl overflow-hidden shadow-xl group bg-gray-100">
-            <div className="relative w-full h-full">
-              <Image
-                key={activeSkill}
-                src={SKILL_IMAGES[activeSkill as Skill]}
-                alt={`${SKILLS.find(s => s.value === activeSkill)?.label} assignment illustration`}
-                fill
-                className="object-contain transition-all duration-700 group-hover:scale-105 animate-in fade-in zoom-in-95"
-                priority
-                sizes="(max-width: 1024px) 100vw, 50vw"
-              />
-              <div className="absolute inset-0 bg-gradient-to-t from-gray-900/10 via-transparent to-transparent transition-opacity duration-700 pointer-events-none" />
-            </div>
+          {/* Right: cat image — switches with active tab */}
+          <div
+            className="relative h-56 lg:h-64 rounded-2xl overflow-hidden"
+            style={{
+              backgroundColor: "var(--color-surface-subtle)",
+              border: "1px solid var(--color-border-default)",
+            }}
+          >
+            <Image
+              key={activeSkill}
+              src={SKILL_IMAGES[activeSkill]}
+              alt={activeSkillLabel}
+              fill
+              className="object-contain p-6 transition-opacity duration-300"
+              priority
+              sizes="(max-width: 1024px) 100vw, 50vw"
+            />
           </div>
         </div>
       </div>
 
-      {/* Search Bar */}
-      <div className="mb-6 animate-in fade-in slide-in-from-top-4">
-        <div className="relative max-w-md group">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5 group-focus-within:text-orange-500 transition-colors duration-300" />
+      {/* ── Search ── */}
+      <div className="mb-6">
+        <div className="relative max-w-sm">
+          <Search
+            className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 pointer-events-none"
+            style={{ color: "var(--color-text-muted)" }}
+          />
           <Input
             type="text"
-            placeholder="Tìm kiếm bài tập theo tiêu đề hoặc mô tả..."
+            placeholder="Tìm kiếm bài tập..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-10 pr-10 w-full transition-all duration-300 focus:ring-2 focus:ring-orange-500 focus:border-orange-500 hover:border-gray-400"
+            className="pl-9 pr-8 text-sm"
+            style={{ borderColor: "var(--color-border-default)" }}
           />
           {searchQuery && (
             <button
               onClick={clearSearch}
-              className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 hover:scale-110 transition-all duration-300"
+              aria-label="Xóa tìm kiếm"
+              className="absolute right-3 top-1/2 -translate-y-1/2 transition-colors"
+              style={{ color: "var(--color-text-muted)" }}
             >
               <X className="w-4 h-4" />
             </button>
           )}
         </div>
         {searchQuery && (
-          <p className="mt-2 text-sm text-gray-600 animate-in fade-in slide-in-from-top-2">
-            Tìm thấy {filteredAssignments.length} bài tập trong {SKILLS.find(s => s.value === activeSkill)?.label}
+          <p className="mt-2 text-xs" style={{ color: "var(--color-text-muted)" }}>
+            Tìm thấy {filteredAssignments.length} bài tập trong {activeSkillLabel}
           </p>
         )}
       </div>
 
-      {/* Tabs */}
-      <Tabs value={activeSkill} onValueChange={(value) => setActiveSkill(value as Skill)} className="w-full">
-        <TabsList className="grid w-full grid-cols-4 mb-8 p-1.5 bg-gray-100/50 rounded-2xl border border-gray-200 shadow-inner">
-          {SKILLS.map((skill, index) => {
+      {/* ── Tabs ── */}
+      <Tabs
+        value={activeSkill}
+        onValueChange={(value) => setActiveSkill(value as Skill)}
+        className="w-full"
+      >
+        <TabsList
+          className="grid w-full grid-cols-4 mb-8 p-1 rounded-2xl h-auto"
+          style={{
+            backgroundColor: "var(--color-surface-muted)",
+            border: "1px solid var(--color-border-subtle)",
+          }}
+        >
+          {SKILLS.map((skill) => {
             const isActive = activeSkill === skill.value;
             return (
               <TabsTrigger
                 key={skill.value}
                 value={skill.value}
-                className={`relative flex items-center justify-center gap-2 px-4 py-3 rounded-xl font-semibold text-sm transition-all duration-500 group overflow-hidden ${
-                  isActive
-                    ? "text-gray-900 shadow-lg scale-105"
-                    : "text-gray-600 hover:text-gray-900 hover:bg-white/50"
-                }`}
-                style={{ animationDelay: `${index * 100}ms` }}
+                className="flex items-center justify-center gap-2 rounded-xl py-2.5 text-sm font-semibold transition-all duration-150"
+                style={{
+                  color: isActive ? "var(--color-brand)" : "var(--color-text-secondary)",
+                  backgroundColor: isActive ? "var(--color-surface-card)" : "transparent",
+                  boxShadow: isActive ? "0 1px 4px rgba(0,0,0,0.08)" : "none",
+                }}
               >
-                {/* Active state gradient background */}
-                {isActive && (
-                  <>
-                    <span className="absolute inset-0 bg-gradient-to-r from-orange-200 via-orange-200 to-orange-200 rounded-xl shadow-lg animate-in fade-in duration-500" />
-                    {/* Animated shine effect */}
-                    <span className="absolute inset-0 bg-gradient-to-r from-transparent via-white/40 to-transparent -skew-x-12 animate-shine" />
-                  </>
-                )}
-                
-                {/* Content */}
-                <span className="relative z-10 flex items-center gap-2">
-                  <span
-                    className={`text-lg transition-all duration-300 ${
-                      isActive
-                        ? "scale-110 rotate-12"
-                        : "group-hover:scale-110 group-hover:rotate-12"
-                    }`}
-                  >
-                    {skill.icon}
-                  </span>
-                  <span
-                    className={`transition-all duration-300 ${
-                      isActive ? "font-bold" : ""
-                    }`}
-                  >
-                    {skill.label}
-                  </span>
-                </span>
-                
-                {/* Active indicator dot */}
-                {isActive && (
-                  <span className="absolute bottom-1 left-1/2 -translate-x-1/2 w-1.5 h-1.5 rounded-full bg-orange-500 animate-pulse" />
-                )}
+                <Image
+                  src={skill.image}
+                  alt=""
+                  width={20}
+                  height={20}
+                  className="object-contain"
+                />
+                <span className="hidden sm:inline">{skill.label}</span>
               </TabsTrigger>
             );
           })}
@@ -249,95 +256,121 @@ export default function AssignmentsPage() {
 
         {SKILLS.map((skill) => (
           <TabsContent key={skill.value} value={skill.value} className="mt-0">
+
+            {/* Loading */}
             {loading ? (
-              <div className="py-24 flex justify-center">
-                <div className="flex flex-col items-center gap-3">
-                  <div className="w-10 h-10 rounded-full border-2 border-gray-900 border-t-transparent animate-spin" />
-                  <p className="text-gray-600 text-sm">Đang tải bài tập...</p>
-                </div>
+              <div className="py-24 flex flex-col items-center gap-3">
+                <div
+                  className="w-8 h-8 rounded-full border-2 animate-spin"
+                  style={{
+                    borderColor: "var(--color-border-default)",
+                    borderTopColor: "var(--color-brand)",
+                  }}
+                />
+                <p className="text-sm" style={{ color: "var(--color-text-muted)" }}>
+                  Đang tải bài tập...
+                </p>
               </div>
+
             ) : filteredAssignments.length === 0 ? (
-              <div className="border border-dashed border-gray-300 rounded-2xl p-12 text-center bg-gradient-to-br from-white via-gray-50 to-gray-100">
-                <div className="max-w-md mx-auto space-y-4">
-                  <BookOpen className="w-10 h-10 mx-auto text-gray-400" />
-                  <h3 className="text-2xl font-semibold text-gray-900">
-                    {searchQuery ? "Không tìm thấy bài tập" : "Chưa có bài tập nào"}
+              /* Empty state */
+              <div
+                className="rounded-2xl p-16 flex flex-col items-center gap-5 text-center"
+                style={{
+                  border: "1px dashed var(--color-border-default)",
+                  backgroundColor: "var(--color-surface-subtle)",
+                }}
+              >
+                <div className="relative w-16 h-16 opacity-40">
+                  <Image
+                    src={SKILL_IMAGES[activeSkill]}
+                    alt=""
+                    fill
+                    className="object-contain"
+                    sizes="64px"
+                  />
+                </div>
+                <div>
+                  <h3
+                    className="mb-1"
+                    style={{
+                      fontFamily: "var(--font-display)",
+                      fontSize: "20px",
+                      color: "var(--color-text-primary)",
+                    }}
+                  >
+                    {searchQuery ? "Không tìm thấy" : "Chưa có bài tập"}
                   </h3>
-                  <p className="text-gray-600">
+                  <p className="text-sm" style={{ color: "var(--color-text-muted)" }}>
                     {searchQuery
-                      ? "Thử điều chỉnh truy vấn tìm kiếm để tìm bài tập."
+                      ? "Thử từ khóa khác hoặc xóa tìm kiếm."
                       : `Chưa có bài tập ${skill.label.toLowerCase()} nào. Hãy quay lại sau!`}
                   </p>
-                  {searchQuery && (
-                    <Button
-                      variant="outline"
-                      onClick={clearSearch}
-                      className="mt-4"
-                    >
-                      Xóa tìm kiếm
-                    </Button>
-                  )}
                 </div>
+                {searchQuery && (
+                  <Button variant="outline" size="sm" onClick={clearSearch}>
+                    Xóa tìm kiếm
+                  </Button>
+                )}
               </div>
+
             ) : (
               <>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+                {/* Card grid */}
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 mb-8">
                   {filteredAssignments.map((item, index) => (
                     <div
                       key={item.id}
-                      className="animate-in fade-in slide-in-from-bottom-4"
-                      style={{ animationDelay: `${index * 100}ms`, animationFillMode: 'both' }}
+                      className="animate-slide-up"
+                      style={{ animationDelay: `${index * 60}ms`, animationFillMode: "both" }}
                     >
                       <AssignmentCard item={item} />
                     </div>
                   ))}
                 </div>
 
-                {/* Pagination Controls */}
+                {/* Pagination */}
                 {!searchQuery && totalPages > 1 && (
-                  <>
-                    <div className="flex items-center justify-center gap-2 mb-4 animate-in fade-in slide-in-from-bottom-4">
+                  <div className="flex flex-col items-center gap-3">
+                    <div className="flex items-center gap-2">
                       <Button
                         variant="outline"
                         size="sm"
                         onClick={() => handlePageChange(currentPage - 1)}
                         disabled={!pagination?.hasPrev || currentPage === 1}
-                        className="transition-all duration-300 hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="disabled:opacity-40"
                       >
-                        <ChevronLeft className="w-4 h-4 transition-transform duration-300 group-hover:-translate-x-1" />
+                        <ChevronLeft className="w-4 h-4" />
                         Trước
                       </Button>
 
                       <div className="flex items-center gap-1">
                         {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => {
-                          // Show first page, last page, current page, and pages around current
                           if (
                             page === 1 ||
                             page === totalPages ||
                             (page >= currentPage - 1 && page <= currentPage + 1)
                           ) {
+                            const isCurrent = currentPage === page;
                             return (
-                              <Button
+                              <button
                                 key={page}
-                                variant={currentPage === page ? "default" : "outline"}
-                                size="sm"
                                 onClick={() => handlePageChange(page)}
-                                className={`min-w-[40px] transition-all duration-300 hover:scale-110 ${
-                                  currentPage === page
-                                    ? "shadow-lg ring-2 ring-orange-500/50"
-                                    : "hover:bg-gray-100"
-                                }`}
+                                className="min-w-[36px] h-9 rounded-lg text-sm font-medium transition-colors duration-150"
+                                style={{
+                                  backgroundColor: isCurrent ? "var(--color-brand)" : "transparent",
+                                  color: isCurrent ? "#ffffff" : "var(--color-text-secondary)",
+                                  border: isCurrent ? "none" : "1px solid var(--color-border-subtle)",
+                                }}
                               >
                                 {page}
-                              </Button>
+                              </button>
                             );
-                          } else if (
-                            page === currentPage - 2 ||
-                            page === currentPage + 2
-                          ) {
+                          }
+                          if (page === currentPage - 2 || page === currentPage + 2) {
                             return (
-                              <span key={page} className="px-2 text-gray-400">
-                                ...
+                              <span key={page} className="px-1 text-sm" style={{ color: "var(--color-text-muted)" }}>
+                                …
                               </span>
                             );
                           }
@@ -350,18 +383,17 @@ export default function AssignmentsPage() {
                         size="sm"
                         onClick={() => handlePageChange(currentPage + 1)}
                         disabled={!pagination?.hasNext || currentPage === totalPages}
-                        className="transition-all duration-300 hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="disabled:opacity-40"
                       >
                         Sau
-                        <ChevronRight className="w-4 h-4 transition-transform duration-300 group-hover:translate-x-1" />
+                        <ChevronRight className="w-4 h-4" />
                       </Button>
                     </div>
 
-                    {/* Page Info */}
-                    <div className="text-center text-sm text-gray-600 animate-in fade-in">
-                      Hiển thị {showingFrom} đến {showingTo} trong {totalItems} bài tập
-                    </div>
-                  </>
+                    <p className="text-xs" style={{ color: "var(--color-text-muted)" }}>
+                      Hiển thị {showingFrom}–{showingTo} trong {totalItems} bài tập
+                    </p>
+                  </div>
                 )}
               </>
             )}
