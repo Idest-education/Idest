@@ -3,10 +3,6 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
-import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
 
 export default function PasswordSettingsPage() {
@@ -37,30 +33,18 @@ export default function PasswordSettingsPage() {
       setIsSubmitting(true);
 
       if (currentPassword) {
-        const {
-          data: { user },
-          error: sessionError,
-        } = await supabase.auth.getUser();
-        if (sessionError || !user) {
-          throw sessionError || new Error("Chưa được xác thực");
-        }
+        const { data: { user }, error: sessionError } = await supabase.auth.getUser();
+        if (sessionError || !user) throw sessionError || new Error("Chưa được xác thực");
 
         const { error: signInError } = await supabase.auth.signInWithPassword({
           email: user.email ?? "",
           password: currentPassword,
         });
-        if (signInError) {
-          throw signInError;
-        }
+        if (signInError) throw signInError;
       }
 
-      const { error } = await supabase.auth.updateUser({
-        password: newPassword,
-      });
-
-      if (error) {
-        throw error;
-      }
+      const { error } = await supabase.auth.updateUser({ password: newPassword });
+      if (error) throw error;
 
       toast.success("Mật khẩu đã được cập nhật thành công");
       setCurrentPassword("");
@@ -76,61 +60,99 @@ export default function PasswordSettingsPage() {
   };
 
   return (
-    <div className="max-w-xl mx-auto py-10">
-      <h1 className="text-2xl font-semibold tracking-tight mb-6">Đổi mật khẩu</h1>
+    <div className="max-w-xl mx-auto py-10" style={{ background: "var(--color-surface-app)" }}>
+      <h1
+        className="mb-6"
+        style={{
+          fontFamily: "Oswald, sans-serif",
+          fontWeight: 700,
+          fontSize: 28,
+          color: "var(--color-text-primary)",
+        }}
+      >
+        Đổi mật khẩu
+      </h1>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Mật khẩu</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <form className="space-y-6" onSubmit={handleSubmit}>
-            <div className="space-y-2">
-              <Label htmlFor="currentPassword">Mật khẩu hiện tại</Label>
-              <Input
-                id="currentPassword"
+      <div
+        className="overflow-hidden"
+        style={{
+          background: "var(--color-surface-card)",
+          border: "1.5px solid var(--color-border-default)",
+          borderRadius: 16,
+        }}
+      >
+        {/* Card header */}
+        <div
+          className="px-6 py-4"
+          style={{
+            background: "var(--color-surface-subtle)",
+            borderBottom: "1.5px solid var(--color-border-default)",
+          }}
+        >
+          <h2
+            style={{
+              fontFamily: "Oswald, sans-serif",
+              fontWeight: 600,
+              fontSize: 17,
+              color: "var(--color-text-primary)",
+            }}
+          >
+            Mật khẩu
+          </h2>
+        </div>
+
+        <form className="p-6 space-y-5" onSubmit={handleSubmit}>
+          {[
+            { id: "currentPassword", label: "Mật khẩu hiện tại", value: currentPassword, setter: setCurrentPassword, autoComplete: "current-password", placeholder: "Nhập mật khẩu hiện tại" },
+            { id: "newPassword", label: "Mật khẩu mới", value: newPassword, setter: setNewPassword, autoComplete: "new-password", placeholder: "Nhập mật khẩu mạnh" },
+            { id: "confirmPassword", label: "Xác nhận mật khẩu mới", value: confirmPassword, setter: setConfirmPassword, autoComplete: "new-password", placeholder: "Nhập lại mật khẩu mới" },
+          ].map(({ id, label, value, setter, autoComplete, placeholder }) => (
+            <div key={id} className="space-y-1.5">
+              <label
+                htmlFor={id}
+                className="block text-xs uppercase tracking-widest"
+                style={{ color: "var(--color-text-muted)", fontFamily: "Plus Jakarta Sans, sans-serif", letterSpacing: "0.06em" }}
+              >
+                {label}
+              </label>
+              <input
+                id={id}
                 type="password"
-                autoComplete="current-password"
-                value={currentPassword}
-                onChange={(e) => setCurrentPassword(e.target.value)}
-                placeholder="Nhập mật khẩu hiện tại"
+                autoComplete={autoComplete}
+                value={value}
+                onChange={(e) => setter(e.target.value)}
+                placeholder={placeholder}
+                className="w-full rounded-lg px-3 py-2.5 text-sm outline-none"
+                style={{
+                  background: "var(--color-surface-card)",
+                  border: "1.5px solid var(--color-border-default)",
+                  color: "var(--color-text-primary)",
+                  fontFamily: "Plus Jakarta Sans, sans-serif",
+                }}
+                onFocus={(e) => {
+                  e.currentTarget.style.borderColor = "var(--color-brand)";
+                  e.currentTarget.style.boxShadow = "0 0 0 3px #FF6B3520";
+                }}
+                onBlur={(e) => {
+                  e.currentTarget.style.borderColor = "var(--color-border-default)";
+                  e.currentTarget.style.boxShadow = "none";
+                }}
               />
             </div>
+          ))}
 
-            <div className="space-y-2">
-              <Label htmlFor="newPassword">Mật khẩu mới</Label>
-              <Input
-                id="newPassword"
-                type="password"
-                autoComplete="new-password"
-                value={newPassword}
-                onChange={(e) => setNewPassword(e.target.value)}
-                placeholder="Nhập mật khẩu mạnh"
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="confirmPassword">Xác nhận mật khẩu mới</Label>
-              <Input
-                id="confirmPassword"
-                type="password"
-                autoComplete="new-password"
-                value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
-                placeholder="Nhập lại mật khẩu mới"
-              />
-            </div>
-
-            <div className="flex justify-end">
-              <Button type="submit" disabled={isSubmitting}>
-                {isSubmitting ? "Đang cập nhật..." : "Cập nhật mật khẩu"}
-              </Button>
-            </div>
-          </form>
-        </CardContent>
-      </Card>
+          <div className="flex justify-end pt-2">
+            <button
+              type="submit"
+              disabled={isSubmitting}
+              className="px-4 py-2 rounded-lg text-sm font-semibold text-white disabled:opacity-60"
+              style={{ background: "var(--color-brand)", fontFamily: "Plus Jakarta Sans, sans-serif" }}
+            >
+              {isSubmitting ? "Đang cập nhật..." : "Cập nhật mật khẩu"}
+            </button>
+          </div>
+        </form>
+      </div>
     </div>
   );
 }
-
-
