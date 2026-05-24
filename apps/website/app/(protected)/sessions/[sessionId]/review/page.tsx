@@ -2,10 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { ArrowLeft, Calendar, ChevronDown, ChevronUp, Clock, Download, Users, Video } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { ArrowLeft, ChevronDown, ChevronUp, Download } from "lucide-react";
 import * as XLSX from "xlsx";
 import { getSessionById, getSessionAttendance } from "@/services/session.service";
 import { getClassMembers, UserSummary } from "@/services/class.service";
@@ -216,152 +213,270 @@ export default function SessionReviewPage() {
   };
 
   return (
-    <div className="min-h-screen bg-white">
-      <div className="px-6 py-6 md:py-8 space-y-6">
+    <div className="min-h-screen" style={{ background: "var(--color-surface-app)" }}>
+      {/* Warm header band */}
+      <div
+        className="px-6 py-6"
+        style={{
+          background: "linear-gradient(160deg, #fff4ed 0%, #ffe8d6 100%)",
+          borderBottom: "1.5px solid var(--color-border-default)",
+        }}
+      >
         <div className="flex items-center justify-between gap-4">
           <div>
-            <h1 className="text-3xl font-semibold text-gray-900">Xem lại buổi học</h1>
-            <p className="text-gray-600 mt-1">Xem bản ghi và danh sách người tham gia.</p>
+            <h1
+              style={{
+                fontFamily: "Oswald, sans-serif",
+                fontWeight: 700,
+                fontSize: 28,
+                color: "var(--color-text-primary)",
+              }}
+            >
+              {title}
+            </h1>
+            <p className="mt-1 text-sm" style={{ color: "var(--color-text-secondary)", fontFamily: "Plus Jakarta Sans, sans-serif" }}>
+              {session ? formatDateTime(session.start_time) : "Xem lại buổi học"}
+            </p>
           </div>
-          <Button variant="outline" onClick={() => router.push("/sessions")}>
-            <ArrowLeft className="w-4 h-4 mr-2" />
+          <button
+            onClick={() => router.push("/sessions")}
+            className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium"
+            style={{
+              background: "var(--color-surface-card)",
+              border: "1.5px solid var(--color-border-default)",
+              color: "var(--color-text-primary)",
+              fontFamily: "Plus Jakarta Sans, sans-serif",
+            }}
+          >
+            <ArrowLeft className="w-4 h-4" />
             Quay lại
-          </Button>
+          </button>
         </div>
+      </div>
 
+      <div className="px-6 py-6 space-y-6">
         {loading ? (
-          <Card>
-            <CardContent className="py-10 text-center text-gray-500">Đang tải dữ liệu...</CardContent>
-          </Card>
+          <div
+            className="rounded-xl p-10 text-center text-sm"
+            style={{
+              background: "var(--color-surface-card)",
+              border: "1.5px solid var(--color-border-default)",
+              color: "var(--color-text-muted)",
+              fontFamily: "Plus Jakarta Sans, sans-serif",
+            }}
+          >
+            Đang tải dữ liệu...
+          </div>
         ) : (
           <>
             {error && (
-              <Card className="border-red-200">
-                <CardContent className="py-4 text-red-600">{error}</CardContent>
-              </Card>
+              <div
+                className="rounded-xl p-4 text-sm"
+                style={{
+                  background: "#fff5f5",
+                  border: "1.5px solid #fecaca",
+                  color: "var(--color-error)",
+                  fontFamily: "Plus Jakarta Sans, sans-serif",
+                }}
+              >
+                {error}
+              </div>
             )}
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
-              <div className="lg:col-span-2 space-y-6">
-                <Card>
-                  <CardHeader>
-                    <div className="flex items-center justify-between gap-2">
-                      <CardTitle className="flex items-center gap-2">
-                        <Video className="w-5 h-5" />
-                        Xem lại
-                      </CardTitle>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={handleDownloadRecording}
-                        disabled={!playbackUrl}
-                      >
-                        <Download className="w-4 h-4 mr-2" />
-                        Tải video
-                      </Button>
+              {/* Left: video + info */}
+              <div className="lg:col-span-2 space-y-4">
+                {/* Video panel */}
+                <div
+                  className="rounded-xl overflow-hidden"
+                  style={{ background: "#111", border: "1.5px solid var(--color-border-default)" }}
+                >
+                  {playbackUrl ? (
+                    <video
+                      controls
+                      src={playbackUrl}
+                      className="w-full max-h-[540px]"
+                      style={{ background: "#111" }}
+                    >
+                      Trình duyệt của bạn không hỗ trợ video.
+                    </video>
+                  ) : (
+                    <div className="p-10 text-center text-sm" style={{ color: "rgba(255,250,245,0.4)" }}>
+                      Chưa có bản ghi cho buổi học này.
                     </div>
-                  </CardHeader>
-                  <CardContent>
-                    {playbackUrl ? (
-                      <video
-                        controls
-                        src={playbackUrl}
-                        className="w-full rounded-md bg-black max-h-[540px]"
-                      >
-                        Trình duyệt của bạn không hỗ trợ video.
-                      </video>
-                    ) : (
-                      <div className="rounded-md border border-dashed border-gray-300 bg-gray-50 p-8 text-center text-gray-600">
-                        Chưa có bản ghi cho buổi học này.
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
+                  )}
+                </div>
 
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Thông tin buổi học</CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-3">
-                    <p className="text-lg font-medium text-gray-900">{title}</p>
-                    <div className="flex items-center gap-2 text-sm text-gray-700">
-                      <Users className="w-4 h-4" />
-                      <span>Lớp học: {session?.class?.name ?? "N/A"}</span>
-                    </div>
-                    <div className="flex items-center gap-2 text-sm text-gray-700">
-                      <Clock className="w-4 h-4" />
-                      <span>Thời lượng: {lengthText}</span>
-                    </div>
-                    <div className="flex items-start gap-2 text-sm text-gray-700">
-                      <Calendar className="w-4 h-4 mt-0.5" />
-                      <span>
-                        {formatDateTime(session?.start_time)}
-                        {session?.end_time ? ` - ${formatDateTime(session.end_time)}` : ""}
+                {/* Download actions */}
+                <div className="flex gap-3">
+                  <button
+                    onClick={handleDownloadRecording}
+                    disabled={!playbackUrl}
+                    className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold text-white disabled:opacity-40"
+                    style={{ background: "var(--color-brand)", fontFamily: "Plus Jakarta Sans, sans-serif" }}
+                  >
+                    <Download className="w-4 h-4" />
+                    Tải video
+                  </button>
+                  <button
+                    onClick={handleDownloadParticipation}
+                    disabled={!session}
+                    className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium disabled:opacity-40"
+                    style={{
+                      background: "var(--color-surface-card)",
+                      border: "1.5px solid var(--color-border-default)",
+                      color: "var(--color-text-primary)",
+                      fontFamily: "Plus Jakarta Sans, sans-serif",
+                    }}
+                  >
+                    <Download className="w-4 h-4" />
+                    Tải điểm danh
+                  </button>
+                </div>
+
+                {/* Info block — label/value list, not a Card */}
+                <div
+                  className="rounded-xl p-5 space-y-3"
+                  style={{
+                    background: "var(--color-surface-subtle)",
+                    border: "1.5px solid var(--color-border-default)",
+                  }}
+                >
+                  {[
+                    { label: "Chủ đề", value: title },
+                    { label: "Lớp học", value: session?.class?.name ?? "N/A" },
+                    { label: "Thời lượng", value: lengthText },
+                    {
+                      label: "Thời gian",
+                      value: session
+                        ? `${formatDateTime(session.start_time)}${session.end_time ? ` — ${formatDateTime(session.end_time)}` : ""}`
+                        : "N/A",
+                    },
+                  ].map(({ label, value }) => (
+                    <div key={label} className="flex gap-4 items-baseline">
+                      <span
+                        className="w-28 flex-shrink-0 text-xs uppercase tracking-widest"
+                        style={{ color: "var(--color-text-muted)", fontFamily: "Plus Jakarta Sans, sans-serif", letterSpacing: "0.06em" }}
+                      >
+                        {label}
+                      </span>
+                      <span
+                        className="text-sm"
+                        style={{ color: "var(--color-text-primary)", fontFamily: "Plus Jakarta Sans, sans-serif" }}
+                      >
+                        {value}
                       </span>
                     </div>
-                  </CardContent>
-                </Card>
+                  ))}
+                </div>
               </div>
 
-              <Card className="lg:col-span-1">
-                <CardHeader>
-                  <div className="flex items-center justify-between gap-2">
-                    <CardTitle className="flex items-center gap-2">
-                      <Users className="w-5 h-5" />
-                      {showAllStudents ? "Tất cả học viên" : "Học viên tham gia"}
-                    </CardTitle>
-                    <div className="flex items-center gap-2">
-                      <Button size="sm" variant="outline" onClick={handleDownloadParticipation}>
-                        <Download className="w-4 h-4 mr-2" />
-                        Tải điểm danh
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        onClick={() => setShowAllStudents((prev) => !prev)}
-                        className="h-8 w-8 p-0"
-                        aria-label={showAllStudents ? "Hiển thị chỉ người tham gia" : "Hiển thị tất cả học viên"}
-                        title={showAllStudents ? "Hiển thị chỉ người tham gia" : "Hiển thị tất cả học viên"}
-                      >
-                        {showAllStudents ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-                      </Button>
-                    </div>
+              {/* Right: attendance sidebar */}
+              <div
+                className="rounded-xl overflow-hidden"
+                style={{
+                  background: "var(--color-surface-card)",
+                  border: "1.5px solid var(--color-border-default)",
+                }}
+              >
+                {/* Sidebar header */}
+                <div
+                  className="flex items-center justify-between px-4 py-3"
+                  style={{
+                    background: "var(--color-surface-subtle)",
+                    borderBottom: "1.5px solid var(--color-border-default)",
+                  }}
+                >
+                  <h3
+                    style={{
+                      fontFamily: "Oswald, sans-serif",
+                      fontWeight: 600,
+                      fontSize: 15,
+                      color: "var(--color-text-primary)",
+                    }}
+                  >
+                    {showAllStudents ? "Tất cả học viên" : "Học viên tham gia"}
+                  </h3>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={handleDownloadParticipation}
+                      className="p-1.5 rounded-lg"
+                      style={{
+                        background: "var(--color-surface-card)",
+                        border: "1.5px solid var(--color-border-default)",
+                        color: "var(--color-text-muted)",
+                      }}
+                      title="Tải điểm danh"
+                    >
+                      <Download className="w-3.5 h-3.5" />
+                    </button>
+                    <button
+                      onClick={() => setShowAllStudents((prev) => !prev)}
+                      className="p-1.5 rounded-lg"
+                      style={{
+                        background: "var(--color-surface-card)",
+                        border: "1.5px solid var(--color-border-default)",
+                        color: "var(--color-text-muted)",
+                      }}
+                    >
+                      {showAllStudents ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+                    </button>
                   </div>
-                </CardHeader>
-                <CardContent>
+                </div>
+
+                {/* Student list */}
+                <div className="max-h-[640px] overflow-y-auto">
                   {visibleStudentItems.length ? (
-                    <div className="space-y-3 max-h-[640px] overflow-y-auto pr-1">
+                    <div className="divide-y" style={{ borderColor: "var(--color-border-default)" }}>
                       {visibleStudentItems.map((item) => (
-                        <div key={item.key} className="border rounded-md p-3 space-y-1">
-                          <p className="font-medium text-sm text-gray-900">
-                            {item.fullName}
-                          </p>
-                          <p className="text-xs text-gray-600">
-                            Vào lớp: {item.isAbsent ? "N/A" : formatDateTime(item.joinedAt)}
-                          </p>
-                          <p className="text-xs text-gray-600">
-                            Thời gian tham gia:{" "}
-                            {item.isAbsent ? "N/A" : formatDuration(item.durationSeconds)}
-                          </p>
-                          <Badge variant={item.isAbsent ? "secondary" : item.isAttended ? "default" : "outline"}>
-                            {item.isAbsent
-                              ? "Vắng"
-                              : item.isAttended
-                                ? "Đã tham gia"
-                                : "Không đủ điều kiện điểm danh"}
-                          </Badge>
+                        <div key={item.key} className="flex items-center justify-between px-4 py-3 gap-3">
+                          <div className="min-w-0">
+                            <p
+                              className="text-sm font-medium truncate"
+                              style={{ color: "var(--color-text-primary)", fontFamily: "Plus Jakarta Sans, sans-serif" }}
+                            >
+                              {item.fullName}
+                            </p>
+                            {!item.isAbsent && (
+                              <p
+                                className="text-xs"
+                                style={{ color: "var(--color-text-muted)", fontFamily: "JetBrains Mono, monospace" }}
+                              >
+                                {formatDuration(item.durationSeconds)}
+                              </p>
+                            )}
+                          </div>
+                          <span
+                            className="flex-shrink-0 px-2 py-0.5 rounded-full text-xs font-semibold"
+                            style={
+                              item.isAbsent
+                                ? {
+                                    background: "var(--color-surface-muted)",
+                                    color: "var(--color-text-muted)",
+                                  }
+                                : item.isAttended
+                                  ? { background: "#dcfce7", color: "#166534" }
+                                  : {
+                                      background: "var(--color-surface-subtle)",
+                                      color: "var(--color-text-secondary)",
+                                    }
+                            }
+                          >
+                            {item.isAbsent ? "Vắng" : item.isAttended ? "Đã tham gia" : "Chưa đủ điều kiện"}
+                          </span>
                         </div>
                       ))}
                     </div>
                   ) : (
-                    <p className="text-sm text-gray-500">
-                      {showAllStudents
-                        ? "Chưa có dữ liệu học viên trong lớp."
-                        : "Chưa có dữ liệu người tham gia."}
+                    <p
+                      className="text-center py-8 text-sm"
+                      style={{ color: "var(--color-text-muted)", fontFamily: "Plus Jakarta Sans, sans-serif" }}
+                    >
+                      {showAllStudents ? "Chưa có dữ liệu học viên." : "Chưa có dữ liệu người tham gia."}
                     </p>
                   )}
-                </CardContent>
-              </Card>
+                </div>
+              </div>
             </div>
           </>
         )}
