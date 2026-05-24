@@ -11,15 +11,15 @@ export function MeetStatusBanner() {
 
   return (
     <div
-      className={`flex items-center gap-2 rounded-xl border px-4 py-2 text-sm ${
+      className={`flex items-center gap-2 rounded-xl border px-4 py-2 text-sm`}
+      style={
         error
-          ? "border-destructive/40 bg-destructive/10 text-destructive"
-          : "border-muted bg-muted/40 text-muted-foreground"
-      }`}
+          ? { borderColor: "rgba(220,38,38,0.4)", background: "rgba(220,38,38,0.1)", color: "var(--color-error)" }
+          : { borderColor: "#2a2a2a", background: "rgba(26,10,0,0.6)", color: "rgba(255,250,245,0.7)" }
+      }
     >
       {error ? <AlertTriangle className="h-4 w-4" /> : null}
       <span>{error || "Đang kết nối với buổi học..."}</span>
     </div>
   );
 }
-

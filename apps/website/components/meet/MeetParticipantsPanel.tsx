@@ -66,7 +66,10 @@ export function MeetParticipantsPanel({
     const canManage = !isSelf && canManageParticipants && canManageTarget(participant.role);
 
     const content = (
-      <div className={`flex items-center justify-between rounded-lg border border-border/40 p-3 ${isOffline ? 'opacity-60' : ''} ${canManage ? 'cursor-pointer hover:bg-muted/50 transition-colors' : ''}`}>
+      <div
+        className={`flex items-center justify-between rounded-lg p-3 transition-colors ${isOffline ? 'opacity-60' : ''} ${canManage ? 'cursor-pointer hover:bg-[#2d1500]' : ''}`}
+        style={{ border: "1px solid #2a2a2a" }}
+      >
         <div className="flex items-center gap-3 overflow-hidden">
           {participant.userAvatar ? (
             <Image
@@ -78,17 +81,24 @@ export function MeetParticipantsPanel({
               unoptimized
             />
           ) : (
-            <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full bg-muted text-sm font-semibold uppercase">
+            <div
+              className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full text-sm font-semibold uppercase"
+              style={{ background: "#2d1500", color: "#fffaf5" }}
+            >
               {participant.userFullName.slice(0, 2)}
             </div>
           )}
           <div className="min-w-0">
-            <p className="text-sm font-medium truncate">{participant.userFullName} {isSelf && "(You)"}</p>
-            <p className="text-xs text-muted-foreground capitalize">{participant.role}</p>
+            <p className="text-sm font-medium truncate" style={{ color: "#fffaf5" }}>
+              {participant.userFullName} {isSelf && "(You)"}
+            </p>
+            <p className="text-xs capitalize" style={{ color: "rgba(255,250,245,0.35)" }}>
+              {participant.role}
+            </p>
           </div>
         </div>
         <div className="flex items-center gap-1">
-          <div className="flex items-center gap-1 text-muted-foreground mr-1">
+          <div className="flex items-center gap-1 mr-1" style={{ color: "rgba(255,250,245,0.35)" }}>
             {participant.isAudioEnabled ? (
               <Mic className="h-3.5 w-3.5" />
             ) : (
@@ -101,12 +111,13 @@ export function MeetParticipantsPanel({
             )}
             <CircleDot
               className={`h-3 w-3 ${
-                participant.isOnline ? "text-green-500" : "text-muted-foreground"
+                participant.isOnline ? "text-green-500" : ""
               }`}
+              style={participant.isOnline ? undefined : { color: "rgba(255,250,245,0.35)" }}
             />
           </div>
           {canManage && !isOffline && (
-             <MoreVertical className="h-4 w-4 text-muted-foreground/50" />
+            <MoreVertical className="h-4 w-4" style={{ color: "rgba(255,250,245,0.35)" }} />
           )}
         </div>
       </div>
@@ -132,7 +143,7 @@ export function MeetParticipantsPanel({
               <span>Stop Video</span>
             </DropdownMenuItem>
             <DropdownMenuSeparator />
-            <DropdownMenuItem 
+            <DropdownMenuItem
               onClick={() => handleKick(participant.userId, participant.userFullName)}
               className="text-red-600 focus:text-red-600 focus:bg-red-50"
             >
@@ -148,10 +159,13 @@ export function MeetParticipantsPanel({
   };
 
   return (
-    <div className="flex h-full w-full sm:w-72 flex-shrink-0 flex-col overflow-hidden rounded-lg border border-border/40 bg-card shadow-sm">
-      <div className="flex-shrink-0 border-b border-border/40 px-4 py-3">
+    <div
+      className="flex h-full w-full sm:w-72 flex-shrink-0 flex-col overflow-hidden rounded-lg shadow-sm"
+      style={{ background: "#151515", borderLeft: "1px solid #2a2a2a" }}
+    >
+      <div className="flex-shrink-0 px-4 py-3" style={{ borderBottom: "1px solid #2a2a2a" }}>
         <div className="flex items-center justify-between">
-          <div className="text-sm font-semibold text-foreground">
+          <div className="text-sm font-semibold" style={{ color: "#fffaf5" }}>
             Participants ({displayedParticipants.length})
           </div>
           {offlineParticipants.length > 0 && (
@@ -177,9 +191,9 @@ export function MeetParticipantsPanel({
 
             {/* Separator */}
             <div className="my-3 flex items-center gap-2">
-              <div className="flex-1 border-t border-border/40"></div>
-              <span className="text-xs font-medium text-muted-foreground uppercase">Vắng mặt</span>
-              <div className="flex-1 border-t border-border/40"></div>
+              <div className="flex-1" style={{ borderTop: "1px solid #2a2a2a" }}></div>
+              <span className="text-xs font-medium uppercase" style={{ color: "rgba(255,250,245,0.35)" }}>Vắng mặt</span>
+              <div className="flex-1" style={{ borderTop: "1px solid #2a2a2a" }}></div>
             </div>
 
             {/* Offline participants */}
@@ -191,7 +205,7 @@ export function MeetParticipantsPanel({
         )}
 
         {displayedParticipants.length === 0 && (
-          <p className="text-center text-sm text-muted-foreground">
+          <p className="text-center text-sm" style={{ color: "rgba(255,250,245,0.35)" }}>
             {showAbsents ? "Chưa có người tham gia nào." : "Không có người tham gia trực tuyến."}
           </p>
         )}

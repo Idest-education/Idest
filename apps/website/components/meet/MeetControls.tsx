@@ -16,7 +16,6 @@ import {
   StopCircle,
 } from "lucide-react";
 import { toast } from "sonner";
-import { Button } from "@/components/ui/button";
 import { useMeetStore } from "@/hooks/useMeetStore";
 import { ScreenSharePayload, ToggleMediaPayload } from "@/types/meet";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
@@ -95,16 +94,16 @@ export function MeetControls({
 
   const toggleAudio = useCallback(async () => {
     if (!room || !sessionId) return;
-    
+
     try {
       const nextState = !isAudioEnabled;
       // LiveKit handles the actual media control
       await room.localParticipant.setMicrophoneEnabled(nextState);
-      
+
       // Update state immediately for instant UI feedback
       // TrackStateSync will verify/correct this if there's any mismatch
       setAudioEnabled(nextState);
-      
+
       // Optional: Emit socket event for backend logging/analytics only
       emitToggleMedia({ sessionId, type: "audio", isEnabled: nextState });
     } catch (error: unknown) {
@@ -116,16 +115,16 @@ export function MeetControls({
 
   const toggleVideo = useCallback(async () => {
     if (!room || !sessionId) return;
-    
+
     try {
       const nextState = !isVideoEnabled;
       // LiveKit handles the actual media control
       await room.localParticipant.setCameraEnabled(nextState);
-      
+
       // Update state immediately for instant UI feedback
       // TrackStateSync will verify/correct this if there's any mismatch
       setVideoEnabled(nextState);
-      
+
       // Optional: Emit socket event for backend logging/analytics only
       emitToggleMedia({ sessionId, type: "video", isEnabled: nextState });
     } catch (error: unknown) {
@@ -141,10 +140,10 @@ export function MeetControls({
       toast.error(`Màn hình hiện đang được chia sẻ bởi ${activeSharerName}`);
       return;
     }
-    
+
     try {
       const enable = !isScreenSharing;
-      
+
       if (enable) {
         // Mark that we're attempting to start screen share
         pendingScreenShareRef.current = true;
@@ -152,17 +151,17 @@ export function MeetControls({
         // Stopping screen share, clear pending flag
         pendingScreenShareRef.current = false;
       }
-      
+
       // LiveKit handles the actual screen share control
       await room.localParticipant.setScreenShareEnabled(enable);
-      
+
       // Update state immediately for instant UI feedback
       // TrackStateSync will verify/correct this if there's any mismatch
       setScreenSharing(enable);
-      
+
       // Emit socket event to backend - backend will enforce single screen share
       emitScreenShareEvent(enable ? "start" : "stop", { sessionId });
-      
+
       // Clear pending flag after a short delay to allow backend response
       if (enable) {
         setTimeout(() => {
@@ -198,117 +197,119 @@ export function MeetControls({
 
   return (
     <TooltipProvider>
-      <div className="flex-shrink-0 border-t border-border/40 bg-background/95 backdrop-blur-sm">
+      <div className="flex-shrink-0" style={{ background: "#151515", borderTop: "1px solid #2a2a2a" }}>
         <div className="flex items-center justify-center gap-2 px-4 py-3 flex-wrap">
-          <Button
-            variant={isAudioEnabled ? "secondary" : "destructive"}
-            size="sm"
+          <button
             onClick={toggleAudio}
             disabled={disabled}
-            className="h-10 rounded-full"
+            className="h-10 rounded-full flex items-center gap-2 px-4 text-sm font-medium"
+            style={
+              isAudioEnabled
+                ? { background: "rgba(255,250,245,0.1)", color: "#fffaf5", border: "none" }
+                : { background: "var(--color-error)", color: "#fff", border: "none" }
+            }
           >
             {isAudioEnabled ? <Mic className="h-5 w-5" /> : <MicOff className="h-5 w-5" />}
-            <span className="ml-2 hidden sm:inline">{isAudioEnabled ? "Tắt tiếng" : "Bật tiếng"}</span>
-          </Button>
+            <span className="hidden sm:inline">{isAudioEnabled ? "Tắt tiếng" : "Bật tiếng"}</span>
+          </button>
 
-          <Button
-            variant={isVideoEnabled ? "secondary" : "destructive"}
-            size="sm"
+          <button
             onClick={toggleVideo}
             disabled={disabled}
-            className="h-10 rounded-full"
+            className="h-10 rounded-full flex items-center gap-2 px-4 text-sm font-medium"
+            style={
+              isVideoEnabled
+                ? { background: "rgba(255,250,245,0.1)", color: "#fffaf5", border: "none" }
+                : { background: "var(--color-error)", color: "#fff", border: "none" }
+            }
           >
-            {isVideoEnabled ? (
-              <Video className="h-5 w-5" />
-            ) : (
-              <VideoOff className="h-5 w-5" />
-            )}
-            <span className="ml-2 hidden sm:inline">{isVideoEnabled ? "Dừng video" : "Bật video"}</span>
-          </Button>
+            {isVideoEnabled ? <Video className="h-5 w-5" /> : <VideoOff className="h-5 w-5" />}
+            <span className="hidden sm:inline">{isVideoEnabled ? "Dừng video" : "Bật video"}</span>
+          </button>
 
           <Tooltip>
             <TooltipTrigger asChild>
               <span>
-                <Button
-                  variant="secondary"
-                  size="sm"
+                <button
                   onClick={toggleScreenShare}
-                  disabled={disabled || (!canShareScreen && !isScreenSharing)} // Allow stopping even if conceptually "blocked" (shouldn't happen if logic correct)
-                  className="h-10 rounded-full relative"
+                  disabled={disabled || (!canShareScreen && !isScreenSharing)}
+                  className="h-10 rounded-full flex items-center gap-2 px-4 text-sm font-medium relative"
+                  style={{ background: "rgba(255,250,245,0.1)", color: "#fffaf5", border: "none" }}
                 >
-                  {isScreenSharing ? (
-                    <MonitorStop className="h-5 w-5" />
-                  ) : (
-                    <MonitorUp className="h-5 w-5" />
-                  )}
-                  <span className="ml-2 hidden sm:inline">
-                    {isScreenSharing ? "Dừng chia sẻ" : "Chia sẻ màn hình"}
-                  </span>
+                  {isScreenSharing ? <MonitorStop className="h-5 w-5" /> : <MonitorUp className="h-5 w-5" />}
+                  <span className="hidden sm:inline">{isScreenSharing ? "Dừng chia sẻ" : "Chia sẻ màn hình"}</span>
                   {!canShareScreen && (
-                     <span className="absolute -top-1 -right-1 flex h-3 w-3">
-                       <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
-                       <span className="relative inline-flex rounded-full h-3 w-3 bg-red-500"></span>
-                     </span>
+                    <span className="absolute -top-1 -right-1 flex h-3 w-3">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75" />
+                      <span className="relative inline-flex rounded-full h-3 w-3 bg-red-500" />
+                    </span>
                   )}
-                </Button>
+                </button>
               </span>
             </TooltipTrigger>
-             {!canShareScreen && (
+            {!canShareScreen && (
               <TooltipContent>
                 <p>Screen is being shared by {activeSharerName}</p>
               </TooltipContent>
-             )}
+            )}
           </Tooltip>
 
           {MEET_RECORDING_ENABLED && canRecord && (
-            <Button
-              variant={isRecording ? "destructive" : "secondary"}
-              size="sm"
+            <button
               onClick={toggleRecording}
               disabled={disabled}
-              className="h-10 rounded-full"
+              className="h-10 rounded-full flex items-center gap-2 px-4 text-sm font-medium"
+              style={
+                isRecording
+                  ? { background: "var(--color-error)", color: "#fff", border: "none" }
+                  : { background: "rgba(255,250,245,0.1)", color: "#fffaf5", border: "none" }
+              }
             >
-              {isRecording ? (
-                <StopCircle className="h-5 w-5 animate-pulse" />
-              ) : (
-                <Disc className="h-5 w-5" />
-              )}
-              <span className="ml-2 hidden sm:inline">
-                {isRecording ? "Stop Rec" : "Record"}
-              </span>
-            </Button>
+              {isRecording ? <StopCircle className="h-5 w-5 animate-pulse" /> : <Disc className="h-5 w-5" />}
+              <span className="hidden sm:inline">{isRecording ? "Stop Rec" : "Record"}</span>
+            </button>
           )}
 
-          <div className="mx-2 h-6 w-px bg-border hidden sm:block" />
+          <div className="mx-2 h-6 w-px hidden sm:block" style={{ background: "#2a2a2a" }} />
 
-          <Button
-            variant={showParticipants ? "default" : "secondary"}
-            size="sm"
+          <button
             onClick={toggleParticipants}
             disabled={disabled}
-            className="h-10 rounded-full"
+            className="h-10 rounded-full flex items-center gap-2 px-4 text-sm font-medium"
+            style={
+              showParticipants
+                ? { background: "var(--color-brand)", color: "#fff", border: "none" }
+                : { background: "rgba(255,250,245,0.1)", color: "#fffaf5", border: "none" }
+            }
           >
             <Users className="h-5 w-5" />
-            <span className="ml-2 hidden sm:inline">Participants</span>
-          </Button>
+            <span className="hidden sm:inline">Participants</span>
+          </button>
 
-          <Button
-            variant={showChat ? "default" : "secondary"}
-            size="sm"
+          <button
             onClick={toggleChat}
             disabled={disabled}
-            className="h-10 rounded-full"
+            className="h-10 rounded-full flex items-center gap-2 px-4 text-sm font-medium"
+            style={
+              showChat
+                ? { background: "var(--color-brand)", color: "#fff", border: "none" }
+                : { background: "rgba(255,250,245,0.1)", color: "#fffaf5", border: "none" }
+            }
           >
             <MessageSquare className="h-5 w-5" />
-            <span className="ml-2 hidden sm:inline">Chat</span>
-          </Button>
+            <span className="hidden sm:inline">Chat</span>
+          </button>
 
-          <div className="mx-2 h-6 w-px bg-border hidden sm:block" />
+          <div className="mx-2 h-6 w-px hidden sm:block" style={{ background: "#2a2a2a" }} />
 
-          <Button variant="destructive" size="sm" onClick={leaveMeeting} className="h-10 rounded-full">
+          <button
+            onClick={leaveMeeting}
+            className="h-10 rounded-full flex items-center gap-2 px-4 text-sm font-medium"
+            style={{ background: "var(--color-error)", color: "#fff", border: "none" }}
+          >
             <PhoneOff className="h-5 w-5" />
-            <span className="ml-2 hidden sm:inline">Leave</span>
-          </Button>
+            <span className="hidden sm:inline">Rời buổi học</span>
+          </button>
         </div>
       </div>
     </TooltipProvider>
