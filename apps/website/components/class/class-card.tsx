@@ -2,101 +2,136 @@
 
 import { useRouter } from "next/navigation";
 import { ClassData } from "@/types/class";
-import { BookOpen, Users, ArrowRight } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import { Users, ArrowRight } from "lucide-react";
 
-export default function ClassCard({ cls }: { cls: ClassData }) {
+export default function ClassCard({ cls, index = 0 }: { cls: ClassData; index?: number }) {
   const router = useRouter();
-  const classConfig = getClassConfig();
+  const num = String(index + 1).padStart(2, "0");
 
   return (
     <div
-      className="group relative overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm transition-all duration-500 hover:-translate-y-2 hover:shadow-2xl hover:border-transparent cursor-pointer animate-in fade-in slide-in-from-bottom-4"
+      className="group relative overflow-hidden cursor-pointer animate-in fade-in slide-in-from-bottom-4"
+      style={{
+        background: "var(--color-surface-card)",
+        border: "1.5px solid var(--color-border-default)",
+        borderRadius: 12,
+        animationDelay: `${index * 100}ms`,
+        animationFillMode: "both",
+        transition: "transform 200ms ease, box-shadow 200ms ease, border-color 200ms ease",
+      }}
       onClick={() => router.push(`/classes/${cls.slug}`)}
+      onMouseEnter={(e) => {
+        const el = e.currentTarget as HTMLDivElement;
+        el.style.borderColor = "#FF6B35";
+        el.style.transform = "translateY(-4px)";
+        el.style.boxShadow = "0 12px 32px #FF6B3544";
+        // Show gradient overlay
+        const overlay = el.querySelector("[data-hover-overlay]") as HTMLDivElement | null;
+        if (overlay) overlay.style.opacity = "1";
+      }}
+      onMouseLeave={(e) => {
+        const el = e.currentTarget as HTMLDivElement;
+        el.style.borderColor = "var(--color-border-default)";
+        el.style.transform = "translateY(0)";
+        el.style.boxShadow = "none";
+        // Hide gradient overlay
+        const overlay = el.querySelector("[data-hover-overlay]") as HTMLDivElement | null;
+        if (overlay) overlay.style.opacity = "0";
+      }}
     >
-      {/* Dark gradient overlay on hover */}
-      <div className={`absolute inset-0 opacity-0 group-hover:opacity-100 transition-all duration-500 bg-gradient-to-br ${classConfig.darkGradient} z-10`} />
-      
-      {/* Animated background pattern */}
-      <div className="absolute inset-0 opacity-0 group-hover:opacity-10 transition-opacity duration-500">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(255,255,255,0.1),transparent_50%)]" />
-      </div>
-      
-      {/* Content */}
-      <div className="relative p-6 flex flex-col h-full z-20">
-        {/* Header */}
-        <div className="flex items-start justify-between mb-4">
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2 mb-3">
-              <div className={`p-2.5 rounded-lg ${classConfig.bgColor} ${classConfig.textColor} group-hover:bg-white/20 group-hover:text-white group-hover:scale-110 group-hover:rotate-6 transition-all duration-500`}>
-                <BookOpen className="w-4 h-4" />
-              </div>
-              <Badge 
-                className={`${classConfig.badgeClass} border-0 text-xs font-medium group-hover:bg-white/20 group-hover:text-white group-hover:backdrop-blur-sm transition-all duration-500`}
-              >
-                Lớp học
-              </Badge>
-            </div>
-            <h3 className="text-xl font-bold text-gray-900 group-hover:text-white transition-all duration-500 line-clamp-2 group-hover:scale-[1.02]">
-              {cls.name}
-            </h3>
-          </div>
+      {/* Gradient overlay — fades in on hover (opacity transition works; background-gradient transition doesn't) */}
+      <div
+        data-hover-overlay
+        className="absolute inset-0 pointer-events-none"
+        style={{
+          background: "linear-gradient(135deg, #FF6B35 0%, #c94010 100%)",
+          opacity: 0,
+          transition: "opacity 200ms ease",
+          zIndex: 0,
+        }}
+      />
+
+      {/* Ghost number watermark */}
+      <span
+        className="absolute top-2 right-3 select-none pointer-events-none opacity-[0.07] group-hover:opacity-[0.12] transition-opacity duration-200"
+        style={{
+          fontFamily: "Oswald, sans-serif",
+          fontSize: 80,
+          fontWeight: 700,
+          color: "var(--color-brand)",
+          lineHeight: 1,
+          zIndex: 1,
+        }}
+        aria-hidden
+      >
+        {num}
+      </span>
+
+      <div className="relative p-6 flex flex-col h-full" style={{ zIndex: 1 }}>
+        {/* Skill pill */}
+        <div className="mb-3">
+          <span
+            className="text-xs font-semibold uppercase tracking-wider px-3 py-1 rounded-full transition-colors duration-200 group-hover:text-white"
+            style={{
+              background: "var(--color-brand)",
+              color: "#fff",
+              fontFamily: "Plus Jakarta Sans, sans-serif",
+            }}
+          >
+            Lớp học
+          </span>
         </div>
 
+        {/* Class name */}
+        <h3
+          className="mb-2 line-clamp-2 group-hover:text-white transition-colors duration-200"
+          style={{
+            fontFamily: "Oswald, sans-serif",
+            fontWeight: 600,
+            fontSize: 16,
+            color: "var(--color-text-primary)",
+          }}
+        >
+          {cls.name}
+        </h3>
+
         {/* Description */}
-        <p className="text-gray-600 group-hover:text-white/90 line-clamp-3 mb-4 flex-1 transition-all duration-500 group-hover:translate-x-1">
+        <p
+          className="text-xs line-clamp-2 flex-1 mb-4 group-hover:text-white/80 transition-colors duration-200"
+          style={{ color: "var(--color-text-muted)", fontFamily: "Plus Jakarta Sans, sans-serif" }}
+        >
           {cls.description}
         </p>
 
-        {/* Stats */}
-        <div className="flex items-center gap-4 mb-4 pt-4 border-t border-gray-200 group-hover:border-white/20 transition-all duration-500">
-          <div className="flex items-center gap-2">
-            <div className={`p-2 rounded-lg ${classConfig.bgColor} ${classConfig.textColor} group-hover:bg-white/20 group-hover:text-white transition-all duration-500`}>
-              <Users className="w-4 h-4" />
-            </div>
-            <div>
-              <p className="text-xs text-gray-500 group-hover:text-white/80 transition-all duration-500">Thành viên</p>
-              <p className="text-sm font-bold text-gray-900 group-hover:text-white transition-all duration-500">{cls._count.members}</p>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <div className={`p-2 rounded-lg ${classConfig.bgColor} ${classConfig.textColor} group-hover:bg-white/20 group-hover:text-white transition-all duration-500`}>
-              <BookOpen className="w-4 h-4" />
-            </div>
-            <div>
-              <p className="text-xs text-gray-500 group-hover:text-white/80 transition-all duration-500">Buổi học</p>
-              <p className="text-sm font-bold text-gray-900 group-hover:text-white transition-all duration-500">{cls._count.sessions}</p>
-            </div>
-          </div>
-        </div>
-
         {/* Footer */}
-        <div className="flex items-center justify-between pt-4 border-t border-gray-200 group-hover:border-white/20 transition-all duration-500 mt-auto">
-          <div className="text-xs text-gray-500 group-hover:text-white/80 transition-all duration-500 group-hover:scale-105">
-            Nhấp để xem chi tiết
+        <div
+          className="flex items-center justify-between pt-4 border-t border-[var(--color-border-default)] group-hover:border-white/20 transition-colors duration-200"
+        >
+          <div className="flex items-center gap-4">
+            <span
+              className="flex items-center gap-1 text-xs group-hover:text-white/80 transition-colors duration-200"
+              style={{ color: "var(--color-text-muted)", fontFamily: "Plus Jakarta Sans, sans-serif" }}
+            >
+              <Users className="w-3.5 h-3.5" />
+              {cls._count.members}
+            </span>
+            <span
+              className="flex items-center gap-1 text-xs group-hover:text-white/80 transition-colors duration-200"
+              style={{ color: "var(--color-text-muted)", fontFamily: "Plus Jakarta Sans, sans-serif" }}
+            >
+              <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+              {cls._count.sessions}
+            </span>
           </div>
-
-          <Button
-            variant="ghost"
-            size="sm"
-            className="group-hover:bg-white/20 group-hover:text-white group-hover:backdrop-blur-sm text-gray-700 hover:text-gray-900 transition-all duration-500 group-hover:scale-105 group-hover:shadow-lg"
+          <span
+            className="flex items-center gap-1 text-xs font-medium group-hover:text-white transition-colors duration-200"
+            style={{ color: "var(--color-brand)", fontFamily: "Plus Jakarta Sans, sans-serif" }}
           >
             Xem chi tiết
-            <ArrowRight className="w-3 h-3 ml-1 group-hover:translate-x-2 transition-transform duration-500" />
-          </Button>
+            <ArrowRight className="w-3 h-3 group-hover:translate-x-0.5 transition-transform duration-200" />
+          </span>
         </div>
       </div>
     </div>
   );
-}
-
-function getClassConfig() {
-  return {
-    darkGradient: "from-gray-900 via-orange-900 to-orange-800",
-    bgColor: "bg-orange-100",
-    textColor: "text-orange-600",
-    badgeClass: "bg-orange-500 text-white",
-  };
 }
