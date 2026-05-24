@@ -2,11 +2,6 @@
 
 import { useEffect, useState } from "react";
 import { getAllUsers, banUser, unbanUser, type AllUsersResponse } from "@/services/user.service";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Search, Ban, CheckCircle, Eye } from "lucide-react";
 import Link from "next/link";
 import LoadingScreen from "@/components/loading-screen";
@@ -24,15 +19,9 @@ export default function AdminUsersPage() {
     setLoading(true);
     try {
       const filters: string[] = [];
-      if (roleFilter !== "all") {
-        filters.push(`role:${roleFilter}`);
-      }
-      if (activeFilter !== "all") {
-        filters.push(`active:${activeFilter === "active"}`);
-      }
-      if (searchQuery.trim()) {
-        filters.push(`search:${searchQuery.trim()}`);
-      }
+      if (roleFilter !== "all") filters.push(`role:${roleFilter}`);
+      if (activeFilter !== "all") filters.push(`active:${activeFilter === "active"}`);
+      if (searchQuery.trim()) filters.push(`search:${searchQuery.trim()}`);
 
       const data = await getAllUsers({
         page,
@@ -42,17 +31,9 @@ export default function AdminUsersPage() {
         filter: filters.length > 0 ? filters : undefined,
       });
       setUsers(data);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error fetching users:", error);
-      // Set empty state on error
-      setUsers({
-        users: [],
-        total: 0,
-        page: 1,
-        limit: 20,
-        totalPages: 0,
-        hasMore: false,
-      });
+      setUsers({ users: [], total: 0, page: 1, limit: 20, totalPages: 0, hasMore: false });
     } finally {
       setLoading(false);
     }
@@ -60,6 +41,7 @@ export default function AdminUsersPage() {
 
   useEffect(() => {
     fetchUsers();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [page, roleFilter, activeFilter]);
 
   useEffect(() => {
@@ -71,6 +53,7 @@ export default function AdminUsersPage() {
       }
     }, 500);
     return () => clearTimeout(debounce);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchQuery]);
 
   const handleBan = async (id: string) => {
@@ -101,155 +84,267 @@ export default function AdminUsersPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Users Management</h1>
-          <p className="text-gray-600 mt-2">Manage users, roles, and permissions</p>
+          <h1
+            style={{
+              fontFamily: "Oswald, sans-serif",
+              fontWeight: 700,
+              fontSize: 26,
+              color: "var(--color-text-primary)",
+            }}
+          >
+            Users Management
+          </h1>
+          <p className="mt-1 text-sm" style={{ color: "var(--color-text-muted)", fontFamily: "Plus Jakarta Sans, sans-serif" }}>
+            Manage users, roles, and permissions
+          </p>
         </div>
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Filters</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-              <Input
-                placeholder="Search by name or email..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-10"
-              />
-            </div>
-            <Select value={roleFilter} onValueChange={setRoleFilter}>
-              <SelectTrigger>
-                <SelectValue placeholder="Filter by role" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Roles</SelectItem>
-                <SelectItem value="ADMIN">Admin</SelectItem>
-                <SelectItem value="TEACHER">Teacher</SelectItem>
-                <SelectItem value="STUDENT">Student</SelectItem>
-              </SelectContent>
-            </Select>
-            <Select value={activeFilter} onValueChange={setActiveFilter}>
-              <SelectTrigger>
-                <SelectValue placeholder="Filter by status" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Status</SelectItem>
-                <SelectItem value="active">Active</SelectItem>
-                <SelectItem value="inactive">Inactive</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-        </CardContent>
-      </Card>
+      {/* Filter bar */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+        <div className="relative">
+          <Search
+            className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4"
+            style={{ color: "var(--color-text-muted)" }}
+          />
+          <input
+            placeholder="Search by name or email..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full rounded-lg pl-10 pr-4 py-2.5 text-sm outline-none"
+            style={{
+              background: "var(--color-surface-card)",
+              border: "1.5px solid var(--color-border-default)",
+              color: "var(--color-text-primary)",
+              fontFamily: "Plus Jakarta Sans, sans-serif",
+            }}
+            onFocus={(e) => {
+              e.currentTarget.style.borderColor = "var(--color-brand)";
+              e.currentTarget.style.boxShadow = "0 0 0 3px #FF6B3520";
+            }}
+            onBlur={(e) => {
+              e.currentTarget.style.borderColor = "var(--color-border-default)";
+              e.currentTarget.style.boxShadow = "none";
+            }}
+          />
+        </div>
+        <select
+          value={roleFilter}
+          onChange={(e) => setRoleFilter(e.target.value)}
+          className="rounded-lg px-3 py-2.5 text-sm outline-none"
+          style={{
+            background: "var(--color-surface-card)",
+            border: "1.5px solid var(--color-border-default)",
+            color: "var(--color-text-primary)",
+            fontFamily: "Plus Jakarta Sans, sans-serif",
+          }}
+          onFocus={(e) => { e.currentTarget.style.borderColor = "var(--color-brand)"; }}
+          onBlur={(e) => { e.currentTarget.style.borderColor = "var(--color-border-default)"; }}
+        >
+          <option value="all">All Roles</option>
+          <option value="ADMIN">Admin</option>
+          <option value="TEACHER">Teacher</option>
+          <option value="STUDENT">Student</option>
+        </select>
+        <select
+          value={activeFilter}
+          onChange={(e) => setActiveFilter(e.target.value)}
+          className="rounded-lg px-3 py-2.5 text-sm outline-none"
+          style={{
+            background: "var(--color-surface-card)",
+            border: "1.5px solid var(--color-border-default)",
+            color: "var(--color-text-primary)",
+            fontFamily: "Plus Jakarta Sans, sans-serif",
+          }}
+          onFocus={(e) => { e.currentTarget.style.borderColor = "var(--color-brand)"; }}
+          onBlur={(e) => { e.currentTarget.style.borderColor = "var(--color-border-default)"; }}
+        >
+          <option value="all">All Status</option>
+          <option value="active">Active</option>
+          <option value="inactive">Inactive</option>
+        </select>
+      </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>
+      {/* Table */}
+      <div
+        className="overflow-hidden"
+        style={{
+          background: "var(--color-surface-card)",
+          border: "1.5px solid var(--color-border-default)",
+          borderRadius: 12,
+        }}
+      >
+        {/* Table head bar */}
+        <div
+          className="px-5 py-3"
+          style={{
+            background: "var(--color-surface-muted)",
+            borderBottom: "1.5px solid var(--color-border-default)",
+          }}
+        >
+          <h3
+            style={{
+              fontFamily: "Oswald, sans-serif",
+              fontWeight: 600,
+              fontSize: 15,
+              color: "var(--color-text-primary)",
+            }}
+          >
             Users ({users?.total || 0})
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          {users && users.users.length > 0 ? (
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead>
-                  <tr className="border-b">
-                    <th className="text-left p-3">Name</th>
-                    <th className="text-left p-3">Email</th>
-                    <th className="text-left p-3">Role</th>
-                    <th className="text-left p-3">Status</th>
-                    <th className="text-left p-3">Created</th>
-                    <th className="text-right p-3">Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {users.users.map((user) => (
-                    <tr key={user.id} className="border-b hover:bg-gray-50">
-                      <td className="p-3">{user.fullName || "N/A"}</td>
-                      <td className="p-3">{user.email}</td>
-                      <td className="p-3">
-                        <Badge variant={user.role === "ADMIN" ? "default" : "secondary"}>
-                          {user.role}
-                        </Badge>
-                      </td>
-                      <td className="p-3">
-                        <Badge variant={user.isActive ? "default" : "destructive"}>
-                          {user.isActive ? "Active" : "Banned"}
-                        </Badge>
-                      </td>
-                      <td className="p-3 text-sm text-gray-600">
-                        {user.createdAt ? (() => {
-                          try {
-                            const date = new Date(user.createdAt);
-                            return isNaN(date.getTime()) ? "N/A" : date.toLocaleDateString();
-                          } catch {
-                            return "N/A";
-                          }
-                        })() : "N/A"}
-                      </td>
-                      <td className="p-3">
-                        <div className="flex items-center justify-end gap-2">
-                          <Link href={`/admin/users/${user.id}`}>
-                            <Button variant="outline" size="sm">
-                              <Eye className="w-4 h-4" />
-                            </Button>
-                          </Link>
-                          {user.isActive ? (
-                            <Button
-                              variant="destructive"
-                              size="sm"
-                              onClick={() => handleBan(user.id)}
-                            >
-                              <Ban className="w-4 h-4" />
-                            </Button>
-                          ) : (
-                            <Button
-                              variant="default"
-                              size="sm"
-                              onClick={() => handleUnban(user.id)}
-                            >
-                              <CheckCircle className="w-4 h-4" />
-                            </Button>
-                          )}
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          ) : (
-            <div className="text-center py-12 text-gray-500">No users found</div>
-          )}
+          </h3>
+        </div>
 
-          {users && users.totalPages > 1 && (
-            <div className="flex items-center justify-between mt-4">
-              <Button
-                variant="outline"
-                onClick={() => setPage(p => Math.max(1, p - 1))}
-                disabled={page === 1}
-              >
-                Previous
-              </Button>
-              <span className="text-sm text-gray-600">
-                Page {page} of {users.totalPages}
-              </span>
-              <Button
-                variant="outline"
-                onClick={() => setPage(p => Math.min(users.totalPages, p + 1))}
-                disabled={page >= users.totalPages}
-              >
-                Next
-              </Button>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+        {users && users.users.length > 0 ? (
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead>
+                <tr style={{ borderBottom: "1.5px solid var(--color-border-default)" }}>
+                  {["Name", "Email", "Role", "Status", "Created", "Actions"].map((h) => (
+                    <th
+                      key={h}
+                      className={`p-3 text-left text-xs uppercase tracking-widest ${h === "Actions" ? "text-right" : ""}`}
+                      style={{ color: "var(--color-text-muted)", fontFamily: "Plus Jakarta Sans, sans-serif", letterSpacing: "0.06em", fontWeight: 500 }}
+                    >
+                      {h}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {users.users.map((user) => (
+                  <tr
+                    key={user.id}
+                    style={{ borderBottom: "1px solid var(--color-border-default)" }}
+                    onMouseEnter={(e) => { (e.currentTarget as HTMLTableRowElement).style.background = "var(--color-surface-subtle)"; }}
+                    onMouseLeave={(e) => { (e.currentTarget as HTMLTableRowElement).style.background = "transparent"; }}
+                  >
+                    <td className="p-3 text-sm" style={{ color: "var(--color-text-primary)", fontFamily: "Plus Jakarta Sans, sans-serif" }}>
+                      {user.fullName || "N/A"}
+                    </td>
+                    <td className="p-3 text-sm" style={{ color: "var(--color-text-secondary)", fontFamily: "Plus Jakarta Sans, sans-serif" }}>
+                      {user.email}
+                    </td>
+                    <td className="p-3">
+                      <span
+                        className="px-2 py-0.5 rounded-full text-xs font-semibold"
+                        style={
+                          user.role === "ADMIN"
+                            ? { background: "#1a0a00", color: "#fffaf5" }
+                            : { background: "var(--color-surface-subtle)", color: "var(--color-text-secondary)" }
+                        }
+                      >
+                        {user.role}
+                      </span>
+                    </td>
+                    <td className="p-3">
+                      <span
+                        className="px-2 py-0.5 rounded-full text-xs font-semibold"
+                        style={
+                          user.isActive
+                            ? { background: "#dcfce7", color: "#166534" }
+                            : { background: "#fee2e2", color: "#7f1d1d" }
+                        }
+                      >
+                        {user.isActive ? "Active" : "Banned"}
+                      </span>
+                    </td>
+                    <td className="p-3 text-sm" style={{ color: "var(--color-text-muted)", fontFamily: "Plus Jakarta Sans, sans-serif" }}>
+                      {user.createdAt ? (() => {
+                        try {
+                          const date = new Date(user.createdAt);
+                          return isNaN(date.getTime()) ? "N/A" : date.toLocaleDateString();
+                        } catch { return "N/A"; }
+                      })() : "N/A"}
+                    </td>
+                    <td className="p-3">
+                      <div className="flex items-center justify-end gap-2">
+                        <Link href={`/admin/users/${user.id}`}>
+                          <button
+                            className="p-1.5 rounded-lg text-xs font-medium"
+                            style={{
+                              background: "var(--color-surface-muted)",
+                              border: "1px solid var(--color-border-default)",
+                              color: "var(--color-text-secondary)",
+                            }}
+                          >
+                            <Eye className="w-4 h-4" />
+                          </button>
+                        </Link>
+                        {user.isActive ? (
+                          <button
+                            onClick={() => handleBan(user.id)}
+                            className="p-1.5 rounded-lg text-xs font-medium"
+                            style={{
+                              background: "#fee2e2",
+                              border: "1px solid #fecaca",
+                              color: "var(--color-error)",
+                            }}
+                          >
+                            <Ban className="w-4 h-4" />
+                          </button>
+                        ) : (
+                          <button
+                            onClick={() => handleUnban(user.id)}
+                            className="p-1.5 rounded-lg text-xs font-medium"
+                            style={{
+                              background: "var(--color-surface-muted)",
+                              border: "1px solid var(--color-border-default)",
+                              color: "var(--color-text-secondary)",
+                            }}
+                          >
+                            <CheckCircle className="w-4 h-4" />
+                          </button>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <div className="text-center py-12 text-sm" style={{ color: "var(--color-text-muted)", fontFamily: "Plus Jakarta Sans, sans-serif" }}>
+            No users found
+          </div>
+        )}
+
+        {users && users.totalPages > 1 && (
+          <div
+            className="flex items-center justify-between px-5 py-3"
+            style={{ borderTop: "1.5px solid var(--color-border-default)" }}
+          >
+            <button
+              onClick={() => setPage((p) => Math.max(1, p - 1))}
+              disabled={page === 1}
+              className="px-4 py-2 rounded-lg text-sm font-medium disabled:opacity-40"
+              style={{
+                background: "var(--color-surface-card)",
+                border: "1.5px solid var(--color-border-default)",
+                color: "var(--color-text-primary)",
+                fontFamily: "Plus Jakarta Sans, sans-serif",
+              }}
+            >
+              Previous
+            </button>
+            <span className="text-sm" style={{ color: "var(--color-text-muted)", fontFamily: "Plus Jakarta Sans, sans-serif" }}>
+              Page {page} of {users.totalPages}
+            </span>
+            <button
+              onClick={() => setPage((p) => Math.min(users.totalPages, p + 1))}
+              disabled={page >= users.totalPages}
+              className="px-4 py-2 rounded-lg text-sm font-medium disabled:opacity-40"
+              style={{
+                background: "var(--color-surface-card)",
+                border: "1.5px solid var(--color-border-default)",
+                color: "var(--color-text-primary)",
+                fontFamily: "Plus Jakarta Sans, sans-serif",
+              }}
+            >
+              Next
+            </button>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
-
