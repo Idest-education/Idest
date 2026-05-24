@@ -1,7 +1,6 @@
 "use client";
 
 import { FormEvent, useMemo, useRef, useState } from "react";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useMeetStore } from "@/hooks/useMeetStore";
 import { MeetChatMessage } from "@/types/meet";
@@ -59,9 +58,14 @@ export function MeetChatPanel({ onSendMessage, onLoadMore }: MeetChatPanelProps)
         <div className="flex items-center justify-between">
           <span className="text-sm font-semibold" style={{ color: "#fffaf5" }}>Trò chuyện</span>
           {hasMoreMessages && (
-            <Button variant="ghost" size="sm" onClick={loadOlder} disabled={isLoadingMessages}>
+            <button
+              onClick={loadOlder}
+              disabled={isLoadingMessages}
+              className="h-7 rounded-full px-3 text-xs font-medium"
+              style={{ background: "rgba(255,250,245,0.1)", color: "#fffaf5", border: "none" }}
+            >
               Tải tin cũ hơn
-            </Button>
+            </button>
           )}
         </div>
       </div>

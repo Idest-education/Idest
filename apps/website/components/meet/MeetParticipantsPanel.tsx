@@ -3,7 +3,6 @@
 import { useMemo, useState } from "react";
 import Image from "next/image";
 import { Video, Mic, MicOff, VideoOff, CircleDot, MoreVertical, Trash2, Ban } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import { useMeetStore } from "@/hooks/useMeetStore";
 import {
   DropdownMenu,
@@ -169,18 +168,17 @@ export function MeetParticipantsPanel({
             Participants ({displayedParticipants.length})
           </div>
           {offlineParticipants.length > 0 && (
-            <Button
-              variant="ghost"
-              size="sm"
+            <button
               onClick={() => setShowAbsents(!showAbsents)}
-              className="h-7 text-xs"
+              className="h-7 rounded-full px-3 text-xs font-medium"
+              style={{ background: "rgba(255,250,245,0.1)", color: "#fffaf5", border: "none" }}
             >
               {showAbsents ? "Ẩn người vắng mặt" : "Hiển thị người vắng mặt"}
-            </Button>
+            </button>
           )}
         </div>
         {allJoined && (
-          <p className="mt-1 text-xs text-green-600 font-medium">Tất cả đã tham gia!</p>
+          <p className="mt-1 text-xs font-medium" style={{ color: "var(--color-correct)" }}>Tất cả đã tham gia!</p>
         )}
       </div>
       <div className="min-h-0 flex-1 space-y-2 overflow-y-auto p-3">
