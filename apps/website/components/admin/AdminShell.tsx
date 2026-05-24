@@ -8,7 +8,7 @@ interface AdminShellProps {
 
 export default function AdminShell({ children }: AdminShellProps) {
   return (
-    <div className="flex min-h-screen bg-gray-50">
+    <div className="flex min-h-screen" style={{ background: "var(--color-surface-app)" }}>
       <AdminSidebar />
       <main className="flex-1 overflow-auto">
         <div className="p-8">
@@ -18,4 +18,3 @@ export default function AdminShell({ children }: AdminShellProps) {
     </div>
   );
 }
-

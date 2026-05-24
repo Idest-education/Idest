@@ -2,13 +2,12 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { cn } from "@/lib/utils";
 import {
   LayoutDashboard,
   Users,
   GraduationCap,
   Video,
-  Settings,
+  ArrowLeft,
 } from "lucide-react";
 
 const navItems = [
@@ -22,45 +21,107 @@ export default function AdminSidebar() {
   const pathname = usePathname();
 
   return (
-    <aside className="w-64 bg-gray-900 text-white min-h-screen p-6">
+    <aside
+      className="w-64 min-h-screen p-6 flex flex-col"
+      style={{ background: "#1a0a00" }}
+    >
+      {/* Logo */}
       <div className="mb-8">
-        <h2 className="text-xl font-bold">Admin Panel</h2>
-        <p className="text-sm text-gray-400 mt-1">Management Console</p>
+        <h2
+          style={{
+            fontFamily: "Oswald, sans-serif",
+            fontWeight: 700,
+            fontSize: 18,
+            color: "#fffaf5",
+            letterSpacing: "0.05em",
+          }}
+        >
+          IDEST
+        </h2>
+        <p
+          className="mt-0.5"
+          style={{
+            fontFamily: "Plus Jakarta Sans, sans-serif",
+            fontSize: 11,
+            color: "rgba(255,250,245,0.4)",
+            letterSpacing: "0.04em",
+          }}
+        >
+          Admin Console
+        </p>
       </div>
 
-      <nav className="space-y-1">
+      {/* Nav */}
+      <nav className="space-y-1 flex-1">
         {navItems.map((item) => {
           const Icon = item.icon;
-          const isActive = pathname === item.href || pathname?.startsWith(item.href + "/");
-          
+          const isActive =
+            pathname === item.href || pathname?.startsWith(item.href + "/");
+
           return (
             <Link
               key={item.href}
               href={item.href}
-              className={cn(
-                "flex items-center gap-3 px-4 py-3 rounded-lg transition-colors",
+              className="flex items-center gap-3 px-4 py-3 rounded-lg transition-colors duration-150"
+              style={
                 isActive
-                  ? "bg-gray-800 text-white"
-                  : "text-gray-300 hover:bg-gray-800 hover:text-white"
-              )}
+                  ? {
+                      background: "var(--color-brand)",
+                      color: "#ffffff",
+                      fontFamily: "Plus Jakarta Sans, sans-serif",
+                      fontWeight: 600,
+                      fontSize: 14,
+                    }
+                  : {
+                      background: "transparent",
+                      color: "rgba(255,250,245,0.5)",
+                      fontFamily: "Plus Jakarta Sans, sans-serif",
+                      fontSize: 14,
+                    }
+              }
+              onMouseEnter={(e) => {
+                if (!isActive) {
+                  (e.currentTarget as HTMLAnchorElement).style.background = "#2d1500";
+                  (e.currentTarget as HTMLAnchorElement).style.color = "rgba(255,250,245,0.8)";
+                }
+              }}
+              onMouseLeave={(e) => {
+                if (!isActive) {
+                  (e.currentTarget as HTMLAnchorElement).style.background = "transparent";
+                  (e.currentTarget as HTMLAnchorElement).style.color = "rgba(255,250,245,0.5)";
+                }
+              }}
             >
-              <Icon className="w-5 h-5" />
+              <Icon className="w-5 h-5 flex-shrink-0" />
               <span>{item.label}</span>
             </Link>
           );
         })}
       </nav>
 
-      <div className="mt-8 pt-8 border-t border-gray-800">
+      {/* Back to App */}
+      <div style={{ borderTop: "1px solid rgba(255,250,245,0.1)" }} className="pt-4 mt-4">
         <Link
           href="/classes"
-          className="flex items-center gap-3 px-4 py-3 rounded-lg text-gray-300 hover:bg-gray-800 hover:text-white transition-colors"
+          className="flex items-center gap-3 px-4 py-3 rounded-lg transition-colors duration-150"
+          style={{
+            color: "rgba(255,250,245,0.5)",
+            fontFamily: "Plus Jakarta Sans, sans-serif",
+            fontSize: 14,
+          }}
+          onMouseEnter={(e) => {
+            (e.currentTarget as HTMLAnchorElement).style.background = "#2d1500";
+            (e.currentTarget as HTMLAnchorElement).style.color = "rgba(255,250,245,0.8)";
+          }}
+          onMouseLeave={(e) => {
+            (e.currentTarget as HTMLAnchorElement).style.background = "transparent";
+            (e.currentTarget as HTMLAnchorElement).style.color = "rgba(255,250,245,0.5)";
+          }}
         >
-          <Settings className="w-5 h-5" />
+          <ArrowLeft className="w-5 h-5 flex-shrink-0" />
           <span>Back to App</span>
         </Link>
       </div>
     </aside>
   );
 }
-
