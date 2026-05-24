@@ -6,10 +6,8 @@ import { getClassCalendarEvents } from "@/services/calendar.service";
 import ClassesSection from "@/components/class/class-section";
 import { ClassResponse, ClassData } from "@/types/class";
 import { ClassCalendarEventsResponse } from "@/types/calendar";
-import { GraduationCap, Users, Search, BookOpen, X } from "lucide-react";
+import { Users, Search, X } from "lucide-react";
 import LoadingScreen from "@/components/loading-screen";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { PlusCircle } from "lucide-react";
 import AddClassModal from "@/components/class/add-class-modal";
 import JoinClassModal from "@/components/class/join-class-modal";
@@ -137,106 +135,180 @@ export default function ClassesPage() {
   };
 
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-screen" style={{ background: "var(--color-surface-app)" }}>
       <div className="px-6 py-10">
         {/* Header */}
         <div className="mb-8 animate-in fade-in slide-in-from-top-4">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
-            {/* Left Column - Text + Stats */}
+            {/* Left Column */}
             <div className="space-y-6">
-              <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-gradient-to-r from-amber-100 via-orange-100 to-orange-100 text-xs font-medium text-gray-800 shadow-sm mb-4 hover:shadow-md transition-shadow duration-300">
-                <GraduationCap className="w-4 h-4 text-orange-500 animate-pulse" />
+              {/* Eyebrow pill */}
+              <div
+                className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-xs font-semibold uppercase tracking-widest"
+                style={{
+                  background: "var(--color-surface-subtle)",
+                  border: "1px solid var(--color-border-default)",
+                  color: "var(--color-text-secondary)",
+                  fontFamily: "Plus Jakarta Sans, sans-serif",
+                }}
+              >
+                <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/></svg>
                 Học tập cùng nhau, phát triển cùng nhau
               </div>
+
+              {/* H1 — Oswald, no gradient */}
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-                <h1 className="text-4xl font-bold text-gray-900 tracking-tight mb-0 bg-gradient-to-r from-gray-900 via-orange-900 to-orange-800 bg-clip-text text-transparent">
+                <h1
+                  style={{
+                    fontFamily: "Oswald, sans-serif",
+                    fontWeight: 700,
+                    fontSize: 40,
+                    color: "var(--color-text-primary)",
+                    letterSpacing: "-0.02em",
+                  }}
+                >
                   Lớp học
                 </h1>
                 <div className="flex items-center gap-2">
                   {(userRole === "TEACHER" || userRole === "ADMIN") && (
-                    <Button
+                    <button
                       onClick={() => setShowAddModal(true)}
-                      size="sm"
-                      className="flex items-center gap-2"
+                      className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold text-white transition-colors"
+                      style={{ background: "var(--color-brand)", fontFamily: "Plus Jakarta Sans, sans-serif" }}
                     >
                       <PlusCircle className="w-4 h-4" />
                       Tạo lớp học
-                    </Button>
+                    </button>
                   )}
-                  <Button
+                  <button
                     onClick={() => setShowJoinModal(true)}
-                    variant="outline"
-                    size="sm"
-                    className="flex items-center gap-2"
+                    className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-colors"
+                    style={{
+                      background: "var(--color-surface-card)",
+                      border: "1.5px solid var(--color-border-default)",
+                      color: "var(--color-text-primary)",
+                      fontFamily: "Plus Jakarta Sans, sans-serif",
+                    }}
                   >
                     <Users className="w-4 h-4" />
                     Tham gia lớp học
-                  </Button>
+                  </button>
                 </div>
               </div>
-              <p className="text-gray-600 max-w-2xl mt-2">
+
+              <p
+                className="max-w-[52ch]"
+                style={{ color: "var(--color-text-muted)", fontFamily: "Plus Jakarta Sans, sans-serif", fontSize: 14 }}
+              >
                 Quản lý lớp học và hành trình học tập của bạn. Tạo, tham gia và khám phá các lớp học mới.
               </p>
 
-              <div className="relative rounded-2xl overflow-hidden shadow-xl bg-gradient-to-br from-orange-50 via-orange-50 to-amber-50 p-6 flex flex-col justify-center">
-                <div className="space-y-4">
-                  <div className="flex items-center gap-3 px-4 py-3 bg-white/80 backdrop-blur-sm rounded-xl shadow-sm hover:shadow-md transition-shadow">
-                    <div className="p-2 bg-orange-100 rounded-lg">
-                      <BookOpen className="w-5 h-5 text-orange-600" />
-                    </div>
-                    <div>
-                      <p className="text-2xl font-bold text-gray-900">{classes.created.length}</p>
-                      <p className="text-sm text-gray-600">Lớp đã tạo</p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-3 px-4 py-3 bg-white/80 backdrop-blur-sm rounded-xl shadow-sm hover:shadow-md transition-shadow">
-                    <div className="p-2 bg-orange-100 rounded-lg">
-                      <GraduationCap className="w-5 h-5 text-orange-600" />
-                    </div>
-                    <div>
-                      <p className="text-2xl font-bold text-gray-900">{classes.teaching.length}</p>
-                      <p className="text-sm text-gray-600">Đang giảng dạy</p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-3 px-4 py-3 bg-white/80 backdrop-blur-sm rounded-xl shadow-sm hover:shadow-md transition-shadow">
-                    <div className="p-2 bg-orange-100 rounded-lg">
-                      <Users className="w-5 h-5 text-orange-600" />
-                    </div>
-                    <div>
-                      <p className="text-2xl font-bold text-gray-900">{classes.enrolled.length}</p>
-                      <p className="text-sm text-gray-600">Đã ghi danh</p>
-                    </div>
-                  </div>
-                </div>
-                <div className="mt-4 px-4 py-3 bg-white/80 backdrop-blur-sm rounded-xl shadow-sm">
-                  <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
-                    Lớp học tiếp theo
+              {/* Stat strip — 3 varied cells */}
+              <div className="grid grid-cols-3 gap-3">
+                {/* Cell 1 — accent */}
+                <div
+                  className="rounded-xl p-4"
+                  style={{
+                    background: "var(--color-surface-subtle)",
+                    border: "1.5px solid var(--color-brand)",
+                  }}
+                >
+                  <p
+                    style={{
+                      fontFamily: "JetBrains Mono, monospace",
+                      fontSize: 28,
+                      fontWeight: 700,
+                      color: "var(--color-brand)",
+                      lineHeight: 1,
+                    }}
+                  >
+                    {classes.created.length}
                   </p>
-                  {nextClassEvent ? (
-                    <div className="mt-1">
-                      <p className="text-sm font-semibold text-gray-900 truncate">
-                        {nextClassEvent.className}
-                      </p>
-                      <p className="text-xs text-gray-600">
-                        {new Date(nextClassEvent.start).toLocaleString("vi-VN", {
-                          weekday: "short",
-                          day: "2-digit",
-                          month: "2-digit",
-                          hour: "2-digit",
-                          minute: "2-digit",
-                        })}
-                      </p>
-                    </div>
-                  ) : (
-                    <p className="mt-1 text-xs text-gray-500">
-                      Chưa có lịch học sắp tới.
-                    </p>
-                  )}
+                  <p className="mt-1 text-xs" style={{ color: "var(--color-text-muted)", fontFamily: "Plus Jakarta Sans, sans-serif" }}>Đã tạo</p>
+                </div>
+                {/* Cell 2 — standard */}
+                <div
+                  className="rounded-xl p-4"
+                  style={{
+                    background: "var(--color-surface-card)",
+                    border: "1.5px solid var(--color-border-default)",
+                  }}
+                >
+                  <p
+                    style={{
+                      fontFamily: "JetBrains Mono, monospace",
+                      fontSize: 24,
+                      fontWeight: 700,
+                      color: "var(--color-text-primary)",
+                      lineHeight: 1,
+                    }}
+                  >
+                    {classes.teaching.length}
+                  </p>
+                  <p className="mt-1 text-xs" style={{ color: "var(--color-text-muted)", fontFamily: "Plus Jakarta Sans, sans-serif" }}>Giảng dạy</p>
+                </div>
+                {/* Cell 3 — compact */}
+                <div
+                  className="rounded-xl p-3"
+                  style={{
+                    background: "var(--color-surface-card)",
+                    border: "1.5px solid var(--color-border-default)",
+                  }}
+                >
+                  <p
+                    style={{
+                      fontFamily: "JetBrains Mono, monospace",
+                      fontSize: 20,
+                      fontWeight: 700,
+                      color: "var(--color-text-primary)",
+                      lineHeight: 1,
+                    }}
+                  >
+                    {classes.enrolled.length}
+                  </p>
+                  <p className="mt-1 text-xs" style={{ color: "var(--color-text-muted)", fontFamily: "Plus Jakarta Sans, sans-serif" }}>Ghi danh</p>
                 </div>
               </div>
+
+              {/* Next class callout */}
+              {nextClassEvent && (
+                <div
+                  className="flex items-center gap-3 py-3 px-4"
+                  style={{
+                    background: "var(--color-surface-subtle)",
+                    borderLeft: "3px solid var(--color-brand)",
+                    borderRadius: "0 8px 8px 0",
+                  }}
+                >
+                  <span
+                    className="flex-shrink-0 rounded-full"
+                    style={{ width: 8, height: 8, background: "var(--color-brand)" }}
+                  />
+                  <div className="min-w-0">
+                    <p
+                      className="font-semibold truncate text-sm"
+                      style={{ color: "var(--color-text-primary)", fontFamily: "Plus Jakarta Sans, sans-serif" }}
+                    >
+                      {nextClassEvent.className}
+                    </p>
+                    <p
+                      className="text-xs"
+                      style={{ color: "var(--color-text-muted)", fontFamily: "Plus Jakarta Sans, sans-serif" }}
+                    >
+                      {new Date(nextClassEvent.start).toLocaleString("vi-VN", {
+                        weekday: "short",
+                        day: "2-digit",
+                        month: "2-digit",
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      })}
+                    </p>
+                  </div>
+                </div>
+              )}
             </div>
 
-            {/* Right Column - Static Calendar */}
+            {/* Right Column — Calendar unchanged */}
             <div className="min-w-0">
               <ClassScheduleCalendar
                 events={calendarEvents}
@@ -249,26 +321,44 @@ export default function ClassesPage() {
 
         {/* Search Bar */}
         <div className="mb-6 animate-in fade-in slide-in-from-top-4">
-          <div className="relative max-w-md group">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5 group-focus-within:text-orange-500 transition-colors duration-300" />
-            <Input
+          <div className="relative max-w-md">
+            <Search
+              className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5"
+              style={{ color: "var(--color-text-muted)" }}
+            />
+            <input
               type="text"
               placeholder="Tìm kiếm lớp học theo tên hoặc mô tả..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-10 pr-10 w-full transition-all duration-300 focus:ring-2 focus:ring-orange-500 focus:border-orange-500 hover:border-gray-400"
+              className="w-full rounded-lg pl-10 pr-10 py-2.5 text-sm outline-none"
+              style={{
+                background: "var(--color-surface-card)",
+                border: "1.5px solid var(--color-border-default)",
+                color: "var(--color-text-primary)",
+                fontFamily: "Plus Jakarta Sans, sans-serif",
+              }}
+              onFocus={(e) => {
+                e.currentTarget.style.borderColor = "var(--color-brand)";
+                e.currentTarget.style.boxShadow = "0 0 0 3px #FF6B3520";
+              }}
+              onBlur={(e) => {
+                e.currentTarget.style.borderColor = "var(--color-border-default)";
+                e.currentTarget.style.boxShadow = "none";
+              }}
             />
             {searchQuery && (
               <button
                 onClick={() => setSearchQuery("")}
-                className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 hover:scale-110 transition-all duration-300"
+                className="absolute right-3 top-1/2 -translate-y-1/2"
+                style={{ color: "var(--color-text-muted)" }}
               >
                 <X className="w-4 h-4" />
               </button>
             )}
           </div>
           {searchQuery && (
-            <p className="mt-2 text-sm text-gray-600 animate-in fade-in slide-in-from-top-2">
+            <p className="mt-2 text-sm" style={{ color: "var(--color-text-muted)", fontFamily: "Plus Jakarta Sans, sans-serif" }}>
               {searching ? "Đang tìm kiếm..." : searchResults.length > 0 ? `Tìm thấy ${searchResults.length} lớp học` : "Không tìm thấy lớp học nào"}
             </p>
           )}
@@ -280,27 +370,50 @@ export default function ClassesPage() {
             {searching ? (
               <div className="py-24 flex justify-center">
                 <div className="flex flex-col items-center gap-3">
-                  <div className="w-10 h-10 rounded-full border-2 border-gray-900 border-t-transparent animate-spin" />
-                  <p className="text-gray-600 text-sm">Đang tìm kiếm...</p>
+                  <div
+                    className="w-10 h-10 rounded-full border-2 border-t-transparent animate-spin"
+                    style={{ borderColor: "var(--color-border-default)", borderTopColor: "transparent" }}
+                  />
+                  <p className="text-sm" style={{ color: "var(--color-text-muted)" }}>Đang tìm kiếm...</p>
                 </div>
               </div>
             ) : searchResults.length > 0 ? (
               <ClassesSection title="" classes={searchResults} />
             ) : (
-              <div className="border border-dashed border-gray-300 rounded-2xl p-12 text-center bg-gradient-to-br from-white via-gray-50 to-gray-100">
+              <div
+                className="rounded-2xl p-12 text-center"
+                style={{
+                  border: "1.5px dashed var(--color-border-default)",
+                  background: "var(--color-surface-subtle)",
+                }}
+              >
                 <div className="max-w-md mx-auto space-y-4">
-                  <Search className="w-10 h-10 mx-auto text-gray-400" />
-                  <h3 className="text-2xl font-semibold text-gray-900">Không tìm thấy lớp học</h3>
-                  <p className="text-gray-600">
+                  <Search className="w-10 h-10 mx-auto" style={{ color: "var(--color-text-muted)" }} />
+                  <h3
+                    style={{
+                      fontFamily: "Oswald, sans-serif",
+                      fontSize: 22,
+                      fontWeight: 600,
+                      color: "var(--color-text-primary)",
+                    }}
+                  >
+                    Không tìm thấy lớp học
+                  </h3>
+                  <p className="text-sm" style={{ color: "var(--color-text-muted)" }}>
                     Không tìm thấy lớp học nào cho &quot;{searchQuery}&quot;
                   </p>
-                  <Button
-                    variant="outline"
+                  <button
                     onClick={() => setSearchQuery("")}
-                    className="mt-4"
+                    className="px-4 py-2 rounded-lg text-sm font-medium"
+                    style={{
+                      background: "var(--color-surface-card)",
+                      border: "1.5px solid var(--color-border-default)",
+                      color: "var(--color-text-primary)",
+                      fontFamily: "Plus Jakarta Sans, sans-serif",
+                    }}
                   >
                     Xóa tìm kiếm
-                  </Button>
+                  </button>
                 </div>
               </div>
             )}
@@ -312,13 +425,27 @@ export default function ClassesPage() {
           hasClasses ? (
             <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4">
               {classes.created.length > 0 && (
-                <div className="space-y-6">
-                  <div className="flex items-center justify-between">
-                    <h2 className="text-2xl font-bold text-gray-900">
+                <div className="space-y-4">
+                  <div className="flex items-center gap-3">
+                    <h2
+                      style={{
+                        fontFamily: "Oswald, sans-serif",
+                        fontWeight: 600,
+                        fontSize: 20,
+                        color: "var(--color-text-primary)",
+                      }}
+                    >
                       Đã tạo bởi bạn
                     </h2>
-                    <span className="text-sm text-gray-500 bg-gray-100 px-3 py-1 rounded-full">
-                      {classes.created.length} lớp học
+                    <span
+                      className="px-2.5 py-0.5 rounded-full text-xs font-semibold"
+                      style={{
+                        background: "var(--color-surface-subtle)",
+                        color: "var(--color-text-secondary)",
+                        fontFamily: "Plus Jakarta Sans, sans-serif",
+                      }}
+                    >
+                      {classes.created.length}
                     </span>
                   </div>
                   <ClassesSection title="" classes={classes.created} />
@@ -326,13 +453,27 @@ export default function ClassesPage() {
               )}
 
               {classes.teaching.length > 0 && (
-                <div className="space-y-6">
-                  <div className="flex items-center justify-between">
-                    <h2 className="text-2xl font-bold text-gray-900">
+                <div className="space-y-4">
+                  <div className="flex items-center gap-3">
+                    <h2
+                      style={{
+                        fontFamily: "Oswald, sans-serif",
+                        fontWeight: 600,
+                        fontSize: 20,
+                        color: "var(--color-text-primary)",
+                      }}
+                    >
                       Đang giảng dạy
                     </h2>
-                    <span className="text-sm text-gray-500 bg-gray-100 px-3 py-1 rounded-full">
-                      {classes.teaching.length} lớp học
+                    <span
+                      className="px-2.5 py-0.5 rounded-full text-xs font-semibold"
+                      style={{
+                        background: "var(--color-surface-subtle)",
+                        color: "var(--color-text-secondary)",
+                        fontFamily: "Plus Jakarta Sans, sans-serif",
+                      }}
+                    >
+                      {classes.teaching.length}
                     </span>
                   </div>
                   <ClassesSection title="" classes={classes.teaching} />
@@ -340,13 +481,27 @@ export default function ClassesPage() {
               )}
 
               {classes.enrolled.length > 0 && (
-                <div className="space-y-6">
-                  <div className="flex items-center justify-between">
-                    <h2 className="text-2xl font-bold text-gray-900">
+                <div className="space-y-4">
+                  <div className="flex items-center gap-3">
+                    <h2
+                      style={{
+                        fontFamily: "Oswald, sans-serif",
+                        fontWeight: 600,
+                        fontSize: 20,
+                        color: "var(--color-text-primary)",
+                      }}
+                    >
                       Đã ghi danh
                     </h2>
-                    <span className="text-sm text-gray-500 bg-gray-100 px-3 py-1 rounded-full">
-                      {classes.enrolled.length} lớp học
+                    <span
+                      className="px-2.5 py-0.5 rounded-full text-xs font-semibold"
+                      style={{
+                        background: "var(--color-surface-subtle)",
+                        color: "var(--color-text-secondary)",
+                        fontFamily: "Plus Jakarta Sans, sans-serif",
+                      }}
+                    >
+                      {classes.enrolled.length}
                     </span>
                   </div>
                   <ClassesSection title="" classes={classes.enrolled} />
@@ -354,41 +509,63 @@ export default function ClassesPage() {
               )}
             </div>
           ) : (
-            <div className="border border-dashed border-gray-300 rounded-2xl p-12 text-center bg-gradient-to-br from-white via-gray-50 to-gray-100 animate-in fade-in slide-in-from-bottom-4">
+            <div
+              className="rounded-2xl p-12 text-center animate-in fade-in slide-in-from-bottom-4"
+              style={{
+                border: "1.5px dashed var(--color-border-default)",
+                background: "var(--color-surface-subtle)",
+              }}
+            >
               <div className="max-w-md mx-auto space-y-4">
-                <div className="w-16 h-16 bg-gradient-to-br from-orange-100 to-orange-100 rounded-full flex items-center justify-center mx-auto">
-                  <GraduationCap className="w-8 h-8 text-orange-600" />
+                <div
+                  className="w-16 h-16 rounded-full flex items-center justify-center mx-auto"
+                  style={{ background: "var(--color-surface-muted)" }}
+                >
+                  <svg className="w-8 h-8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} style={{ color: "var(--color-brand)" }}><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/></svg>
                 </div>
-                <h3 className="text-2xl font-semibold text-gray-900">
+                <h3
+                  style={{
+                    fontFamily: "Oswald, sans-serif",
+                    fontSize: 22,
+                    fontWeight: 600,
+                    color: "var(--color-text-primary)",
+                  }}
+                >
                   Chưa có lớp học nào
                 </h3>
-                <p className="text-gray-600">
+                <p className="text-sm" style={{ color: "var(--color-text-muted)", fontFamily: "Plus Jakarta Sans, sans-serif" }}>
                   Bắt đầu bằng cách tạo hoặc tham gia một lớp học để bắt đầu hành trình học tập của bạn.
                 </p>
                 <div className="flex flex-col sm:flex-row gap-3 justify-center mt-6">
                   {(userRole === "TEACHER" || userRole === "ADMIN") && (
-                    <Button 
+                    <button
                       onClick={() => setShowAddModal(true)}
-                      className="flex items-center gap-2"
+                      className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold text-white"
+                      style={{ background: "var(--color-brand)", fontFamily: "Plus Jakarta Sans, sans-serif" }}
                     >
                       <PlusCircle className="w-4 h-4" />
                       Tạo lớp học
-                    </Button>
+                    </button>
                   )}
-                  <Button
+                  <button
                     onClick={() => setShowJoinModal(true)}
-                    variant="outline"
-                    className="flex items-center gap-2"
+                    className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold"
+                    style={{
+                      background: "var(--color-surface-card)",
+                      border: "1.5px solid var(--color-border-default)",
+                      color: "var(--color-text-primary)",
+                      fontFamily: "Plus Jakarta Sans, sans-serif",
+                    }}
                   >
                     <Users className="w-4 h-4" />
                     Tham gia lớp học
-                  </Button>
+                  </button>
                 </div>
               </div>
             </div>
           )
         )}
-        {/* Modal tạo lớp học */}
+
         <AddClassModal
           open={showAddModal}
           onClose={() => setShowAddModal(false)}
@@ -398,7 +575,6 @@ export default function ClassesPage() {
             );
           }}
         />
-
         <JoinClassModal
           open={showJoinModal}
           onClose={() => setShowJoinModal(false)}
