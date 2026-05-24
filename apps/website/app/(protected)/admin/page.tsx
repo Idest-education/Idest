@@ -1,7 +1,6 @@
 import { requireAdmin } from "@/lib/admin/require-admin";
 import { createClient } from "@/lib/supabase/server";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Users, GraduationCap, FileText, Video } from "lucide-react";
+import { Users, GraduationCap, Video } from "lucide-react";
 
 async function getStats() {
   const supabase = await createClient();
@@ -44,45 +43,62 @@ export default async function AdminDashboard() {
   return (
     <div className="space-y-8">
       <div>
-        <h1 className="text-3xl font-bold text-gray-900">Admin Dashboard</h1>
-        <p className="text-gray-600 mt-2">Overview of system statistics</p>
+        <h1
+          style={{
+            fontFamily: "Oswald, sans-serif",
+            fontWeight: 700,
+            fontSize: 26,
+            color: "var(--color-text-primary)",
+          }}
+        >
+          Admin Dashboard
+        </h1>
+        <p className="mt-1 text-sm" style={{ color: "var(--color-text-muted)", fontFamily: "Plus Jakarta Sans, sans-serif" }}>
+          Overview of system statistics
+        </p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Users</CardTitle>
-            <Users className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.users}</div>
-            <p className="text-xs text-muted-foreground">Registered users</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Classes</CardTitle>
-            <GraduationCap className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.classes}</div>
-            <p className="text-xs text-muted-foreground">Active classes</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Sessions</CardTitle>
-            <Video className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.sessions}</div>
-            <p className="text-xs text-muted-foreground">Learning sessions</p>
-          </CardContent>
-        </Card>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        {[
+          { label: "Total Users", value: stats.users, icon: <Users className="w-5 h-5" style={{ color: "var(--color-brand)" }} /> },
+          { label: "Total Classes", value: stats.classes, icon: <GraduationCap className="w-5 h-5" style={{ color: "var(--color-brand)" }} /> },
+          { label: "Total Sessions", value: stats.sessions, icon: <Video className="w-5 h-5" style={{ color: "var(--color-brand)" }} /> },
+        ].map(({ label, value, icon }) => (
+          <div
+            key={label}
+            className="rounded-xl p-5"
+            style={{
+              background: "var(--color-surface-card)",
+              border: "1.5px solid var(--color-border-default)",
+            }}
+          >
+            <div className="flex items-center gap-3 mb-3">
+              <div
+                className="w-9 h-9 rounded-lg flex items-center justify-center"
+                style={{ background: "var(--color-surface-subtle)" }}
+              >
+                {icon}
+              </div>
+              <span
+                className="text-xs uppercase tracking-widest"
+                style={{ color: "var(--color-text-muted)", fontFamily: "Plus Jakarta Sans, sans-serif", letterSpacing: "0.06em" }}
+              >
+                {label}
+              </span>
+            </div>
+            <p
+              style={{
+                fontFamily: "JetBrains Mono, monospace",
+                fontWeight: 700,
+                fontSize: 26,
+                color: "var(--color-text-primary)",
+              }}
+            >
+              {value}
+            </p>
+          </div>
+        ))}
       </div>
     </div>
   );
 }
-
