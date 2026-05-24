@@ -139,8 +139,9 @@ export default function SessionReviewPage() {
   }, [attendance]);
 
   const participantItems = attendance?.attendees ?? [];
-  const visibleStudentItems = showAllStudents
-    ? classStudents.map((student) => {
+  const visibleStudentItems = useMemo(() => {
+    if (showAllStudents) {
+      return classStudents.map((student) => {
         const attendee = attendanceByUserId.get(student.id);
         return {
           key: student.id,
@@ -150,15 +151,17 @@ export default function SessionReviewPage() {
           isAttended: !!attendee?.is_attended,
           isAbsent: !attendee,
         };
-      })
-    : participantItems.map((attendee) => ({
-        key: attendee.id,
-        fullName: attendee.user?.full_name || "Người dùng không xác định",
-        joinedAt: attendee.joined_at ?? null,
-        durationSeconds: attendee.duration_seconds ?? null,
-        isAttended: attendee.is_attended,
-        isAbsent: false,
-      }));
+      });
+    }
+    return participantItems.map((attendee) => ({
+      key: attendee.id,
+      fullName: attendee.user?.full_name || "Người dùng không xác định",
+      joinedAt: attendee.joined_at ?? null,
+      durationSeconds: attendee.duration_seconds ?? null,
+      isAttended: attendee.is_attended,
+      isAbsent: false,
+    }));
+  }, [showAllStudents, classStudents, attendanceByUserId, participantItems]);
 
   const handleDownloadRecording = () => {
     if (!playbackUrl) return;
