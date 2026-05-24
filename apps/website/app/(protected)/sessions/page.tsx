@@ -3,9 +3,7 @@
 import { useEffect, useState } from "react";
 import { getUserSessions } from "@/services/session.service";
 import { SessionData, PaginatedResponse } from "@/types/session";
-import { Loader2 } from "lucide-react";
 import SessionCard from "@/components/session/session-card";
-import { Button } from "@/components/ui/button";
 
 export default function SessionsPage() {
   const [sessions, setSessions] = useState<SessionData[]>([]);
@@ -84,49 +82,82 @@ export default function SessionsPage() {
   });
 
   return (
-    <div className="min-h-screen bg-white">
-      <div className="px-6 py-6 md:py-8 space-y-8">
-        <div className="border-b border-gray-200 pb-6">
-          <h1 className="text-3xl font-semibold text-gray-900 mb-2">Buổi học của tôi</h1>
-          <p className="text-gray-600">Xem và quản lý các buổi học sắp tới và đã qua của bạn.</p>
+    <div className="min-h-screen" style={{ background: "var(--color-surface-app)" }}>
+      <div className="px-6 py-6 md:py-8 space-y-6">
+        <div style={{ borderBottom: "1.5px solid var(--color-border-default)" }} className="pb-6">
+          <h1
+            style={{
+              fontFamily: "Oswald, sans-serif",
+              fontWeight: 700,
+              fontSize: 32,
+              color: "var(--color-text-primary)",
+            }}
+          >
+            Buổi học của tôi
+          </h1>
+          <p className="mt-1 text-sm" style={{ color: "var(--color-text-muted)", fontFamily: "Plus Jakarta Sans, sans-serif" }}>
+            Xem và quản lý các buổi học sắp tới và đã qua của bạn.
+          </p>
         </div>
 
-        <div className="flex gap-2">
-          <Button
-            variant={filter === "upcoming" ? "default" : "outline"}
-            onClick={() => setFilter("upcoming")}
-          >
-            Sắp tới
-          </Button>
-          <Button
-            variant={filter === "past" ? "default" : "outline"}
-            onClick={() => setFilter("past")}
-          >
-            Đã qua
-          </Button>
+        {/* Warm pill filter tabs */}
+        <div
+          className="inline-flex rounded-full p-1 gap-1"
+          style={{ background: "var(--color-surface-muted)" }}
+        >
+          {(["upcoming", "past"] as const).map((f) => (
+            <button
+              key={f}
+              onClick={() => setFilter(f)}
+              className="px-5 py-1.5 rounded-full text-sm font-semibold transition-colors duration-150"
+              style={
+                filter === f
+                  ? {
+                      background: "var(--color-brand)",
+                      color: "#fff",
+                      fontFamily: "Plus Jakarta Sans, sans-serif",
+                    }
+                  : {
+                      background: "transparent",
+                      color: "var(--color-text-muted)",
+                      fontFamily: "Plus Jakarta Sans, sans-serif",
+                    }
+              }
+            >
+              {f === "upcoming" ? "Sắp tới" : "Đã qua"}
+            </button>
+          ))}
         </div>
 
         {loading ? (
           <div className="flex justify-center py-12">
-            <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
+            <div
+              className="w-8 h-8 rounded-full border-2 border-t-transparent animate-spin"
+              style={{ borderColor: "var(--color-border-default)", borderTopColor: "transparent" }}
+            />
           </div>
         ) : error ? (
-          <div className="text-center py-12 text-red-600">
+          <div
+            className="text-center py-12 text-sm"
+            style={{ color: "var(--color-error)", fontFamily: "Plus Jakarta Sans, sans-serif" }}
+          >
             {error}
           </div>
         ) : filteredSessions.length === 0 ? (
-          <div className="text-center py-12 text-gray-500">
+          <div
+            className="text-center py-12 text-sm"
+            style={{ color: "var(--color-text-muted)", fontFamily: "Plus Jakarta Sans, sans-serif" }}
+          >
             Không tìm thấy buổi học {filter === "upcoming" ? "sắp tới" : "đã qua"}.
           </div>
         ) : (
-          <div className="grid gap-4">
+          <div className="grid gap-3">
             {filteredSessions.map((session) => (
               <SessionCard
                 key={session.id}
                 session={session}
                 currentUserId={currentUserId}
                 allowReviewAction={filter === "past"}
-                // Add handlers if needed
               />
             ))}
           </div>
