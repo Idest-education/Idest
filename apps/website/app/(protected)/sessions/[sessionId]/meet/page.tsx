@@ -314,14 +314,33 @@ export default function SessionMeetPage() {
     : "Live session";
 
   return (
-    <div className="fixed inset-0 flex h-screen w-screen flex-col overflow-hidden bg-background">
+    <div className="fixed inset-0 flex h-screen w-screen flex-col overflow-hidden" style={{ background: "#0b0b0b" }}>
       {/* Compact header */}
-      <div className="flex-shrink-0 border-b border-border/40 bg-background px-4 py-2">
+      <div
+        className="flex-shrink-0 px-4 py-2.5"
+        style={{ background: "#151515", borderBottom: "1px solid #2a2a2a" }}
+      >
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-sm font-semibold leading-tight">{headerTitle}</h1>
+            <h1
+              style={{
+                fontFamily: "Oswald, sans-serif",
+                fontWeight: 600,
+                fontSize: 15,
+                color: "#fffaf5",
+                lineHeight: 1.3,
+              }}
+            >
+              {headerTitle}
+            </h1>
             {session && (
-              <p className="text-xs text-muted-foreground">
+              <p
+                style={{
+                  fontFamily: "JetBrains Mono, monospace",
+                  fontSize: 11,
+                  color: "rgba(255,250,245,0.35)",
+                }}
+              >
                 {format(new Date(session.start_time), "PPpp")}
               </p>
             )}
@@ -338,7 +357,10 @@ export default function SessionMeetPage() {
       <div className="flex-shrink-0 px-4 py-2">
         <MeetStatusBanner />
         {sessionError && (
-          <div className="mt-2 rounded-lg border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">
+          <div
+            className="mt-2 rounded-lg p-3 text-sm"
+            style={{ background: "rgba(220,38,38,0.15)", border: "1px solid rgba(220,38,38,0.4)", color: "#fca5a5" }}
+          >
             {sessionError}
           </div>
         )}
@@ -349,7 +371,7 @@ export default function SessionMeetPage() {
         <div className="flex min-w-0 flex-1 flex-col overflow-hidden bg-transparent" style={{ width: "100%", height: "100%" }}>
           {loadingSession ? (
             <div className="flex h-full items-center justify-center">
-              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+              <Loader2 className="h-6 w-6 animate-spin" style={{ color: "rgba(255,250,245,0.35)" }} />
             </div>
           ) : livekitCredentials ? (
             <LiveKitRoom
@@ -367,9 +389,24 @@ export default function SessionMeetPage() {
               
               <Tabs defaultValue="video" className="flex h-full flex-col min-h-0">
                 <div className="flex-shrink-0 px-2 pb-2">
-                  <TabsList className="grid w-full max-w-[400px] grid-cols-2">
-                    <TabsTrigger value="video">Cuộc gọi video</TabsTrigger>
-                    <TabsTrigger value="whiteboard">Bảng trắng</TabsTrigger>
+                  <TabsList
+                    className="grid w-full max-w-[400px] grid-cols-2 p-1"
+                    style={{ background: "#151515", border: "1px solid #2a2a2a", borderRadius: 9999 }}
+                  >
+                    <TabsTrigger
+                      value="video"
+                      style={{ fontFamily: "Plus Jakarta Sans, sans-serif", borderRadius: 9999 }}
+                      className="data-[state=active]:bg-[#FF6B35] data-[state=active]:text-white text-[rgba(255,250,245,0.35)]"
+                    >
+                      Cuộc gọi video
+                    </TabsTrigger>
+                    <TabsTrigger
+                      value="whiteboard"
+                      style={{ fontFamily: "Plus Jakarta Sans, sans-serif", borderRadius: 9999 }}
+                      className="data-[state=active]:bg-[#FF6B35] data-[state=active]:text-white text-[rgba(255,250,245,0.35)]"
+                    >
+                      Bảng trắng
+                    </TabsTrigger>
                   </TabsList>
                 </div>
 
@@ -380,11 +417,13 @@ export default function SessionMeetPage() {
                   
                   <TabsContent value="whiteboard" forceMount className="flex-1 min-h-0 data-[state=inactive]:hidden mt-0">
                     {sessionId && (
-                      <MeetingWhiteboard 
-                        sessionId={sessionId} 
-                        socket={socket} 
-                        className="rounded-md border border-border"
-                      />
+                      <div className="h-full w-full rounded-md overflow-hidden" style={{ border: "1px solid #2a2a2a" }}>
+                        <MeetingWhiteboard
+                          sessionId={sessionId}
+                          socket={socket}
+                          className="rounded-md"
+                        />
+                      </div>
                     )}
                   </TabsContent>
                 </div>
@@ -404,7 +443,10 @@ export default function SessionMeetPage() {
               </Tabs>
             </LiveKitRoom>
           ) : (
-            <div className="flex h-full items-center justify-center text-center text-sm text-muted-foreground">
+            <div
+              className="flex h-full items-center justify-center text-center text-sm"
+              style={{ color: "rgba(255,250,245,0.35)" }}
+            >
               Waiting for join approval...
             </div>
           )}
