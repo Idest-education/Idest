@@ -396,14 +396,14 @@ export default function SessionMeetPage() {
                     <TabsTrigger
                       value="video"
                       style={{ fontFamily: "Plus Jakarta Sans, sans-serif", borderRadius: 9999 }}
-                      className="data-[state=active]:bg-[#FF6B35] data-[state=active]:text-white text-[rgba(255,250,245,0.35)]"
+                      className="!rounded-full data-[state=active]:bg-[#FF6B35] data-[state=active]:text-white text-[rgba(255,250,245,0.35)]"
                     >
                       Cuộc gọi video
                     </TabsTrigger>
                     <TabsTrigger
                       value="whiteboard"
                       style={{ fontFamily: "Plus Jakarta Sans, sans-serif", borderRadius: 9999 }}
-                      className="data-[state=active]:bg-[#FF6B35] data-[state=active]:text-white text-[rgba(255,250,245,0.35)]"
+                      className="!rounded-full data-[state=active]:bg-[#FF6B35] data-[state=active]:text-white text-[rgba(255,250,245,0.35)]"
                     >
                       Bảng trắng
                     </TabsTrigger>
