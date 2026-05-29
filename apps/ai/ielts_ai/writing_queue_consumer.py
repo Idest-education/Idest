@@ -148,6 +148,15 @@ class WritingQueueConsumer:
         )
         now = datetime.now(timezone.utc)
 
+        t1_scores = task1_result.scores or {}
+        t2_scores = task2_result or {}
+        rubric_scores = {
+            "task_response": round((float(t1_scores.get("task_achievement", 0.0)) + float(t2_scores.get("task_achievement", 0.0))) / 2.0, 2),
+            "coherence_cohesion": round((float(t1_scores.get("coherence", 0.0)) + float(t2_scores.get("coherence", 0.0))) / 2.0, 2),
+            "lexical_resource": round((float(t1_scores.get("lexical", 0.0)) + float(t2_scores.get("lexical", 0.0))) / 2.0, 2),
+            "grammar_range_accuracy": round((float(t1_scores.get("grammar", 0.0)) + float(t2_scores.get("grammar", 0.0))) / 2.0, 2)
+        }
+
         self._submissions.update_one(
             {"_id": submission_id},
             {
@@ -156,6 +165,7 @@ class WritingQueueConsumer:
                     "feedback": feedback,
                     "status": "graded",
                     "updated_at": now,
+                    "rubric_scores": rubric_scores,
                     "grading_breakdown": {
                         "overall_band": final_score,
                         "tasks": {

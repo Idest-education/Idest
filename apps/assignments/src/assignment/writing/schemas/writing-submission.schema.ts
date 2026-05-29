@@ -26,6 +26,14 @@ export class WritingSubmission {
   @Prop()
   feedback?: string;
 
+  @Prop({ type: SchemaTypes.Mixed })
+  rubric_scores?: {
+    task_response?: number;
+    coherence_cohesion?: number;
+    lexical_resource?: number;
+    grammar_range_accuracy?: number;
+  };
+
   @Prop({ default: 'pending', enum: ['pending', 'graded', 'failed'] })
   status: SubmissionStatus;
 }

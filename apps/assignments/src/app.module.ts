@@ -7,6 +7,7 @@ import { ConfigModule } from '@nestjs/config';
 import { GradeModule } from './grade/grade.module';
 import { SupabaseModule } from './supabase/supabase.module';
 import { RabbitModule } from './rabbit/rabbit.module';
+import { ProgressModule } from './progress/progress.module';
 
 @Module({
 
@@ -16,7 +17,7 @@ import { RabbitModule } from './rabbit/rabbit.module';
     RabbitModule,
     SupabaseModule,
     AssignmentModule, 
-    GradeModule,
+    GradeModule, ProgressModule,
   ],
   controllers: [AppController],
   providers: [AppService],
