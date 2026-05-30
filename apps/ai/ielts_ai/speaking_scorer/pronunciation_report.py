@@ -3,7 +3,7 @@ from __future__ import annotations
 import difflib
 from typing import Any
 
-from ielts_ai.speaking_scorer.band_mapper import _scale_to_ielts_band
+from ielts_ai.speaking_scorer.band_mapper import scale_to_ielts_band
 from ielts_ai.speaking_scorer.features.acoustic_features import AcousticFeatures
 
 _HESITATION_FEEDBACK_THRESHOLD = 4
@@ -28,7 +28,7 @@ def _mispronunciation_feedback(raw: str, intended: str) -> list[str]:
 def build_pronunciation_report(acoustic: AcousticFeatures) -> dict[str, Any]:
     accuracy = round(acoustic.segmental)
     fluency = round(acoustic.fluency)
-    band = _scale_to_ielts_band(0.7 * acoustic.segmental + 0.3 * acoustic.fluency)
+    band = scale_to_ielts_band(0.7 * acoustic.segmental + 0.3 * acoustic.fluency)
 
     feedback: list[str] = []
     feedback.extend(_mispronunciation_feedback(acoustic.transcript, acoustic.intended_transcript))
