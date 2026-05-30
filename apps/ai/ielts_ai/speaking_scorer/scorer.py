@@ -19,6 +19,7 @@ from ielts_ai.speaking_scorer.features.acoustic_features import (
 from ielts_ai.speaking_scorer.features.grammar_features import extract_grammar_features
 from ielts_ai.speaking_scorer.features.lexical_features import extract_lexical_features
 from ielts_ai.speaking_scorer.ollama_judge import OllamaJudgment, judge
+from ielts_ai.speaking_scorer.pronunciation_report import build_pronunciation_report
 
 logger = logging.getLogger(__name__)
 
@@ -87,6 +88,7 @@ class SpeakingScorer:
         )
 
         metadata: dict[str, Any] = {}
+        metadata["pronunciation_report"] = build_pronunciation_report(acoustic)
         degraded: list[str] = []
 
         if judgment is not None:

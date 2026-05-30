@@ -86,3 +86,14 @@ def test_p_rubric_has_sentence_errors_key():
         result = SpeakingScorer().score([b"audio"], ["audio/webm"])
     assert result.rubrics["P"].sentence_errors is not None
     assert isinstance(result.rubrics["P"].sentence_errors, list)
+
+
+def test_metadata_includes_pronunciation_report():
+    patches = _patch_features(_OLLAMA)
+    with patches[0], patches[1], patches[2], patches[3]:
+        result = SpeakingScorer().score([b"audio"], ["audio/webm"])
+    report = result.metadata["pronunciation_report"]
+    assert "bandScore" in report
+    assert "pronunciationAccuracy" in report
+    assert "feedback" in report
+    assert isinstance(report["feedback"], list)

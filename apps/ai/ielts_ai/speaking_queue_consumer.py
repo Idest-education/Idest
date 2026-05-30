@@ -111,6 +111,7 @@ class SpeakingQueueConsumer:
                 for key, rubric in result.rubrics.items()
             },
             "metadata": result.metadata,
+            "pronunciation_report": result.metadata.get("pronunciation_report"),
         }
 
         self._submissions.update_one(
