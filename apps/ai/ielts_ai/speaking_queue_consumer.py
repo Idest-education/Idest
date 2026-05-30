@@ -111,6 +111,8 @@ class SpeakingQueueConsumer:
                 for key, rubric in result.rubrics.items()
             },
             "metadata": result.metadata,
+            # Surfaced at top-level for direct frontend access; also inside metadata (intentional duplicate).
+            "pronunciation_report": result.metadata.get("pronunciation_report"),
         }
 
         self._submissions.update_one(

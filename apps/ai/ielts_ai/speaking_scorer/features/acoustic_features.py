@@ -75,6 +75,10 @@ class AcousticFeatures:
     discourse_marker_density: float  # 0-100 scaled
     transcript: str
     sentence_errors: list[SentenceError]
+    intended_transcript: str = ""
+    hesitation_count: int = 0
+    pause_count: int = 0
+    filler_word_count: int = 0
 
 
 _pipeline: PronunciationPipeline | None = None
@@ -155,6 +159,13 @@ def _merge_features(
         sentence_errors.extend(_build_sentence_errors(report, time_offset))
         time_offset += dur
 
+    intended_transcript = " ".join(
+        r.intended_transcript for r in reports if r.intended_transcript
+    )
+    hesitation_count = sum(r.fluency_metrics.hesitation_count for r in reports)
+    pause_count = sum(r.fluency_metrics.pause_count for r in reports)
+    filler_word_count = sum(r.fluency_metrics.filler_word_count for r in reports)
+
     return AcousticFeatures(
         segmental=wavg("segmental"),
         intelligibility=wavg("intelligibility"),
@@ -166,6 +177,10 @@ def _merge_features(
         discourse_marker_density=discourse_density,
         transcript=transcript,
         sentence_errors=sentence_errors,
+        intended_transcript=intended_transcript,
+        hesitation_count=hesitation_count,
+        pause_count=pause_count,
+        filler_word_count=filler_word_count,
     )
 
 
