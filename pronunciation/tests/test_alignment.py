@@ -36,3 +36,17 @@ def test_align_perfect_match_scores_high():
 def test_align_extra_phone_flagged():
     result = align_phones(["f", "æ"], _rec(["f", "æ", "s"]))
     assert any(p.status == "extra" for p in result)
+
+
+def test_align_duplicate_tokens_use_correct_confidence():
+    # Same token "f" appears twice in recognized with different confidences
+    recognized = [
+        RecognizedPhone(token="f", start=0.0, end=0.1, confidence=0.9),
+        RecognizedPhone(token="æ", start=0.1, end=0.2, confidence=0.7),
+        RecognizedPhone(token="f", start=0.2, end=0.3, confidence=0.5),  # second "f"
+    ]
+    result = align_phones(["f", "æ", "f"], recognized)
+    assert result[0].status == "match"
+    assert result[0].score == round(0.9 * 100, 1)  # first "f" gets 0.9 confidence
+    assert result[2].status == "match"
+    assert result[2].score == round(0.5 * 100, 1)  # second "f" gets 0.5 confidence

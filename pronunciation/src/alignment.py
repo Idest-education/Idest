@@ -54,21 +54,28 @@ def align_phones(
 ) -> list[PhoneAssessment]:
     """Align reference IPA against recognized phones; produce per-phone assessments."""
     hyp_tokens = [r.token for r in recognized]
-    conf_by_token: dict[str, float] = {r.token: r.confidence for r in recognized}
+    hyp_confs = [r.confidence for r in recognized]
     pairs = needleman_wunsch(reference, hyp_tokens)
 
     assessments: list[PhoneAssessment] = []
+    hyp_idx = 0
     for ref_tok, hyp_tok in pairs:
         if ref_tok is not None and hyp_tok is not None and ref_tok == hyp_tok:
+            conf = hyp_confs[hyp_idx] if hyp_idx < len(hyp_confs) else 0.8
             assessments.append(PhoneAssessment(
-                token=ref_tok, score=round(conf_by_token.get(hyp_tok, 0.8) * 100, 1), status="match"
+                token=ref_tok, score=round(conf * 100, 1), status="match"
             ))
+            hyp_idx += 1
         elif ref_tok is not None and hyp_tok is not None:
+            conf = hyp_confs[hyp_idx] if hyp_idx < len(hyp_confs) else 0.5
             assessments.append(PhoneAssessment(
-                token=ref_tok, score=round(conf_by_token.get(hyp_tok, 0.5) * 50, 1), status="substitution"
+                token=ref_tok, score=round(conf * 50, 1), status="substitution"
             ))
+            hyp_idx += 1
         elif ref_tok is not None:
             assessments.append(PhoneAssessment(token=ref_tok, score=0.0, status="missing"))
         else:
+            # extra phone (insertion in hyp)
             assessments.append(PhoneAssessment(token=hyp_tok or "", score=0.0, status="extra"))
+            hyp_idx += 1
     return assessments
