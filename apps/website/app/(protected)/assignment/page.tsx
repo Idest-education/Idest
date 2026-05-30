@@ -324,7 +324,7 @@ export default function AssignmentsPage() {
                       className="animate-slide-up"
                       style={{ animationDelay: `${index * 60}ms`, animationFillMode: "both" }}
                     >
-                      <AssignmentCard item={item} />
+                      <AssignmentCard item={item} index={index} />
                     </div>
                   ))}
                 </div>

@@ -94,3 +94,5 @@ cache/
 .superpowers/
 docs/superpowers/plans/
 apps/ai/test_speaking_grading.py
+
+.claude/skills/impeccable/scripts
