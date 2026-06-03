@@ -15,7 +15,6 @@ import {
 
 export function useGameSocket(gameSessionId: string | null) {
   const socketRef = useRef<Socket | null>(null);
-  const localUserId = useMeetStore((state) => state.localUserId);
 
   const setCurrentQuestion = useGameStore((state) => state.setCurrentQuestion);
   const setLeaderboard = useGameStore((state) => state.setLeaderboard);
@@ -28,6 +27,7 @@ export function useGameSocket(gameSessionId: string | null) {
 
   const connect = useCallback(
     async (id: string) => {
+      if (socketRef.current) return;
       const supabase = createSupabaseClient();
       const token = (await supabase.auth.getSession()).data.session?.access_token;
       if (!token) return;
@@ -36,7 +36,7 @@ export function useGameSocket(gameSessionId: string | null) {
       socketRef.current = socket;
 
       socket.on("connect", () => {
-        socket.emit("game:join_room", { gameSessionId: id, userId: localUserId });
+        socket.emit("game:join_room", { gameSessionId: id, userId: useMeetStore.getState().localUserId });
       });
 
       socket.on("game:question_started", (payload: GameQuestionStartedEvent) => {
@@ -47,7 +47,8 @@ export function useGameSocket(gameSessionId: string | null) {
       });
 
       socket.on("game:question_ended", (payload: GameQuestionEndedEvent) => {
-        const myPoints = payload.pointsBreakdown.find((p) => p.userId === localUserId);
+        const currentUserId = useMeetStore.getState().localUserId;
+        const myPoints = payload.pointsBreakdown.find((p) => p.userId === currentUserId);
         setRoundResult({
           isCorrect: (myPoints?.pointsAwarded ?? 0) > 0,
           pointsAwarded: myPoints?.pointsAwarded ?? 0,
@@ -56,10 +57,13 @@ export function useGameSocket(gameSessionId: string | null) {
       });
 
       socket.on("game:leaderboard_updated", (payload: GameLeaderboardUpdatedEvent) => {
-        const myEntry = payload.top10.find((e) => e.userId === localUserId);
+        const currentUserId = useMeetStore.getState().localUserId;
+        const myEntry = payload.top10.find((e) => e.userId === currentUserId);
         if (myEntry) {
           setMyScore(myEntry.score);
           setMyRank(payload.top10.indexOf(myEntry) + 1);
+        } else {
+          setMyRank(null);
         }
         setLeaderboard(
           payload.top10.map((e, i) => ({
@@ -79,7 +83,7 @@ export function useGameSocket(gameSessionId: string | null) {
 
       socket.connect();
     },
-    [localUserId, setCurrentQuestion, setGameStatus, setHasSubmitted, setLeaderboard, setMyRank, setMyScore, setRoundResult],
+    [setCurrentQuestion, setGameStatus, setHasSubmitted, setLeaderboard, setMyRank, setMyScore, setRoundResult],
   );
 
   const disconnect = useCallback(() => {

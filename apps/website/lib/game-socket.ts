@@ -3,9 +3,9 @@
 import { io, Socket } from "socket.io-client";
 
 function getGameSocketUrl() {
-  const base = process.env.NEXT_PUBLIC_MEET_WS_URL || process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
-  const normalized = base.replace(/\/$/, "");
-  return normalized.endsWith("/game") ? normalized : `${normalized}/game`;
+  const base = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+  const normalized = base.replace(/\/$/, "").replace(/\/meet$/, "");
+  return `${normalized}/game`;
 }
 
 export function createGameSocket(token: string): Socket {
