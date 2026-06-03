@@ -19,9 +19,16 @@ import { getSessionById } from "@/services/session.service";
 import { SessionData } from "@/types/session";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { GameTab } from "@/components/game/GameTab";
+import { useGameCapture } from "@/hooks/useGameCapture";
 
 const MEET_RECORDING_ENABLED =
   process.env.NEXT_PUBLIC_MEET_RECORDING_ENABLED === "true";
+
+function GameCaptureSync() {
+  const room = useRoomContext();
+  useGameCapture(room);
+  return null;
+}
 
 // Component to sync LiveKit track events with store state
 function TrackStateSync() {
@@ -396,7 +403,7 @@ export default function SessionMeetPage() {
               onDisconnected={() => setLiveKitConnected(false)}
             >
               <TrackStateSync />
-              {/* Game capture hook will be wired here in Task 18 */}
+              <GameCaptureSync />
 
               <Tabs value={activeTab} onValueChange={setActiveTab} className="flex h-full flex-col min-h-0">
                 <div className="flex-shrink-0 px-2 pb-2">
