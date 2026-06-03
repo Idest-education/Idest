@@ -17,6 +17,7 @@ import { AiModule } from './ai/ai.module';
 import { RabbitModule } from './rabbit/rabbit.module';
 import { GradeModule } from './grade/grade.module';
 import { StripeModule } from './stripe/stripe.module';
+import { GameModule } from './game/game.module';
 
 const isTestEnv = process.env.NODE_ENV === 'dev';
 const throttleImports = isTestEnv
@@ -56,6 +57,7 @@ const throttleProviders = isTestEnv
     RabbitModule,
     GradeModule,
     StripeModule,
+    GameModule,
   ],
   controllers: [AppController],
   providers: [AppService, ...throttleProviders],
