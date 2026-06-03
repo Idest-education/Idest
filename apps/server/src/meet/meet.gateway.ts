@@ -8,6 +8,7 @@ import {
   WebSocketServer,
   ConnectedSocket,
 } from '@nestjs/websockets';
+import { OnEvent } from '@nestjs/event-emitter';
 import { Server, Socket } from 'socket.io';
 import {
   Logger,
@@ -1611,6 +1612,23 @@ export class MeetGateway
     } catch (error) {
       this.logger.error(`Failed to get whiteboard state: ${error.message}`);
     }
+  }
+
+  @OnEvent('game.session.started')
+  handleGameSessionStarted(payload: {
+    meetingSessionId: string;
+    gameSessionId: string;
+    title: string;
+    questionCount: number;
+  }) {
+    this.server.to(payload.meetingSessionId).emit('game:session_started', {
+      gameSessionId: payload.gameSessionId,
+      title: payload.title,
+      questionCount: payload.questionCount,
+    });
+    this.logger.log(
+      `Game session ${payload.gameSessionId} started in meeting ${payload.meetingSessionId}`,
+    );
   }
 
   // ============================== DEPRECATED ==============================
