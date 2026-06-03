@@ -15,6 +15,7 @@ export interface GameQuestion {
   order: number;
   timerSeconds: number;
   options: GameOption[];
+  correctAnswer?: string; // Only present in teacher-facing template responses
 }
 
 export interface GameTemplate {

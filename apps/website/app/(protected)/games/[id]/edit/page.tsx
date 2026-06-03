@@ -30,7 +30,7 @@ export default function EditGamePage() {
             type: q.type,
             order: q.order,
             timerSeconds: q.timerSeconds,
-            correctAnswer: (q as any).correctAnswer ?? "",
+            correctAnswer: q.correctAnswer ?? "",
             options: q.options?.map((o) => ({ label: o.label, text: o.text })),
           })),
         );

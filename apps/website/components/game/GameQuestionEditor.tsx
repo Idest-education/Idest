@@ -43,7 +43,7 @@ export function GameQuestionEditor({ questions, onChange }: GameQuestionEditorPr
   return (
     <div className="flex flex-col gap-6">
       {questions.map((q, i) => (
-        <div key={i} style={{ border: "1px solid #2a2a2a", borderRadius: 8, padding: 16 }}>
+        <div key={q.order} style={{ border: "1px solid #2a2a2a", borderRadius: 8, padding: 16 }}>
           <div className="flex items-center justify-between mb-3">
             <span style={{ fontSize: 13, fontWeight: 600, color: "rgba(255,250,245,0.5)" }}>
               Question {i + 1}
@@ -81,7 +81,7 @@ export function GameQuestionEditor({ questions, onChange }: GameQuestionEditorPr
               min={5}
               max={120}
               value={q.timerSeconds}
-              onChange={(e) => update(i, { timerSeconds: Number(e.target.value) })}
+              onChange={(e) => update(i, { timerSeconds: Number(e.target.value) || 20 })}
               placeholder="Timer (s)"
               style={{ width: 100, background: "#1e1e1e", border: "1px solid #2a2a2a", color: "#fffaf5" }}
             />
