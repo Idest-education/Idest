@@ -87,7 +87,7 @@ export class GameTemplateService {
             }
           : undefined,
       },
-      include: { questions: { include: { options: true } } },
+      include: { questions: { orderBy: { order: 'asc' }, include: { options: true } } },
     });
   }
 
