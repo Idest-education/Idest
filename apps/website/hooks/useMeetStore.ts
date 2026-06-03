@@ -40,6 +40,7 @@ export interface MeetStore extends MeetState {
   // UI
   toggleChat: (value?: boolean) => void;
   toggleParticipants: (value?: boolean) => void;
+  setActiveGameSessionId: (id: string | null) => void;
 
   // Errors
   setError: (message: string | null) => void;
@@ -65,6 +66,7 @@ const initialState: MeetState = {
   isLoadingMessages: false,
   showChat: false,
   showParticipants: false,
+  activeGameSessionId: null,
   error: null,
   lastUpdatedAt: Date.now(),
 };
@@ -182,6 +184,8 @@ export const useMeetStore = create<MeetStore>((set, _get) => ({
         showChat: newValue ? false : state.showChat,
       };
     }),
+
+  setActiveGameSessionId: (activeGameSessionId) => set({ activeGameSessionId }),
 
   setError: (error) => set({ error }),
 

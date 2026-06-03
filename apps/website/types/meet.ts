@@ -137,6 +137,7 @@ export interface MeetState {
   // UI state
   showChat: boolean;
   showParticipants: boolean;
+  activeGameSessionId: string | null;
 
   // Errors / status
   error: string | null;

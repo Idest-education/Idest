@@ -23,6 +23,7 @@ import {
   RecordingStartedEvent,
   RecordingStoppedEvent,
 } from "@/types/meet";
+import { GameSessionStartedEvent } from "@/types/game";
 import { getLivekitToken } from "@/services/meet.service";
 import { useRouter } from "next/navigation";
 
@@ -346,6 +347,10 @@ export function useMeetClient({ sessionId, autoJoin = true }: UseMeetClientOptio
       socket.on("recording-stopped", (payload: RecordingStoppedEvent) => {
         setRecording(false);
         toast.info(`Ghi hình đã được dừng bởi ${payload.stoppedByUserName}`);
+      });
+
+      socket.on("game:session_started", (payload: GameSessionStartedEvent) => {
+        useMeetStore.getState().setActiveGameSessionId(payload.gameSessionId);
       });
 
       // Error handlers for new actions
