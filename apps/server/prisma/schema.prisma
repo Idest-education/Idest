@@ -188,3 +188,91 @@ model SessionAttendance {
   @@index([session_id])
   @@index([user_id])
 }
+
+enum QuestionType {
+  MULTIPLE_CHOICE
+  FILL_BLANK
+}
+
+enum GameSessionStatus {
+  WAITING
+  IN_PROGRESS
+  ENDED
+}
+
+model GameTemplate {
+  id          String         @id @default(cuid())
+  title       String
+  description String?
+  createdBy   String
+  questions   GameQuestion[]
+  sessions    GameSession[]
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+}
+
+model GameQuestion {
+  id            String       @id @default(cuid())
+  templateId    String
+  template      GameTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  text          String
+  type          QuestionType
+  order         Int
+  timerSeconds  Int          @default(20)
+  correctAnswer String
+  options       GameOption[]
+  answers       GameAnswer[]
+}
+
+model GameOption {
+  id         String       @id @default(cuid())
+  questionId String
+  question   GameQuestion @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  label      String
+  text       String
+}
+
+model GameSession {
+  id                   String            @id @default(cuid())
+  templateId           String
+  template             GameTemplate      @relation(fields: [templateId], references: [id])
+  sessionId            String
+  startedBy            String
+  status               GameSessionStatus @default(WAITING)
+  currentQuestionIndex Int               @default(0)
+  participants         GameParticipant[]
+  answers              GameAnswer[]
+  startedAt            DateTime          @default(now())
+  endedAt              DateTime?
+}
+
+model GameParticipant {
+  id                    String      @id @default(cuid())
+  sessionId             String
+  session               GameSession @relation(fields: [sessionId], references: [id])
+  userId                String
+  score                 Int         @default(0)
+  lastSeenQuestionIndex Int         @default(0)
+  joinedAt              DateTime    @default(now())
+  lastActiveAt          DateTime    @default(now())
+  answers               GameAnswer[]
+
+  @@unique([sessionId, userId])
+}
+
+model GameAnswer {
+  id             String          @id @default(cuid())
+  sessionId      String
+  session        GameSession     @relation(fields: [sessionId], references: [id])
+  questionId     String
+  question       GameQuestion    @relation(fields: [questionId], references: [id])
+  participantId  String
+  participant    GameParticipant @relation(fields: [participantId], references: [id])
+  answer         String
+  isCorrect      Boolean
+  responseTimeMs Int
+  pointsAwarded  Int
+  submittedAt    DateTime        @default(now())
+
+  @@unique([participantId, questionId])
+}
