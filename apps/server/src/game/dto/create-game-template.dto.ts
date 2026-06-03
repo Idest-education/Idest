@@ -82,6 +82,7 @@ export class CreateGameTemplateDto {
   @ApiProperty({ type: [CreateGameQuestionDto] })
   @IsArray()
   @ArrayMinSize(1)
+  @ArrayMaxSize(50)
   @ValidateNested({ each: true })
   @Type(() => CreateGameQuestionDto)
   questions: CreateGameQuestionDto[];
