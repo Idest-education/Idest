@@ -6,6 +6,7 @@ import {
   BadRequestException,
 } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
+import { Prisma } from '@prisma/client';
 import { PrismaService } from 'src/prisma/prisma.service';
 
 @Injectable()
@@ -193,17 +194,24 @@ export class GameSessionService {
     );
     const pointsAwarded = this.computeScore(responseTimeMs, currentQuestion.timerSeconds, isCorrect);
 
-    await this.prisma.gameAnswer.create({
-      data: {
-        sessionId: gameSessionId,
-        questionId: currentQuestion.id,
-        participantId: participant.id,
-        answer,
-        isCorrect,
-        responseTimeMs,
-        pointsAwarded,
-      },
-    });
+    try {
+      await this.prisma.gameAnswer.create({
+        data: {
+          sessionId: gameSessionId,
+          questionId: currentQuestion.id,
+          participantId: participant.id,
+          answer,
+          isCorrect,
+          responseTimeMs,
+          pointsAwarded,
+        },
+      });
+    } catch (e) {
+      if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === 'P2002') {
+        throw new ConflictException('Answer already submitted for this question');
+      }
+      throw e;
+    }
 
     await this.prisma.gameParticipant.update({
       where: { id: participant.id },
