@@ -164,6 +164,7 @@ function PronunciationSection({
   audioRef: React.RefObject<HTMLAudioElement | null>;
   hasAudio: boolean;
 }) {
+  const [activeSentence, setActiveSentence] = useState<number | null>(null);
   const stopAtRef = useRef<number | null>(null);
   const onTimeUpdateRef = useRef<(() => void) | null>(null);
 
@@ -189,8 +190,7 @@ function PronunciationSection({
     audio.addEventListener("timeupdate", onTimeUpdate);
   }
 
-  function highlightSentence(sentence: string, errors: SentenceError["word_errors"]) {
-    if (!errors.length) return <span>{sentence}</span>;
+  function highlightTokens(sentence: string, errors: SentenceError["word_errors"]) {
     const wordSeverity = new Map<string, "red" | "amber">();
     for (const e of errors) {
       const w = e.word.toLowerCase();
@@ -200,29 +200,27 @@ function PronunciationSection({
       }
     }
     const tokens = sentence.split(/(\s+)/);
-    return (
-      <>
-        {tokens.map((tok, i) => {
-          const clean = tok.replace(/[^a-zA-Z']/g, "").toLowerCase();
-          const sev = wordSeverity.get(clean);
-          if (!sev) return <span key={i}>{tok}</span>;
-          return (
-            <span
-              key={i}
-              className="font-semibold rounded-sm px-0.5"
-              style={
-                sev === "red"
-                  ? { backgroundColor: "#fef2f2", textDecoration: "underline", textDecorationColor: "#dc2626", textDecorationStyle: "dotted", color: "#7f1d1d" }
-                  : { backgroundColor: "#fffbeb", textDecoration: "underline", textDecorationColor: "#d97706", textDecorationStyle: "dotted", color: "#78350f" }
-              }
-            >
-              {tok}
-            </span>
-          );
-        })}
-      </>
-    );
+    return tokens.map((tok, i) => {
+      const clean = tok.replace(/[^a-zA-Z']/g, "").toLowerCase();
+      const sev = wordSeverity.get(clean);
+      if (!sev) return <span key={i}>{tok}</span>;
+      return (
+        <span
+          key={i}
+          className="font-semibold rounded-sm px-0.5"
+          style={
+            sev === "red"
+              ? { backgroundColor: "#fef2f2", textDecoration: "underline", textDecorationColor: "#dc2626", textDecorationStyle: "dotted", color: "#7f1d1d" }
+              : { backgroundColor: "#fffbeb", textDecoration: "underline", textDecorationColor: "#d97706", textDecorationStyle: "dotted", color: "#78350f" }
+          }
+        >
+          {tok}
+        </span>
+      );
+    });
   }
+
+  const active = activeSentence !== null ? sentences[activeSentence] : null;
 
   return (
     <div
@@ -245,74 +243,97 @@ function PronunciationSection({
             className="text-base font-bold"
             style={{ fontFamily: "var(--font-display)", color: "var(--color-text-primary)" }}
           >
-            Pronunciation — Sentence Errors
+            Pronunciation — Transcript
           </h2>
           <p className="text-xs mt-0.5" style={{ color: "var(--color-text-muted)" }}>
-            Underlined words had pronunciation issues
+            Click a sentence to inspect word-level pronunciation
           </p>
         </div>
         {hasAudio && (
           <span className="text-xs" style={{ color: "var(--color-text-muted)" }}>
-            Buttons seek the audio below
+            Play button seeks audio below
           </span>
         )}
       </div>
 
-      <div className="p-6 space-y-4">
-        {sentences.map((sent, si) => (
-          <div
-            key={si}
-            className="rounded-xl p-4"
-            style={{
-              backgroundColor: "var(--color-surface-subtle)",
-              border: "1px solid var(--color-border-default)",
-            }}
-          >
-            <div className="flex justify-between items-start gap-3 mb-3">
-              <p
-                className="text-sm leading-7 flex-1"
-                style={{ color: "var(--color-text-primary)" }}
-              >
-                {highlightSentence(sent.sentence, sent.word_errors)}
-              </p>
-              <button
-                onClick={() => playSentence(sent.start_time, sent.end_time)}
-                disabled={!hasAudio}
-                className="flex-shrink-0 flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-lg transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-                style={{
-                  backgroundColor: "var(--color-brand)",
-                  color: "#ffffff",
-                }}
-                title={hasAudio ? `Play from ${formatTime(sent.start_time)}` : "No audio available"}
-              >
-                ▶ {formatTime(sent.start_time)}
-              </button>
-            </div>
-            <div className="flex flex-wrap gap-2">
-              {sent.word_errors.map((w, wi) => (
-                <div
-                  key={wi}
-                  className="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs"
-                  style={{
-                    backgroundColor: "var(--color-surface-card)",
-                    border: `1px solid ${w.score < 40 ? "#fecaca" : "#fde68a"}`,
-                  }}
+      {/* Two-column body */}
+      <div className="grid grid-cols-2 divide-x" style={{ borderColor: "var(--color-border-default)" }}>
+
+        {/* Left — plain transcript */}
+        <div className="p-5">
+          <p className="text-sm leading-8" style={{ color: "var(--color-text-primary)" }}>
+            {sentences.map((sent, si) => {
+              const isActive = activeSentence === si;
+              return (
+                <span
+                  key={si}
+                  onClick={() => setActiveSentence(isActive ? null : si)}
+                  className="cursor-pointer rounded-sm transition-colors"
+                  style={
+                    isActive
+                      ? { backgroundColor: "#fff4ed", boxShadow: "0 0 0 2px #FF6B35" }
+                      : undefined
+                  }
                 >
-                  <span
-                    className="font-bold"
-                    style={{ color: w.score < 40 ? "var(--color-error)" : "#d97706" }}
-                  >
-                    {w.word}
-                  </span>
-                  <span className="font-mono" style={{ color: "var(--color-text-muted)" }}>
-                    /{w.reference_ipa}/
-                  </span>
-                  <span style={{ color: "var(--color-text-secondary)" }}>→ {w.fix_hint}</span>
-                </div>
-              ))}
+                  {sent.sentence}
+                  {si < sentences.length - 1 ? " " : ""}
+                </span>
+              );
+            })}
+          </p>
+        </div>
+
+        {/* Right — detail panel */}
+        <div className="p-5 flex flex-col gap-4" style={{ minHeight: "10rem" }}>
+          {!active ? (
+            <div className="flex-1 flex items-center justify-center">
+              <p className="text-xs text-center" style={{ color: "var(--color-text-muted)" }}>
+                ← Select a sentence to see details
+              </p>
             </div>
-          </div>
-        ))}
+          ) : (
+            <>
+              <div className="flex justify-between items-start gap-3">
+                <p className="text-sm font-semibold leading-7 flex-1" style={{ color: "var(--color-text-primary)" }}>
+                  {highlightTokens(active.sentence, active.word_errors)}
+                </p>
+                <button
+                  onClick={() => playSentence(active.start_time, active.end_time)}
+                  disabled={!hasAudio}
+                  className="flex-shrink-0 flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-lg transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                  style={{ backgroundColor: "var(--color-brand)", color: "#ffffff" }}
+                  title={hasAudio ? `Play from ${formatTime(active.start_time)}` : "No audio available"}
+                >
+                  ▶ {formatTime(active.start_time)}
+                </button>
+              </div>
+              {active.word_errors.length === 0 ? (
+                <p className="text-xs" style={{ color: "var(--color-text-muted)" }}>No issues detected.</p>
+              ) : (
+                <div className="flex flex-wrap gap-2">
+                  {active.word_errors.map((w, wi) => (
+                    <div
+                      key={wi}
+                      className="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs"
+                      style={{
+                        backgroundColor: "var(--color-surface-subtle)",
+                        border: `1px solid ${w.score < 40 ? "#fecaca" : "#fde68a"}`,
+                      }}
+                    >
+                      <span className="font-bold" style={{ color: w.score < 40 ? "var(--color-error)" : "#d97706" }}>
+                        {w.word}
+                      </span>
+                      <span className="font-mono" style={{ color: "var(--color-text-muted)" }}>
+                        /{w.reference_ipa}/
+                      </span>
+                      <span style={{ color: "var(--color-text-secondary)" }}>→ {w.fix_hint}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </>
+          )}
+        </div>
       </div>
     </div>
   );
@@ -396,7 +417,7 @@ export default function SpeakingResultPage(props: Props) {
             comment="Đang chấm điểm — tải lại trang sau ít phút"
             backHref="/assignment"
           />
-          <div className="max-w-4xl mx-auto px-4 py-8">
+          <div className="max-w-7xl mx-auto px-4 py-8">
             <div
               className="rounded-2xl p-8 text-center"
               style={{ backgroundColor: "var(--color-surface-subtle)", border: "1.5px solid var(--color-border-default)" }}
@@ -418,7 +439,7 @@ export default function SpeakingResultPage(props: Props) {
             comment="Chấm điểm thất bại. Vui lòng nộp lại."
             backHref="/assignment"
           />
-          <div className="max-w-4xl mx-auto px-4 py-8">
+          <div className="max-w-7xl mx-auto px-4 py-8">
             <div
               className="rounded-2xl p-8"
               style={{ backgroundColor: "var(--color-surface-card)", border: "1.5px solid #fecaca" }}
@@ -442,7 +463,7 @@ export default function SpeakingResultPage(props: Props) {
             backHref="/assignment"
           />
 
-          <div className="max-w-4xl mx-auto px-4 py-8 space-y-6">
+          <div className="max-w-7xl mx-auto px-4 py-8 space-y-6">
 
             {/* Rubric grid */}
             {bd && (
