@@ -18,6 +18,7 @@ import { useMeetClient } from "@/hooks/useMeetClient";
 import { getSessionById } from "@/services/session.service";
 import { SessionData } from "@/types/session";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { GameTab } from "@/components/game/GameTab";
 
 const MEET_RECORDING_ENABLED =
   process.env.NEXT_PUBLIC_MEET_RECORDING_ENABLED === "true";
@@ -258,6 +259,13 @@ export default function SessionMeetPage() {
   const toggleChat = useMeetStore((state) => state.toggleChat);
   const toggleParticipants = useMeetStore((state) => state.toggleParticipants);
   const setLiveKitConnected = useMeetStore((state) => state.setLiveKitConnected);
+  const activeGameSessionId = useMeetStore((state) => state.activeGameSessionId);
+  const localUserId = useMeetStore((state) => state.localUserId);
+  const [activeTab, setActiveTab] = useState("video");
+
+  useEffect(() => {
+    if (activeGameSessionId) setActiveTab("game");
+  }, [activeGameSessionId]);
 
   const { 
     socket,
@@ -308,6 +316,8 @@ export default function SessionMeetPage() {
     leaveSession();
     router.back();
   };
+
+  const isTeacher = Boolean(session && localUserId && session.host_id === localUserId);
 
   const headerTitle = session?.class?.name
     ? `${session.class.name} — ${session.metadata?.topic ?? "Live session"}`
@@ -386,27 +396,37 @@ export default function SessionMeetPage() {
               onDisconnected={() => setLiveKitConnected(false)}
             >
               <TrackStateSync />
-              
-              <Tabs defaultValue="video" className="flex h-full flex-col min-h-0">
+              {/* Game capture hook will be wired here in Task 18 */}
+
+              <Tabs value={activeTab} onValueChange={setActiveTab} className="flex h-full flex-col min-h-0">
                 <div className="flex-shrink-0 px-2 pb-2">
                   <TabsList
-                    className="grid w-full max-w-[400px] grid-cols-2 p-1"
+                    className="flex w-full max-w-[500px] p-1 gap-1"
                     style={{ background: "#151515", border: "1px solid #2a2a2a", borderRadius: 9999 }}
                   >
                     <TabsTrigger
                       value="video"
-                      style={{ fontFamily: "Plus Jakarta Sans, sans-serif", borderRadius: 9999 }}
+                      style={{ fontFamily: "Plus Jakarta Sans, sans-serif", borderRadius: 9999, flex: 1 }}
                       className="!rounded-full data-[state=active]:bg-[#FF6B35] data-[state=active]:text-white text-[rgba(255,250,245,0.35)]"
                     >
                       Cuộc gọi video
                     </TabsTrigger>
                     <TabsTrigger
                       value="whiteboard"
-                      style={{ fontFamily: "Plus Jakarta Sans, sans-serif", borderRadius: 9999 }}
+                      style={{ fontFamily: "Plus Jakarta Sans, sans-serif", borderRadius: 9999, flex: 1 }}
                       className="!rounded-full data-[state=active]:bg-[#FF6B35] data-[state=active]:text-white text-[rgba(255,250,245,0.35)]"
                     >
                       Bảng trắng
                     </TabsTrigger>
+                    {activeGameSessionId && (
+                      <TabsTrigger
+                        value="game"
+                        style={{ fontFamily: "Plus Jakarta Sans, sans-serif", borderRadius: 9999, flex: 1 }}
+                        className="!rounded-full data-[state=active]:bg-[#7c3aed] data-[state=active]:text-white text-[rgba(255,250,245,0.35)]"
+                      >
+                        🎮 Game
+                      </TabsTrigger>
+                    )}
                   </TabsList>
                 </div>
 
@@ -424,6 +444,15 @@ export default function SessionMeetPage() {
                           className="rounded-md"
                         />
                       </div>
+                    )}
+                  </TabsContent>
+
+                  <TabsContent value="game" forceMount className="flex-1 min-h-0 data-[state=inactive]:hidden mt-0">
+                    {sessionId && (
+                      <GameTab
+                        meetingSessionId={sessionId}
+                        isTeacher={isTeacher}
+                      />
                     )}
                   </TabsContent>
                 </div>
