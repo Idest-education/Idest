@@ -5,6 +5,7 @@ import { Play, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { listGameTemplates, startGameSession } from "@/services/game.service";
 import { GameTemplate } from "@/types/game";
+import { toast } from "sonner";
 
 interface GameLauncherProps {
   meetingSessionId: string;
@@ -27,6 +28,7 @@ export function GameLauncher({ meetingSessionId }: GameLauncherProps) {
       await startGameSession({ templateId, sessionId: meetingSessionId });
     } catch {
       setStarting(null);
+      toast.error("Failed to start game");
     }
   };
 

@@ -12,6 +12,7 @@ import { Logger } from '@nestjs/common';
 import { OnEvent } from '@nestjs/event-emitter';
 import { Server, Socket } from 'socket.io';
 import { GameSessionService } from './game-session.service';
+import { verifyTokenAsync } from 'src/common/guard/auth.guard';
 
 @WebSocketGateway({
   cors: {
@@ -39,8 +40,18 @@ export class GameGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
     this.logger.log('Game Gateway initialized on /game namespace');
   }
 
-  handleConnection(client: Socket) {
-    this.logger.log(`Game client connected: ${client.id}`);
+  async handleConnection(client: Socket) {
+    const token = client.handshake.auth?.token as string | undefined;
+    if (!token) {
+      client.disconnect();
+      return;
+    }
+    try {
+      await verifyTokenAsync(token, process.env.JWT_SECRET!);
+      this.logger.log(`Game client connected: ${client.id}`);
+    } catch {
+      client.disconnect();
+    }
   }
 
   handleDisconnect(client: Socket) {
@@ -66,9 +77,9 @@ export class GameGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
     this.socketRoom.set(client.id, data.gameSessionId);
 
     // Send current question state for reconnect/late-join
-    const session = await this.gameSessionService.getActiveSession(data.gameSessionId).catch(() => null);
+    const session = await this.gameSessionService.getSessionById(data.gameSessionId).catch(() => null);
 
-    if (session) {
+    if (session && session.status === 'IN_PROGRESS') {
       const questions = session.template.questions;
       const currentQuestion = questions[session.currentQuestionIndex];
       if (currentQuestion) {
@@ -118,11 +129,15 @@ export class GameGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
   }
 
   @OnEvent('game.question.ended')
-  async handleQuestionEnded(payload: { gameSessionId: string; correctAnswer: string; questionId: string }) {
-    const leaderboard = await this.gameSessionService.buildLeaderboard(payload.gameSessionId);
+  handleQuestionEnded(payload: {
+    gameSessionId: string;
+    correctAnswer: string;
+    questionId: string;
+    questionPoints: { userId: string; pointsAwarded: number }[];
+  }) {
     this.server.to(payload.gameSessionId).emit('game:question_ended', {
       correctAnswer: payload.correctAnswer,
-      pointsBreakdown: leaderboard.map((e) => ({ userId: e.userId, pointsAwarded: e.score })),
+      pointsBreakdown: payload.questionPoints,
     });
   }
 

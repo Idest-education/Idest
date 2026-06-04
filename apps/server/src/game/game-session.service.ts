@@ -57,6 +57,11 @@ export class GameSessionService {
   // ── Session lifecycle ──────────────────────────────────────────────────
 
   async startSession(templateId: string, meetingSessionId: string, startedBy: string) {
+    const existing = await this.prisma.gameSession.findFirst({
+      where: { sessionId: meetingSessionId, status: 'IN_PROGRESS' },
+    });
+    if (existing) throw new ConflictException('A game is already in progress for this meeting');
+
     const template = await this.prisma.gameTemplate.findUnique({
       where: { id: templateId },
       include: { questions: { orderBy: { order: 'asc' }, include: { options: true } } },
@@ -115,10 +120,19 @@ export class GameSessionService {
     const questions = session.template.questions;
     const currentQuestion = questions[session.currentQuestionIndex];
 
+    const questionAnswers = await this.prisma.gameAnswer.findMany({
+      where: { sessionId: gameSessionId, questionId: currentQuestion.id },
+      include: { participant: true },
+    });
+
     this.eventEmitter.emit('game.question.ended', {
       gameSessionId,
       correctAnswer: currentQuestion.correctAnswer,
       questionId: currentQuestion.id,
+      questionPoints: questionAnswers.map((a) => ({
+        userId: a.participant.userId,
+        pointsAwarded: a.pointsAwarded,
+      })),
     });
 
     const nextIndex = session.currentQuestionIndex + 1;
@@ -244,12 +258,27 @@ export class GameSessionService {
       where: { sessionId: gameSessionId },
       orderBy: { score: 'desc' },
     });
+    const userIds = participants.map((p) => p.userId);
+    const users = await this.prisma.user.findMany({
+      where: { id: { in: userIds } },
+      select: { id: true, full_name: true },
+    });
+    const nameMap = new Map(users.map((u) => [u.id, u.full_name]));
     return participants.map((p, i) => ({
       rank: i + 1,
       userId: p.userId,
-      displayName: p.userId,
+      displayName: nameMap.get(p.userId) ?? p.userId,
       score: p.score,
     }));
+  }
+
+  async getSessionById(gameSessionId: string) {
+    return this.prisma.gameSession.findUnique({
+      where: { id: gameSessionId },
+      include: {
+        template: { include: { questions: { orderBy: { order: 'asc' }, include: { options: true } } } },
+      },
+    });
   }
 
   getQuestionElapsedSeconds(gameSessionId: string): number {

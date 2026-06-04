@@ -1,5 +1,10 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { ConflictException, ForbiddenException, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  ForbiddenException,
+  NotFoundException,
+} from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { GameSessionService } from './game-session.service';
 import { PrismaService } from 'src/prisma/prisma.service';
@@ -18,7 +23,8 @@ const mockPrisma = {
     update: jest.fn(),
     findMany: jest.fn(),
   },
-  gameAnswer: { findUnique: jest.fn(), create: jest.fn() },
+  gameAnswer: { findUnique: jest.fn(), create: jest.fn(), findMany: jest.fn() },
+  user: { findMany: jest.fn() },
 };
 const mockEventEmitter = { emit: jest.fn() };
 
@@ -87,6 +93,125 @@ describe('GameSessionService', () => {
 
     it('leading/trailing whitespace is trimmed before matching', () => {
       expect(service.checkAnswer('FILL_BLANK', 'joyful', '  joyful  ')).toBe(true);
+    });
+  });
+
+  describe('submitAnswer', () => {
+    const baseSession = {
+      id: 'session-1',
+      status: 'IN_PROGRESS',
+      currentQuestionIndex: 0,
+      template: {
+        questions: [
+          { id: 'q1', type: 'MULTIPLE_CHOICE', correctAnswer: 'A', timerSeconds: 20, order: 1, options: [] },
+        ],
+      },
+    };
+
+    it('returns isCorrect=true and points > 0 for a correct answer', async () => {
+      mockPrisma.gameSession.findUnique.mockResolvedValue(baseSession);
+      mockPrisma.gameParticipant.upsert.mockResolvedValue({ id: 'p1' });
+      mockPrisma.gameAnswer.findUnique.mockResolvedValue(null);
+      mockPrisma.gameAnswer.create.mockResolvedValue({});
+      mockPrisma.gameParticipant.update.mockResolvedValue({});
+
+      const result = await service.submitAnswer('session-1', 'user-1', 'A');
+
+      expect(result.isCorrect).toBe(true);
+      expect(result.pointsAwarded).toBeGreaterThan(0);
+      expect(mockPrisma.gameAnswer.create).toHaveBeenCalledWith(
+        expect.objectContaining({ data: expect.objectContaining({ isCorrect: true }) }),
+      );
+    });
+
+    it('returns isCorrect=false and 0 points for a wrong answer', async () => {
+      mockPrisma.gameSession.findUnique.mockResolvedValue(baseSession);
+      mockPrisma.gameParticipant.upsert.mockResolvedValue({ id: 'p1' });
+      mockPrisma.gameAnswer.findUnique.mockResolvedValue(null);
+      mockPrisma.gameAnswer.create.mockResolvedValue({});
+      mockPrisma.gameParticipant.update.mockResolvedValue({});
+
+      const result = await service.submitAnswer('session-1', 'user-1', 'B');
+
+      expect(result.isCorrect).toBe(false);
+      expect(result.pointsAwarded).toBe(0);
+    });
+
+    it('throws NotFoundException if session not found', async () => {
+      mockPrisma.gameSession.findUnique.mockResolvedValue(null);
+
+      await expect(service.submitAnswer('bad-id', 'user-1', 'A')).rejects.toThrow(NotFoundException);
+    });
+
+    it('throws BadRequestException if session is not IN_PROGRESS', async () => {
+      mockPrisma.gameSession.findUnique.mockResolvedValue({ ...baseSession, status: 'ENDED' });
+
+      await expect(service.submitAnswer('session-1', 'user-1', 'A')).rejects.toThrow(BadRequestException);
+    });
+
+    it('throws ConflictException on duplicate submission', async () => {
+      mockPrisma.gameSession.findUnique.mockResolvedValue(baseSession);
+      mockPrisma.gameParticipant.upsert.mockResolvedValue({ id: 'p1' });
+      mockPrisma.gameAnswer.findUnique.mockResolvedValue({ id: 'existing-answer' });
+
+      await expect(service.submitAnswer('session-1', 'user-1', 'A')).rejects.toThrow(ConflictException);
+    });
+  });
+
+  describe('nextQuestion', () => {
+    const baseSession = {
+      id: 'session-1',
+      status: 'IN_PROGRESS',
+      startedBy: 'teacher-1',
+      currentQuestionIndex: 0,
+      template: {
+        questions: [
+          { id: 'q1', type: 'MULTIPLE_CHOICE', correctAnswer: 'A', timerSeconds: 20, order: 1, options: [] },
+          { id: 'q2', type: 'MULTIPLE_CHOICE', correctAnswer: 'B', timerSeconds: 20, order: 2, options: [] },
+        ],
+      },
+    };
+
+    it('throws ForbiddenException if caller is not the session owner', async () => {
+      mockPrisma.gameSession.findUnique.mockResolvedValue(baseSession);
+
+      await expect(service.nextQuestion('session-1', 'not-teacher')).rejects.toThrow(ForbiddenException);
+    });
+
+    it('throws BadRequestException if game is already ENDED', async () => {
+      mockPrisma.gameSession.findUnique.mockResolvedValue({ ...baseSession, status: 'ENDED' });
+
+      await expect(service.nextQuestion('session-1', 'teacher-1')).rejects.toThrow(BadRequestException);
+    });
+
+    it('advances to next question and emits game.question.started', async () => {
+      mockPrisma.gameSession.findUnique.mockResolvedValue(baseSession);
+      mockPrisma.gameAnswer.findMany.mockResolvedValue([]);
+      mockPrisma.gameSession.update.mockResolvedValue({ ...baseSession, currentQuestionIndex: 1 });
+
+      await service.nextQuestion('session-1', 'teacher-1');
+
+      expect(mockPrisma.gameSession.update).toHaveBeenCalledWith(
+        expect.objectContaining({ data: { currentQuestionIndex: 1 } }),
+      );
+      expect(mockEventEmitter.emit).toHaveBeenCalledWith('game.question.ended', expect.objectContaining({ questionId: 'q1' }));
+      expect(mockEventEmitter.emit).toHaveBeenCalledWith('game.question.started', expect.objectContaining({ questionIndex: 1 }));
+    });
+
+    it('ends session when advancing past last question', async () => {
+      const lastQ = { ...baseSession, currentQuestionIndex: 1 };
+      mockPrisma.gameSession.findUnique.mockResolvedValue(lastQ);
+      mockPrisma.gameAnswer.findMany.mockResolvedValue([]);
+      mockPrisma.gameSession.update.mockResolvedValue({ ...lastQ, status: 'ENDED' });
+      mockPrisma.gameParticipant.findMany.mockResolvedValue([]);
+      mockPrisma.user.findMany.mockResolvedValue([]);
+
+      await service.nextQuestion('session-1', 'teacher-1');
+
+      expect(mockPrisma.gameSession.update).toHaveBeenCalledWith(
+        expect.objectContaining({ data: expect.objectContaining({ status: 'ENDED' }) }),
+      );
+      expect(mockEventEmitter.emit).toHaveBeenCalledWith('game.session.ended', expect.objectContaining({ gameSessionId: 'session-1' }));
     });
   });
 });
