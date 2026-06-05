@@ -399,10 +399,7 @@ export default function CreateAssignmentPage() {
       {error && <div className="mb-6 p-4 rounded-md border border-red-200 bg-red-50 text-red-700 text-sm">{error}</div>}
       {result && (
         <div className="mb-6 p-4 rounded-md border border-emerald-200 bg-emerald-50 text-emerald-800 text-sm space-y-3">
-          <div className="font-semibold text-emerald-900">✅ Khởi tạo thành công!</div>
-          <pre className="whitespace-pre-wrap break-words text-xs bg-emerald-100/50 p-3 rounded-md font-mono text-emerald-900/90 max-h-40 overflow-auto">
-            {JSON.stringify(result, null, 2)}
-          </pre>
+          <div className="font-semibold text-emerald-900">Khởi tạo thành công!</div>
           {createdId && (
             <Button asChild variant="outline" className="border-emerald-300 text-emerald-700 hover:bg-emerald-100">
               <Link href={`/assignment/${skill}/${createdId}`}>Xem bài tập vừa tạo</Link>
