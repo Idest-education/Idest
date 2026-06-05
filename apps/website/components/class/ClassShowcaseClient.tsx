@@ -17,7 +17,14 @@ import {
   Search,
   ChevronLeft,
   ChevronRight,
+  TrendingUp,
+  TrendingDown,
+  Minus,
+  Activity,
+  Link as LinkIcon,
 } from "lucide-react";
+import Link from "next/link";
+import { getProgressTimeline } from "@/services/progress.service";
 import { Input } from "@/components/ui/input";
 import {
   Dialog,
@@ -51,6 +58,13 @@ export default function ClassShowcaseClient() {
   const [searchQuery, setSearchQuery] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 9;
+
+  const [progressSummary, setProgressSummary] = useState<{
+    rollingAverage: number | null;
+    direction: string;
+    deltaVsPreviousWindow: number | null;
+  } | null>(null);
+  const [progressLoading, setProgressLoading] = useState(true);
 
   const enrolledIds = useMemo(() => {
     const set = new Set<string>();
@@ -91,19 +105,31 @@ export default function ClassShowcaseClient() {
   useEffect(() => {
     const load = async () => {
       try {
-        const [userRes, all] = await Promise.all([
+        const [userRes, all, progressRes] = await Promise.all([
           getUserClasses(),
           getAllVisibleClasses(),
+          getProgressTimeline("overall", "90d").catch((err) => {
+            console.error("Failed to load progress summary", err);
+            return null;
+          }),
         ]);
         setUserClasses(
           userRes?.data || { created: [], teaching: [], enrolled: [] },
         );
         setAllClasses(all || []);
+        if (progressRes) {
+          setProgressSummary({
+            rollingAverage: progressRes.trend.rollingAverage,
+            direction: progressRes.trend.direction,
+            deltaVsPreviousWindow: progressRes.trend.deltaVsPreviousWindow,
+          });
+        }
       } catch (e) {
         console.error("Failed to load classes for showcase", e);
         setError("Không thể tải lớp học. Vui lòng thử lại.");
       } finally {
         setLoading(false);
+        setProgressLoading(false);
       }
     };
     load();
@@ -252,6 +278,68 @@ export default function ClassShowcaseClient() {
         </div>
       </div>
 
+      {/* Progress Summary Widget */}
+      {!progressLoading && progressSummary && (
+        <div className="mb-8 p-6 rounded-2xl border border-gray-100 bg-white/70 backdrop-blur-sm shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-6 hover:shadow-md transition-shadow duration-300 relative overflow-hidden group">
+          {/* Accent decoration */}
+          <div className="absolute top-0 left-0 w-2 h-full bg-gradient-to-b from-orange-500 to-amber-500" />
+
+          <div className="flex items-center gap-4">
+            <div className="p-3.5 rounded-xl bg-orange-50 text-orange-600 group-hover:scale-110 transition-transform duration-300">
+              <Activity className="w-6 h-6 animate-pulse" />
+            </div>
+            <div>
+              <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2">
+                Tiến độ học tập của bạn
+                <Badge className="bg-orange-100 text-orange-800 border-0 font-bold text-[10px]">IELTS Track</Badge>
+              </h3>
+              <p className="text-sm text-gray-600">
+                {progressSummary.rollingAverage !== null
+                  ? `Điểm trung bình trượt gần đây của bạn đạt ${progressSummary.rollingAverage.toFixed(2)}.`
+                  : "Chưa có đủ dữ liệu bài nộp. Hãy nộp bài tập đầu tiên để AI theo dõi tiến độ!"}
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-6 self-end sm:self-center">
+            {progressSummary.rollingAverage !== null && (
+              <div className="flex items-center gap-4 border-r border-gray-200 pr-6">
+                <div className="text-right">
+                  <div className="text-xs font-bold text-gray-400 uppercase">rolling average</div>
+                  <div className="text-2xl font-black text-gray-900">{progressSummary.rollingAverage.toFixed(2)}</div>
+                </div>
+                <div>
+                  {progressSummary.direction === "up" && (
+                    <Badge className="bg-green-100 text-green-800 border-0 flex items-center gap-0.5 text-xs font-bold py-1 px-2.5">
+                      <TrendingUp className="w-3.5 h-3.5" />
+                      <span>+{progressSummary.deltaVsPreviousWindow}</span>
+                    </Badge>
+                  )}
+                  {progressSummary.direction === "down" && (
+                    <Badge className="bg-red-100 text-red-800 border-0 flex items-center gap-0.5 text-xs font-bold py-1 px-2.5">
+                      <TrendingDown className="w-3.5 h-3.5" />
+                      <span>{progressSummary.deltaVsPreviousWindow}</span>
+                    </Badge>
+                  )}
+                  {progressSummary.direction === "flat" && (
+                    <Badge className="bg-gray-100 text-gray-700 border-0 flex items-center gap-0.5 text-xs font-bold py-1 px-2.5">
+                      <Minus className="w-3.5 h-3.5" />
+                      <span>0.00</span>
+                    </Badge>
+                  )}
+                </div>
+              </div>
+            )}
+            <Button asChild variant="ghost" size="sm" className="text-orange-600 hover:text-orange-700 hover:bg-orange-50 font-bold rounded-xl transition-all duration-300">
+              <Link href="/progress" className="flex items-center gap-1.5">
+                Xem chi tiết
+                <ArrowRight className="w-4 h-4 group-hover:translate-x-1.5 transition-transform duration-300" />
+              </Link>
+            </Button>
+          </div>
+        </div>
+      )}
+
       {/* Search Bar */}
       <div className="mb-6 animate-in fade-in slide-in-from-top-4">
         <div className="relative max-w-md group">
@@ -307,85 +395,85 @@ export default function ClassShowcaseClient() {
         <>
           <div className="grid gap-6 grid-cols-1 md:grid-cols-2 xl:grid-cols-3">
             {paginatedClasses.map((cls, index) => {
-            const isEnrolled = enrolledIds.has(cls.id);
-            const isGroup = (cls as any).is_group ?? true;
-            return (
-              <Card
-                key={cls.id}
-                className="group relative overflow-hidden border-0 shadow-lg bg-gradient-to-br from-gray-900 via-gray-900/95 to-gray-900/90 text-white cursor-pointer hover:-translate-y-1 hover:shadow-xl hover:scale-[1.02] transition-all duration-300 animate-in fade-in slide-in-from-bottom-4"
-                style={{ animationDelay: `${index * 100}ms`, animationFillMode: 'both' }}
-                onClick={() => openModal(cls)}
-              >
-                {/* Animated gradient overlay */}
-                <div className="absolute inset-0 opacity-30 group-hover:opacity-40 transition-opacity duration-300 bg-[radial-gradient(circle_at_top,_#6366f1,_transparent_55%),_radial-gradient(circle_at_bottom,_#ec4899,_transparent_55%)]" />
-                
-                {/* Shine effect on hover */}
-                <div className="absolute inset-0 opacity-0 group-hover:opacity-60 bg-gradient-to-r from-transparent via-white/15 to-transparent -skew-x-12 translate-x-[-200%] group-hover:translate-x-[200%] transition-all duration-700" />
-                
-                {/* Glowing background effect */}
-                <div className="absolute inset-0 bg-gradient-to-r from-indigo-500/10 via-purple-500/10 to-pink-500/10 opacity-0 group-hover:opacity-100 blur-xl transition-opacity duration-300 -z-10" />
-                
-                <div className="relative p-6 flex flex-col h-full z-10">
-                  <div className="flex items-start justify-between gap-3 mb-4">
-                    <div className="space-y-2 flex-1">
-                      <div className="flex items-center gap-2 mb-2">
-                        <div className="p-2 rounded-lg bg-orange-500/20 group-hover:bg-orange-500/30 group-hover:scale-105 transition-all duration-300">
-                          <BookOpen className="w-4 h-4 text-orange-300 group-hover:text-orange-200" />
-                        </div>
-                        <Badge
-                          variant={isEnrolled ? "secondary" : "outline"}
-                          className={
-                            isEnrolled
-                              ? "bg-emerald-400 text-emerald-900 border-transparent group-hover:scale-105 transition-transform duration-300"
-                              : "border-gray-500 text-gray-100 group-hover:border-white/40 group-hover:bg-white/5 transition-all duration-300"
-                          }
-                        >
-                          {isEnrolled ? "Đã ghi danh" : isGroup ? "Lớp nhóm" : "1:1"}
-                        </Badge>
-                      </div>
-                      <CardTitle className="text-xl font-bold leading-tight group-hover:scale-[1.02] transition-transform duration-300">
-                        {cls.name}
-                      </CardTitle>
-                      <p className="text-sm text-gray-300 line-clamp-2 group-hover:text-gray-200 transition-colors duration-300">
-                        {cls.description}
-                      </p>
-                    </div>
-                  </div>
+              const isEnrolled = enrolledIds.has(cls.id);
+              const isGroup = (cls as any).is_group ?? true;
+              return (
+                <Card
+                  key={cls.id}
+                  className="group relative overflow-hidden border-0 shadow-lg bg-gradient-to-br from-gray-900 via-gray-900/95 to-gray-900/90 text-white cursor-pointer hover:-translate-y-1 hover:shadow-xl hover:scale-[1.02] transition-all duration-300 animate-in fade-in slide-in-from-bottom-4"
+                  style={{ animationDelay: `${index * 100}ms`, animationFillMode: 'both' }}
+                  onClick={() => openModal(cls)}
+                >
+                  {/* Animated gradient overlay */}
+                  <div className="absolute inset-0 opacity-30 group-hover:opacity-40 transition-opacity duration-300 bg-[radial-gradient(circle_at_top,_#6366f1,_transparent_55%),_radial-gradient(circle_at_bottom,_#ec4899,_transparent_55%)]" />
 
-                  <div className="mt-auto flex items-center justify-between pt-4 border-t border-white/10 group-hover:border-white/30 transition-colors duration-300">
-                    <div className="space-y-1">
-                      <div className="text-xs uppercase tracking-wide text-gray-400 group-hover:text-gray-300 transition-colors duration-300">
-                        Giá từ
+                  {/* Shine effect on hover */}
+                  <div className="absolute inset-0 opacity-0 group-hover:opacity-60 bg-gradient-to-r from-transparent via-white/15 to-transparent -skew-x-12 translate-x-[-200%] group-hover:translate-x-[200%] transition-all duration-700" />
+
+                  {/* Glowing background effect */}
+                  <div className="absolute inset-0 bg-gradient-to-r from-indigo-500/10 via-purple-500/10 to-pink-500/10 opacity-0 group-hover:opacity-100 blur-xl transition-opacity duration-300 -z-10" />
+
+                  <div className="relative p-6 flex flex-col h-full z-10">
+                    <div className="flex items-start justify-between gap-3 mb-4">
+                      <div className="space-y-2 flex-1">
+                        <div className="flex items-center gap-2 mb-2">
+                          <div className="p-2 rounded-lg bg-orange-500/20 group-hover:bg-orange-500/30 group-hover:scale-105 transition-all duration-300">
+                            <BookOpen className="w-4 h-4 text-orange-300 group-hover:text-orange-200" />
+                          </div>
+                          <Badge
+                            variant={isEnrolled ? "secondary" : "outline"}
+                            className={
+                              isEnrolled
+                                ? "bg-emerald-400 text-emerald-900 border-transparent group-hover:scale-105 transition-transform duration-300"
+                                : "border-gray-500 text-gray-100 group-hover:border-white/40 group-hover:bg-white/5 transition-all duration-300"
+                            }
+                          >
+                            {isEnrolled ? "Đã ghi danh" : isGroup ? "Lớp nhóm" : "1:1"}
+                          </Badge>
+                        </div>
+                        <CardTitle className="text-xl font-bold leading-tight group-hover:scale-[1.02] transition-transform duration-300">
+                          {cls.name}
+                        </CardTitle>
+                        <p className="text-sm text-gray-300 line-clamp-2 group-hover:text-gray-200 transition-colors duration-300">
+                          {cls.description}
+                        </p>
                       </div>
-                      <div className="text-xl font-bold group-hover:scale-105 transition-transform duration-300">
-                        {formatVnd(cls.price, cls.currency)}
-                      </div>
-                      <span className="text-xs text-gray-400 group-hover:text-gray-300 transition-colors duration-300">
-                        {cls._count?.members ?? 0} người học
-                      </span>
                     </div>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="border-white/30 text-white hover:bg-white hover:text-gray-900 bg-white/10 backdrop-blur-sm group-hover:scale-105 group-hover:shadow-md transition-all duration-300"
-                    >
-                      {isEnrolled ? (
-                        <>
-                          Đi đến lớp
-                          <ArrowRight className="w-4 h-4 ml-1 group-hover:translate-x-0.5 transition-transform duration-300" />
-                        </>
-                      ) : (
-                        <>
-                          Xem chi tiết
-                          <ArrowRight className="w-4 h-4 ml-1 group-hover:translate-x-0.5 transition-transform duration-300" />
-                        </>
-                      )}
-                    </Button>
+
+                    <div className="mt-auto flex items-center justify-between pt-4 border-t border-white/10 group-hover:border-white/30 transition-colors duration-300">
+                      <div className="space-y-1">
+                        <div className="text-xs uppercase tracking-wide text-gray-400 group-hover:text-gray-300 transition-colors duration-300">
+                          Giá từ
+                        </div>
+                        <div className="text-xl font-bold group-hover:scale-105 transition-transform duration-300">
+                          {formatVnd(cls.price, cls.currency)}
+                        </div>
+                        <span className="text-xs text-gray-400 group-hover:text-gray-300 transition-colors duration-300">
+                          {cls._count?.members ?? 0} người học
+                        </span>
+                      </div>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="border-white/30 text-white hover:bg-white hover:text-gray-900 bg-white/10 backdrop-blur-sm group-hover:scale-105 group-hover:shadow-md transition-all duration-300"
+                      >
+                        {isEnrolled ? (
+                          <>
+                            Đi đến lớp
+                            <ArrowRight className="w-4 h-4 ml-1 group-hover:translate-x-0.5 transition-transform duration-300" />
+                          </>
+                        ) : (
+                          <>
+                            Xem chi tiết
+                            <ArrowRight className="w-4 h-4 ml-1 group-hover:translate-x-0.5 transition-transform duration-300" />
+                          </>
+                        )}
+                      </Button>
+                    </div>
                   </div>
-                </div>
-              </Card>
-            );
-          })}
+                </Card>
+              );
+            })}
           </div>
 
           {/* Pagination Controls */}
@@ -401,7 +489,7 @@ export default function ClassShowcaseClient() {
                 <ChevronLeft className="w-4 h-4 transition-transform duration-300 group-hover:-translate-x-1" />
                 Trước
               </Button>
-              
+
               <div className="flex items-center gap-1">
                 {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => {
                   // Show first page, last page, current page, and pages around current
@@ -416,11 +504,10 @@ export default function ClassShowcaseClient() {
                         variant={currentPage === page ? "default" : "outline"}
                         size="sm"
                         onClick={() => setCurrentPage(page)}
-                        className={`min-w-[40px] transition-all duration-300 hover:scale-110 ${
-                          currentPage === page
-                                ? "shadow-lg ring-2 ring-orange-500/50"
-                            : "hover:bg-gray-100"
-                        }`}
+                        className={`min-w-[40px] transition-all duration-300 hover:scale-110 ${currentPage === page
+                          ? "shadow-lg ring-2 ring-orange-500/50"
+                          : "hover:bg-gray-100"
+                          }`}
                       >
                         {page}
                       </Button>
