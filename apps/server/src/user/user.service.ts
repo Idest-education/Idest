@@ -468,15 +468,33 @@ export class UserService {
       throw new InternalServerErrorException(`Error fetching users: ${error}`);
     }
   }
-  async getUserRoleStats(): Promise<{ role: string; count: number }[]> {
+  async getUserMonthlyStats(): Promise<
+    { month: string; STUDENT: number; TEACHER: number; ADMIN: number }[]
+  > {
     try {
-      const result = await this.prisma.user.groupBy({
-        by: ['role'],
-        _count: { id: true },
+      const sixMonthsAgo = new Date();
+      sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
+
+      const users = await this.prisma.user.findMany({
+        where: { created_at: { gte: sixMonthsAgo } },
+        select: { created_at: true, role: true },
       });
-      return result.map((r) => ({ role: r.role, count: r._count.id }));
+
+      const byMonth: Record<string, { STUDENT: number; TEACHER: number; ADMIN: number }> = {};
+      for (const u of users) {
+        const d = u.created_at;
+        const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+        if (!byMonth[key]) byMonth[key] = { STUDENT: 0, TEACHER: 0, ADMIN: 0 };
+        if (u.role === 'STUDENT') byMonth[key].STUDENT++;
+        else if (u.role === 'TEACHER') byMonth[key].TEACHER++;
+        else if (u.role === 'ADMIN') byMonth[key].ADMIN++;
+      }
+
+      return Object.entries(byMonth)
+        .sort(([a], [b]) => a.localeCompare(b))
+        .map(([month, counts]) => ({ month, ...counts }));
     } catch (error) {
-      throw new InternalServerErrorException(`Error fetching user stats: ${error}`);
+      throw new InternalServerErrorException(`Error fetching user monthly stats: ${error}`);
     }
   }
 
