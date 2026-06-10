@@ -1232,4 +1232,29 @@ export class SessionService {
       throw new InternalServerErrorException('Failed to get user attendance');
     }
   }
+
+  async getSessionStats(): Promise<{ month: string; count: number }[]> {
+    try {
+      const sixMonthsAgo = new Date();
+      sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
+
+      const sessions = await this.prisma.session.findMany({
+        where: { created_at: { gte: sixMonthsAgo } },
+        select: { created_at: true },
+      });
+
+      const counts: Record<string, number> = {};
+      for (const s of sessions) {
+        const d = s.created_at;
+        const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+        counts[key] = (counts[key] || 0) + 1;
+      }
+
+      return Object.entries(counts)
+        .sort(([a], [b]) => a.localeCompare(b))
+        .map(([month, count]) => ({ month, count }));
+    } catch (error) {
+      throw new InternalServerErrorException('Failed to get session stats');
+    }
+  }
 }

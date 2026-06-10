@@ -234,6 +234,29 @@ export class UserController {
     );
   }
 
+  @Get('stats')
+  @Roles(Role.ADMIN)
+  @ApiOperation({
+    summary: 'Get user role statistics',
+    description: 'Returns user counts grouped by role. ADMIN only.',
+  })
+  @ApiOkResponse({
+    description: 'User counts by role',
+    schema: {
+      type: 'array',
+      items: {
+        type: 'object',
+        properties: {
+          role: { type: 'string', example: 'STUDENT' },
+          count: { type: 'number', example: 42 },
+        },
+      },
+    },
+  })
+  async getUserStats(): Promise<{ role: string; count: number }[]> {
+    return this.userService.getUserRoleStats();
+  }
+
   @Get(':id')
   @Roles(Role.TEACHER, Role.ADMIN)
   @ApiOperation({

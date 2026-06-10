@@ -578,6 +578,7 @@ export default function ClassesPage() {
         <JoinClassModal
           open={showJoinModal}
           onClose={() => setShowJoinModal(false)}
+          enrolledClasses={classes.enrolled}
           onJoined={() => {
             getClasses().then((data) =>
               setClasses(data?.data || { created: [], teaching: [], enrolled: [] })

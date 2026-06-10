@@ -468,6 +468,18 @@ export class UserService {
       throw new InternalServerErrorException(`Error fetching users: ${error}`);
     }
   }
+  async getUserRoleStats(): Promise<{ role: string; count: number }[]> {
+    try {
+      const result = await this.prisma.user.groupBy({
+        by: ['role'],
+        _count: { id: true },
+      });
+      return result.map((r) => ({ role: r.role, count: r._count.id }));
+    } catch (error) {
+      throw new InternalServerErrorException(`Error fetching user stats: ${error}`);
+    }
+  }
+
   async getUserByEmail(email: string): Promise<User> {
     try {
       const user = await this.prisma.user.findUnique({

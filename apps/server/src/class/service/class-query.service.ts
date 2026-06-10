@@ -900,9 +900,14 @@ export class ClassQueryService {
         select: {
           id: true,
           name: true,
+          slug: true,
           description: true,
           is_group: true,
           created_by: true,
+          invite_code: true,
+          price: true,
+          currency: true,
+          schedule: true,
           creator: {
             select: {
               id: true,

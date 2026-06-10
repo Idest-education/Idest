@@ -43,12 +43,12 @@ export function GameQuestionEditor({ questions, onChange }: GameQuestionEditorPr
   return (
     <div className="flex flex-col gap-6">
       {questions.map((q, i) => (
-        <div key={q.order} style={{ border: "1px solid #2a2a2a", borderRadius: 8, padding: 16 }}>
+        <div key={q.order} style={{ border: "1px solid var(--color-border-default)", borderRadius: 8, padding: 16, background: "var(--color-surface-card)" }}>
           <div className="flex items-center justify-between mb-3">
-            <span style={{ fontSize: 13, fontWeight: 600, color: "rgba(255,250,245,0.5)" }}>
+            <span style={{ fontSize: 13, fontWeight: 600, color: "var(--color-text-muted)" }}>
               Question {i + 1}
             </span>
-            <button onClick={() => removeQuestion(i)} style={{ color: "#f87171", background: "none", border: "none", cursor: "pointer" }}>
+            <button onClick={() => removeQuestion(i)} style={{ color: "var(--color-error)", background: "none", border: "none", cursor: "pointer" }}>
               <Trash2 className="h-4 w-4" />
             </button>
           </div>
@@ -58,7 +58,6 @@ export function GameQuestionEditor({ questions, onChange }: GameQuestionEditorPr
             value={q.text}
             onChange={(e) => update(i, { text: e.target.value })}
             className="mb-3"
-            style={{ background: "#1e1e1e", border: "1px solid #2a2a2a", color: "#fffaf5" }}
           />
 
           <div className="flex gap-3 mb-3">
@@ -70,7 +69,7 @@ export function GameQuestionEditor({ questions, onChange }: GameQuestionEditorPr
                   ? [{ label: "A", text: "" }, { label: "B", text: "" }, { label: "C", text: "" }, { label: "D", text: "" }]
                   : undefined,
               })}
-              style={{ background: "#1e1e1e", border: "1px solid #2a2a2a", color: "#fffaf5", borderRadius: 6, padding: "6px 10px", fontSize: 13 }}
+              style={{ background: "var(--color-surface-card)", border: "1px solid var(--color-border-default)", color: "var(--color-text-primary)", borderRadius: 6, padding: "6px 10px", fontSize: 13 }}
             >
               <option value="MULTIPLE_CHOICE">Multiple Choice</option>
               <option value="FILL_BLANK">Fill in the Blank</option>
@@ -83,7 +82,7 @@ export function GameQuestionEditor({ questions, onChange }: GameQuestionEditorPr
               value={q.timerSeconds}
               onChange={(e) => update(i, { timerSeconds: Number(e.target.value) || 20 })}
               placeholder="Timer (s)"
-              style={{ width: 100, background: "#1e1e1e", border: "1px solid #2a2a2a", color: "#fffaf5" }}
+              style={{ width: 100 }}
             />
           </div>
 
@@ -91,7 +90,7 @@ export function GameQuestionEditor({ questions, onChange }: GameQuestionEditorPr
             <div className="flex flex-col gap-2 mb-3">
               {(q.options ?? []).map((opt, oi) => (
                 <div key={opt.label} className="flex items-center gap-2">
-                  <span style={{ width: 20, fontSize: 13, color: "#a78bfa", fontWeight: 600 }}>{opt.label}</span>
+                  <span style={{ width: 20, fontSize: 13, color: "#7c3aed", fontWeight: 600 }}>{opt.label}</span>
                   <Input
                     placeholder={`Option ${opt.label}`}
                     value={opt.text}
@@ -101,7 +100,6 @@ export function GameQuestionEditor({ questions, onChange }: GameQuestionEditorPr
                       );
                       update(i, { options: opts });
                     }}
-                    style={{ background: "#1e1e1e", border: "1px solid #2a2a2a", color: "#fffaf5" }}
                   />
                 </div>
               ))}
@@ -112,7 +110,6 @@ export function GameQuestionEditor({ questions, onChange }: GameQuestionEditorPr
             placeholder={q.type === "MULTIPLE_CHOICE" ? "Correct option label (A/B/C/D)" : "Correct answer"}
             value={q.correctAnswer}
             onChange={(e) => update(i, { correctAnswer: e.target.value })}
-            style={{ background: "#1e1e1e", border: "1px solid #2a2a2a", color: "#fffaf5" }}
           />
         </div>
       ))}
@@ -121,7 +118,6 @@ export function GameQuestionEditor({ questions, onChange }: GameQuestionEditorPr
         type="button"
         variant="outline"
         onClick={addQuestion}
-        style={{ borderColor: "#2a2a2a", color: "rgba(255,250,245,0.5)", background: "transparent" }}
       >
         <Plus className="h-4 w-4 mr-2" />
         Add Question

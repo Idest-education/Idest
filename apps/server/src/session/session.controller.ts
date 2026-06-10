@@ -170,6 +170,29 @@ export class SessionController {
     return this.sessionService.getUserUpcomingSessions(user.id);
   }
 
+  @Get('stats')
+  @Roles(Role.ADMIN)
+  @ApiOperation({
+    summary: 'Get session statistics by month',
+    description: 'Returns session counts grouped by month for the last 6 months. ADMIN only.',
+  })
+  @ApiOkResponse({
+    description: 'Session counts by month',
+    schema: {
+      type: 'array',
+      items: {
+        type: 'object',
+        properties: {
+          month: { type: 'string', example: '2025-06' },
+          count: { type: 'number', example: 15 },
+        },
+      },
+    },
+  })
+  async getSessionStats(): Promise<{ month: string; count: number }[]> {
+    return this.sessionService.getSessionStats();
+  }
+
   @Get(':id')
   @ApiOperation({
     summary: 'Get session by ID',

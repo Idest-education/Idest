@@ -425,15 +425,13 @@ export default function SessionMeetPage() {
                     >
                       Bảng trắng
                     </TabsTrigger>
-                    {activeGameSessionId && (
-                      <TabsTrigger
-                        value="game"
-                        style={{ fontFamily: "Plus Jakarta Sans, sans-serif", borderRadius: 9999, flex: 1 }}
-                        className="!rounded-full data-[state=active]:bg-[#7c3aed] data-[state=active]:text-white text-[rgba(255,250,245,0.35)]"
-                      >
-                        🎮 Game
-                      </TabsTrigger>
-                    )}
+                    <TabsTrigger
+                      value="game"
+                      style={{ fontFamily: "Plus Jakarta Sans, sans-serif", borderRadius: 9999, flex: 1 }}
+                      className="!rounded-full data-[state=active]:bg-[#7c3aed] data-[state=active]:text-white text-[rgba(255,250,245,0.35)]"
+                    >
+                      🎮 Game
+                    </TabsTrigger>
                   </TabsList>
                 </div>
 

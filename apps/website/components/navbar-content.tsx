@@ -15,6 +15,7 @@ const navItems = [
   { href: "/assignment", label: "Bài tập" },
   { href: "/assignment/submissions", label: "Bài nộp" },
   { href: "/progress", label: "Tiến độ" },
+  { href: "/games", label: "Trò chơi" },
 ];
 
 export default function Navbar() {

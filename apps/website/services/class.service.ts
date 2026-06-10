@@ -55,6 +55,16 @@ export const joinClass = async (invite_code: string) => {
   }
 };
 
+export const validateInviteCode = async (code: string): Promise<{ valid: boolean; class: ClassData | null }> => {
+  try {
+    const res = await http.get(`/class/validate-code/${encodeURIComponent(code)}`);
+    const payload = res.data?.data ?? res.data;
+    return { valid: payload?.valid ?? false, class: payload?.class ?? null };
+  } catch {
+    return { valid: false, class: null };
+  }
+};
+
 // Admin functions
 export interface GetAllClassesParams {
   page?: number;
