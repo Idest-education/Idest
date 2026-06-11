@@ -180,34 +180,59 @@ export class GameSessionService {
       include: { participant: true },
     });
 
+    // Compute distribution and unanswered count for the ended question
+    const distribution = this.computeDistribution(currentQuestion, questionAnswers);
+    const totalParticipants = await this.prisma.gameParticipant.count({ where: { sessionId: gameSessionId } });
+    const unansweredCount = totalParticipants - questionAnswers.length;
+
     this.eventEmitter.emit('game.question.ended', {
       gameSessionId,
       correctAnswer: currentQuestion.correctAnswer,
       questionId: currentQuestion.id,
+      distribution,
+      unansweredCount,
       questionPoints: questionAnswers.map((a) => ({
-        userId: a.participant.userId,
+        userId: a.participant?.userId ?? a.participantId,
         pointsAwarded: a.pointsAwarded,
       })),
     });
 
+    // Emit word cloud data when closing a WORD_CLOUD question
+    if (currentQuestion.type === 'WORD_CLOUD') {
+      const wordCount = new Map<string, number>();
+      for (const a of questionAnswers) {
+        wordCount.set(a.answer, (wordCount.get(a.answer) ?? 0) + 1);
+      }
+      const words = [...wordCount.entries()]
+        .map(([text, count]) => ({ text, count }))
+        .sort((a, b) => b.count - a.count);
+      this.eventEmitter.emit('game.word_cloud.updated', { gameSessionId, words });
+    }
+
     const nextIndex = session.currentQuestionIndex + 1;
 
     if (nextIndex >= questions.length) {
-      const updated = await this.prisma.gameSession.update({
-        where: { id: gameSessionId },
+      // Race condition guard: only update if the session is still at the expected index
+      const endResult = await this.prisma.gameSession.updateMany({
+        where: { id: gameSessionId, status: 'IN_PROGRESS', currentQuestionIndex: session.currentQuestionIndex },
         data: { status: 'ENDED', endedAt: new Date() },
       });
+      if (endResult.count === 0) throw new ConflictException('Question already advanced by another request');
+
       this.questionStartedAt.delete(gameSessionId);
 
       const leaderboard = await this.buildLeaderboard(gameSessionId);
       this.eventEmitter.emit('game.session.ended', { gameSessionId, leaderboard });
-      return updated;
+      return { ...session, status: 'ENDED' };
     }
 
-    const updated = await this.prisma.gameSession.update({
-      where: { id: gameSessionId },
+    // Race condition guard: only advance if the session is still at the expected index
+    const advanceResult = await this.prisma.gameSession.updateMany({
+      where: { id: gameSessionId, status: 'IN_PROGRESS', currentQuestionIndex: session.currentQuestionIndex },
       data: { currentQuestionIndex: nextIndex },
     });
+    if (advanceResult.count === 0) throw new ConflictException('Question already advanced by another request');
+
     this.questionStartedAt.set(gameSessionId, new Date());
 
     const nextQuestion = questions[nextIndex];
@@ -223,7 +248,7 @@ export class GameSessionService {
 
     this.scheduleAutoAdvance(gameSessionId, nextQuestion.timerSeconds);
 
-    return updated;
+    return { ...session, currentQuestionIndex: nextIndex };
   }
 
   async submitAnswer(gameSessionId: string, userId: string, answer: string) {

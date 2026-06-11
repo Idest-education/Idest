@@ -15,6 +15,7 @@ const mockPrisma = {
     findUnique: jest.fn(),
     create: jest.fn(),
     update: jest.fn(),
+    updateMany: jest.fn(),
   },
   gameTemplate: { findUnique: jest.fn() },
   gameParticipant: {
@@ -22,6 +23,7 @@ const mockPrisma = {
     upsert: jest.fn(),
     update: jest.fn(),
     findMany: jest.fn(),
+    count: jest.fn(),
   },
   gameAnswer: { findUnique: jest.fn(), create: jest.fn(), findMany: jest.fn() },
   user: { findMany: jest.fn() },
@@ -295,14 +297,15 @@ describe('GameSessionService', () => {
       mockPrisma.gameSession.create.mockResolvedValue({ ...session, template: { questions } });
       mockPrisma.gameSession.findUnique.mockResolvedValue(session);
       mockPrisma.gameAnswer.findMany.mockResolvedValue([]);
-      mockPrisma.gameSession.update.mockResolvedValue({ ...session, currentQuestionIndex: 1 });
+      mockPrisma.gameParticipant.count.mockResolvedValue(0);
+      mockPrisma.gameSession.updateMany.mockResolvedValue({ count: 1 });
 
       await service.startSession('tmpl-1', 'meet-1', 'teacher-1');
       jest.advanceTimersByTime(10001);
       // flush microtasks — multiple rounds needed for the async nextQuestion chain
       for (let i = 0; i < 10; i++) await Promise.resolve();
 
-      expect(mockPrisma.gameSession.update).toHaveBeenCalledWith(
+      expect(mockPrisma.gameSession.updateMany).toHaveBeenCalledWith(
         expect.objectContaining({ data: { currentQuestionIndex: 1 } }),
       );
     });
@@ -391,18 +394,105 @@ describe('GameSessionService', () => {
     const session = {
       id: 'gs1', status: 'IN_PROGRESS', startedBy: 'teacher-1',
       currentQuestionIndex: 0,
-      template: { questions: [{ id: 'q1', timerSeconds: 20 }, { id: 'q2', timerSeconds: 20 }] },
+      template: { questions: [
+        { id: 'q1', type: 'MULTIPLE_CHOICE', correctAnswer: 'A', timerSeconds: 20, options: [], matchPairs: [] },
+        { id: 'q2', type: 'MULTIPLE_CHOICE', correctAnswer: 'B', timerSeconds: 20, options: [], matchPairs: [] },
+      ] },
     };
 
     it('advances to next question (same as nextQuestion)', async () => {
       mockPrisma.gameSession.findUnique.mockResolvedValue(session);
       mockPrisma.gameAnswer.findMany.mockResolvedValue([]);
-      mockPrisma.gameSession.update.mockResolvedValue({ ...session, currentQuestionIndex: 1 });
+      mockPrisma.gameParticipant.count.mockResolvedValue(0);
+      mockPrisma.gameSession.updateMany.mockResolvedValue({ count: 1 });
 
       await service.skipQuestion('gs1', 'teacher-1');
 
-      expect(mockPrisma.gameSession.update).toHaveBeenCalledWith(
+      expect(mockPrisma.gameSession.updateMany).toHaveBeenCalledWith(
         expect.objectContaining({ data: { currentQuestionIndex: 1 } }),
+      );
+    });
+  });
+
+  describe('nextQuestion — race condition + distribution', () => {
+    const baseSession = {
+      id: 'session-1',
+      status: 'IN_PROGRESS',
+      startedBy: 'teacher-1',
+      currentQuestionIndex: 0,
+      template: {
+        questions: [
+          { id: 'q1', type: 'MULTIPLE_CHOICE', correctAnswer: 'B', timerSeconds: 20, order: 1, options: [
+            { id: 'o1', label: 'A', text: 'Wrong' },
+            { id: 'o2', label: 'B', text: 'Correct' },
+          ], matchPairs: [] },
+          { id: 'q2', type: 'MULTIPLE_CHOICE', correctAnswer: 'A', timerSeconds: 20, order: 2, options: [], matchPairs: [] },
+        ],
+      },
+    };
+
+    it('includes distribution in game.question.ended event', async () => {
+      mockPrisma.gameSession.findUnique.mockResolvedValue(baseSession);
+      mockPrisma.gameAnswer.findMany.mockResolvedValue([
+        { answer: 'A', participantId: 'p1', userId: 'u1', pointsAwarded: 0 },
+        { answer: 'B', participantId: 'p2', userId: 'u2', pointsAwarded: 800 },
+        { answer: 'B', participantId: 'p3', userId: 'u3', pointsAwarded: 700 },
+      ]);
+      mockPrisma.gameParticipant.count.mockResolvedValue(3);
+      mockPrisma.gameSession.updateMany.mockResolvedValue({ count: 1 });
+
+      await service.nextQuestion('session-1', 'teacher-1');
+
+      const endedCall = mockEventEmitter.emit.mock.calls.find((c) => c[0] === 'game.question.ended');
+      expect(endedCall).toBeDefined();
+      const payload = endedCall![1];
+      expect(payload.distribution).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({ label: 'A', count: 1, isCorrect: false }),
+          expect.objectContaining({ label: 'B', count: 2, isCorrect: true }),
+        ]),
+      );
+      expect(payload.unansweredCount).toBeDefined();
+    });
+
+    it('throws ConflictException when updateMany returns count 0 (race condition)', async () => {
+      mockPrisma.gameSession.findUnique.mockResolvedValue(baseSession);
+      mockPrisma.gameAnswer.findMany.mockResolvedValue([]);
+      mockPrisma.gameParticipant.count.mockResolvedValue(0);
+      mockPrisma.gameSession.updateMany.mockResolvedValue({ count: 0 });
+
+      await expect(service.nextQuestion('session-1', 'teacher-1')).rejects.toThrow(ConflictException);
+    });
+
+    it('emits word_cloud_updated for WORD_CLOUD questions', async () => {
+      const wcSession = {
+        ...baseSession,
+        template: {
+          questions: [
+            { id: 'q1', type: 'WORD_CLOUD', correctAnswer: '', timerSeconds: 20, order: 1, options: [], matchPairs: [] },
+            { id: 'q2', type: 'MULTIPLE_CHOICE', correctAnswer: 'A', timerSeconds: 20, order: 2, options: [], matchPairs: [] },
+          ],
+        },
+      };
+      mockPrisma.gameSession.findUnique.mockResolvedValue(wcSession);
+      mockPrisma.gameAnswer.findMany.mockResolvedValue([
+        { answer: 'happy', participantId: 'p1', userId: 'u1', pointsAwarded: 100 },
+        { answer: 'joy', participantId: 'p2', userId: 'u2', pointsAwarded: 100 },
+        { answer: 'happy', participantId: 'p3', userId: 'u3', pointsAwarded: 100 },
+      ]);
+      mockPrisma.gameParticipant.count.mockResolvedValue(3);
+      mockPrisma.gameSession.updateMany.mockResolvedValue({ count: 1 });
+
+      await service.nextQuestion('session-1', 'teacher-1');
+
+      const wcCall = mockEventEmitter.emit.mock.calls.find((c) => c[0] === 'game.word_cloud.updated');
+      expect(wcCall).toBeDefined();
+      const words = wcCall![1].words;
+      expect(words).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({ text: 'happy', count: 2 }),
+          expect.objectContaining({ text: 'joy', count: 1 }),
+        ]),
       );
     });
   });
@@ -570,11 +660,12 @@ describe('GameSessionService', () => {
     it('advances to next question and emits game.question.started', async () => {
       mockPrisma.gameSession.findUnique.mockResolvedValue(baseSession);
       mockPrisma.gameAnswer.findMany.mockResolvedValue([]);
-      mockPrisma.gameSession.update.mockResolvedValue({ ...baseSession, currentQuestionIndex: 1 });
+      mockPrisma.gameParticipant.count.mockResolvedValue(0);
+      mockPrisma.gameSession.updateMany.mockResolvedValue({ count: 1 });
 
       await service.nextQuestion('session-1', 'teacher-1');
 
-      expect(mockPrisma.gameSession.update).toHaveBeenCalledWith(
+      expect(mockPrisma.gameSession.updateMany).toHaveBeenCalledWith(
         expect.objectContaining({ data: { currentQuestionIndex: 1 } }),
       );
       expect(mockEventEmitter.emit).toHaveBeenCalledWith('game.question.ended', expect.objectContaining({ questionId: 'q1' }));
@@ -585,13 +676,14 @@ describe('GameSessionService', () => {
       const lastQ = { ...baseSession, currentQuestionIndex: 1 };
       mockPrisma.gameSession.findUnique.mockResolvedValue(lastQ);
       mockPrisma.gameAnswer.findMany.mockResolvedValue([]);
-      mockPrisma.gameSession.update.mockResolvedValue({ ...lastQ, status: 'ENDED' });
+      mockPrisma.gameParticipant.count.mockResolvedValue(0);
+      mockPrisma.gameSession.updateMany.mockResolvedValue({ count: 1 });
       mockPrisma.gameParticipant.findMany.mockResolvedValue([]);
       mockPrisma.user.findMany.mockResolvedValue([]);
 
       await service.nextQuestion('session-1', 'teacher-1');
 
-      expect(mockPrisma.gameSession.update).toHaveBeenCalledWith(
+      expect(mockPrisma.gameSession.updateMany).toHaveBeenCalledWith(
         expect.objectContaining({ data: expect.objectContaining({ status: 'ENDED' }) }),
       );
       expect(mockEventEmitter.emit).toHaveBeenCalledWith('game.session.ended', expect.objectContaining({ gameSessionId: 'session-1' }));
