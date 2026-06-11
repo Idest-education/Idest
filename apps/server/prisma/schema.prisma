@@ -192,11 +192,15 @@ model SessionAttendance {
 enum QuestionType {
   MULTIPLE_CHOICE
   FILL_BLANK
+  MULTI_CHOICE
+  MATCH_LR
+  WORD_CLOUD
 }
 
 enum GameSessionStatus {
   WAITING
   IN_PROGRESS
+  PAUSED
   ENDED
 }
 
@@ -222,7 +226,9 @@ model GameQuestion {
   order         Int
   timerSeconds  Int          @default(20)
   correctAnswer String
+  isMultiAnswer Boolean        @default(false)
   options       GameOption[]
+  matchPairs    GameMatchPair[]
   answers       GameAnswer[]
 }
 
@@ -232,6 +238,14 @@ model GameOption {
   question   GameQuestion @relation(fields: [questionId], references: [id], onDelete: Cascade)
   label      String
   text       String
+}
+
+model GameMatchPair {
+  id         String       @id @default(cuid())
+  questionId String
+  question   GameQuestion @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  leftLabel  String
+  rightText  String
 }
 
 model GameSession {
@@ -246,6 +260,8 @@ model GameSession {
   answers              GameAnswer[]
   startedAt            DateTime          @default(now())
   endedAt              DateTime?
+  pausedAt             DateTime?
+  hiddenWords          String?
 
   @@index([sessionId, status])
 }
@@ -259,6 +275,8 @@ model GameParticipant {
   lastSeenQuestionIndex Int         @default(0)
   joinedAt              DateTime    @default(now())
   lastActiveAt          DateTime    @default(now())
+  answerStreak          Int         @default(0)
+  maxAnswerStreak       Int         @default(0)
   answers               GameAnswer[]
 
   @@unique([sessionId, userId])
