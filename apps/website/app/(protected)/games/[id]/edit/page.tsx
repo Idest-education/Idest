@@ -32,6 +32,7 @@ export default function EditGamePage() {
             timerSeconds: q.timerSeconds,
             correctAnswer: q.correctAnswer ?? "",
             options: q.options?.map((o) => ({ label: o.label, text: o.text })),
+            matchPairs: q.matchPairs?.map((p) => ({ leftText: p.leftLabel, rightText: p.rightText })),
           })),
         );
       })
@@ -40,7 +41,19 @@ export default function EditGamePage() {
 
   const handleSave = async () => {
     if (!title.trim()) {
-      toast.error("Title is required");
+      toast.error("Game title is required");
+      return;
+    }
+    const emptyText = questions.findIndex((q) => !q.text.trim());
+    if (emptyText !== -1) {
+      toast.error(`Question ${emptyText + 1} is missing its question text`);
+      return;
+    }
+    const missingAnswer = questions.findIndex(
+      (q) => q.type !== "WORD_CLOUD" && q.type !== "MATCH_LR" && !q.correctAnswer.trim(),
+    );
+    if (missingAnswer !== -1) {
+      toast.error(`Question ${missingAnswer + 1} is missing a correct answer`);
       return;
     }
     setSaving(true);

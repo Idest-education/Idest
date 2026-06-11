@@ -21,8 +21,24 @@ export default function NewGamePage() {
   const [saving, setSaving] = useState(false);
 
   const handleSave = async () => {
-    if (!title.trim() || questions.length === 0) {
-      toast.error("Title and at least one question are required");
+    if (!title.trim()) {
+      toast.error("Game title is required");
+      return;
+    }
+    if (questions.length === 0) {
+      toast.error("Add at least one question");
+      return;
+    }
+    const emptyText = questions.findIndex((q) => !q.text.trim());
+    if (emptyText !== -1) {
+      toast.error(`Question ${emptyText + 1} is missing its question text`);
+      return;
+    }
+    const missingAnswer = questions.findIndex(
+      (q) => q.type !== "WORD_CLOUD" && q.type !== "MATCH_LR" && !q.correctAnswer.trim(),
+    );
+    if (missingAnswer !== -1) {
+      toast.error(`Question ${missingAnswer + 1} is missing a correct answer`);
       return;
     }
     setSaving(true);
