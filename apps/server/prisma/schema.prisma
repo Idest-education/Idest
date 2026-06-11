@@ -301,3 +301,60 @@ model GameAnswer {
   @@unique([participantId, questionId])
   @@index([sessionId, questionId])
 }
+
+enum MedalCategory {
+  WINNING
+  STREAK
+  LEADERBOARD
+  PARTICIPATION
+  ACCURACY
+  SPEED
+}
+
+model GameClassStats {
+  id               String    @id @default(cuid())
+  classId          String
+  userId           String
+  totalPoints      Int       @default(0)
+  weeklyPoints     Int       @default(0)
+  monthlyPoints    Int       @default(0)
+  totalWins        Int       @default(0)
+  totalGames       Int       @default(0)
+  correctAnswers   Int       @default(0)
+  totalAnswers     Int       @default(0)
+  consecutiveWins  Int       @default(0)
+  maxConsecWins    Int       @default(0)
+  rank1WeeksSince  DateTime?
+  rank1MonthsSince DateTime?
+  weeklyResetAt    DateTime  @default(now())
+  monthlyResetAt   DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  @@unique([classId, userId])
+  @@index([classId, totalPoints])
+  @@index([classId, weeklyPoints])
+  @@index([classId, monthlyPoints])
+}
+
+model GameMedal {
+  id          String         @id @default(cuid())
+  key         String         @unique
+  category    MedalCategory
+  name        String
+  description String
+  icon        String
+  awards      GameMedalAward[]
+}
+
+model GameMedalAward {
+  id        String    @id @default(cuid())
+  medalId   String
+  medal     GameMedal @relation(fields: [medalId], references: [id])
+  userId    String
+  classId   String
+  awardedAt DateTime  @default(now())
+
+  @@unique([medalId, userId, classId])
+  @@index([userId, classId])
+  @@index([classId])
+}
