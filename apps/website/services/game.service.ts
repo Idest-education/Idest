@@ -115,3 +115,18 @@ export async function getMyClassStats(classId: string) {
 export async function getUserMedals(classId: string, userId: string) {
   return http.get<MedalAward[]>(`/game-classes/${classId}/medals/${userId}`).then(unwrapResponse);
 }
+
+// ── Session Analytics ───────────────────────────────────────────────────
+
+export async function getSessionStats(sessionId: string) {
+  const { data } = await http.get(`/game-sessions/${sessionId}/stats`);
+  return data;
+}
+
+export async function exportSession(sessionId: string, format: 'csv' | 'json') {
+  const { data } = await http.get(`/game-sessions/${sessionId}/export`, {
+    params: { format },
+    responseType: format === 'csv' ? 'blob' : 'json',
+  });
+  return data;
+}
