@@ -5,6 +5,7 @@ import {
   Body,
   Param,
   Query,
+  Res,
   UseGuards,
   HttpCode,
   HttpStatus,
@@ -15,6 +16,7 @@ import {
   ApiOperation,
   ApiQuery,
 } from '@nestjs/swagger';
+import { Response } from 'express';
 import { IsString, IsNotEmpty } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 import { AuthGuard } from 'src/common/guard/auth.guard';
@@ -129,5 +131,30 @@ export class GameSessionController {
     @Body() dto: HideWordDto,
   ) {
     return this.service.hideWord(id, user.id, dto.word);
+  }
+
+  @Get(':id/stats')
+  @ApiOperation({ summary: 'Get session statistics (teacher only)' })
+  getStats(@CurrentUser() user: userPayload, @Param('id') id: string) {
+    return this.service.getSessionStats(id, user.id);
+  }
+
+  @Get(':id/export')
+  @ApiOperation({ summary: 'Export session data as CSV or JSON (teacher only)' })
+  @ApiQuery({ name: 'format', required: false, enum: ['csv', 'json'] })
+  async exportSession(
+    @CurrentUser() user: userPayload,
+    @Param('id') id: string,
+    @Query('format') format: string = 'json',
+    @Res() res: Response,
+  ) {
+    const data = await this.service.exportSession(id, user.id, format as 'csv' | 'json');
+    if (format === 'csv') {
+      res.setHeader('Content-Type', 'text/csv');
+      res.setHeader('Content-Disposition', `attachment; filename="session-${id}.csv"`);
+      res.send(data);
+    } else {
+      res.json(data);
+    }
   }
 }
