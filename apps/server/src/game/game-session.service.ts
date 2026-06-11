@@ -270,7 +270,15 @@ export class GameSessionService {
     let pointsAwarded: number;
 
     if (currentQuestion.type === 'MATCH_LR') {
-      const submitted: { left: string; right: string }[] = JSON.parse(answer);
+      let submitted: { left: string; right: string }[];
+      try {
+        submitted = JSON.parse(answer);
+        if (!Array.isArray(submitted) || !submitted.every((s) => 'left' in s && 'right' in s)) {
+          throw new Error();
+        }
+      } catch {
+        throw new BadRequestException('Invalid MATCH_LR answer format — expected JSON array of {left, right}');
+      }
       const ratio = this.checkMatchLR(currentQuestion.matchPairs, submitted);
       isCorrect = ratio === 1;
       pointsAwarded = this.computeMatchLRScore(ratio, responseTimeMs, currentQuestion.timerSeconds);
