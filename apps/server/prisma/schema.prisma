@@ -246,6 +246,8 @@ model GameMatchPair {
   question   GameQuestion @relation(fields: [questionId], references: [id], onDelete: Cascade)
   leftLabel  String
   rightText  String
+
+  @@index([questionId])
 }
 
 model GameSession {
