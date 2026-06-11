@@ -27,14 +27,48 @@ export class GameSessionService {
     return Math.min(1000, Math.max(500, Math.round(500 + 500 * (1 - ratio))));
   }
 
-  checkAnswer(type: 'MULTIPLE_CHOICE' | 'FILL_BLANK', correct: string, submitted: string): boolean {
+  checkAnswer(
+    type: 'MULTIPLE_CHOICE' | 'FILL_BLANK' | 'MULTI_CHOICE' | 'MATCH_LR' | 'WORD_CLOUD',
+    correct: string,
+    submitted: string,
+  ): boolean {
     if (type === 'MULTIPLE_CHOICE') {
       return correct.trim().toUpperCase() === submitted.trim().toUpperCase();
     }
+    if (type === 'MULTI_CHOICE') {
+      const correctSet = new Set(correct.split(',').map((s) => s.trim().toUpperCase()));
+      const submittedSet = new Set(submitted.split(',').map((s) => s.trim().toUpperCase()));
+      if (correctSet.size !== submittedSet.size) return false;
+      for (const v of correctSet) if (!submittedSet.has(v)) return false;
+      return true;
+    }
+    if (type === 'WORD_CLOUD') {
+      return true;
+    }
+    // FILL_BLANK
     const a = correct.toLowerCase().trim();
     const b = submitted.toLowerCase().trim();
     const tolerance = Math.floor(a.length / 5);
     return this.levenshtein(a, b) <= tolerance;
+  }
+
+  checkMatchLR(
+    pairs: { leftLabel: string; rightText: string }[],
+    submitted: { left: string; right: string }[],
+  ): number {
+    const correctMap = new Map(pairs.map((p) => [p.leftLabel, p.rightText]));
+    let correct = 0;
+    for (const s of submitted) {
+      if (correctMap.get(s.left) === s.right) correct++;
+    }
+    return pairs.length === 0 ? 0 : correct / pairs.length;
+  }
+
+  computeMatchLRScore(ratio: number, responseTimeMs: number, timerSeconds: number): number {
+    if (ratio === 0) return 0;
+    const timeRatio = Math.min(1, responseTimeMs / (timerSeconds * 1000));
+    const speedBonus = Math.min(1000, Math.max(500, Math.round(500 + 500 * (1 - timeRatio))));
+    return Math.round(ratio * speedBonus);
   }
 
   private levenshtein(a: string, b: string): number {

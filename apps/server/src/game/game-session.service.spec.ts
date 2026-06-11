@@ -158,6 +158,87 @@ describe('GameSessionService', () => {
     });
   });
 
+  describe('checkAnswer — MULTI_CHOICE', () => {
+    it('returns true when submitted set exactly matches correct set (order-independent)', () => {
+      expect(service.checkAnswer('MULTI_CHOICE', 'B,C', 'C,B')).toBe(true);
+      expect(service.checkAnswer('MULTI_CHOICE', 'A,C', 'A,C')).toBe(true);
+    });
+
+    it('returns false when submitted set is a subset of correct set', () => {
+      expect(service.checkAnswer('MULTI_CHOICE', 'B,C', 'B')).toBe(false);
+    });
+
+    it('returns false when submitted set is a superset', () => {
+      expect(service.checkAnswer('MULTI_CHOICE', 'B,C', 'A,B,C')).toBe(false);
+    });
+
+    it('returns false when submitted set is completely wrong', () => {
+      expect(service.checkAnswer('MULTI_CHOICE', 'B,C', 'A,D')).toBe(false);
+    });
+  });
+
+  describe('checkAnswer — WORD_CLOUD', () => {
+    it('always returns true for any non-empty word', () => {
+      expect(service.checkAnswer('WORD_CLOUD', '', 'happy')).toBe(true);
+      expect(service.checkAnswer('WORD_CLOUD', '', 'anything')).toBe(true);
+    });
+  });
+
+  describe('checkMatchLR', () => {
+    const pairs = [
+      { leftLabel: 'A', rightText: 'Joyful' },
+      { leftLabel: 'B', rightText: 'Sad' },
+      { leftLabel: 'C', rightText: 'Angry' },
+    ];
+
+    it('returns ratio 1.0 when all pairs are correct', () => {
+      const submitted = [
+        { left: 'A', right: 'Joyful' },
+        { left: 'B', right: 'Sad' },
+        { left: 'C', right: 'Angry' },
+      ];
+      expect(service.checkMatchLR(pairs, submitted)).toBe(1);
+    });
+
+    it('returns ratio 0.667 when 2 of 3 pairs correct', () => {
+      const submitted = [
+        { left: 'A', right: 'Joyful' },
+        { left: 'B', right: 'Sad' },
+        { left: 'C', right: 'Wrong' },
+      ];
+      expect(service.checkMatchLR(pairs, submitted)).toBeCloseTo(2 / 3);
+    });
+
+    it('returns 0 when all pairs are wrong', () => {
+      const submitted = [
+        { left: 'A', right: 'Wrong' },
+        { left: 'B', right: 'Wrong' },
+        { left: 'C', right: 'Wrong' },
+      ];
+      expect(service.checkMatchLR(pairs, submitted)).toBe(0);
+    });
+  });
+
+  describe('computeMatchLRScore', () => {
+    it('returns full speed-bonus points when ratio is 1 and instant response', () => {
+      expect(service.computeMatchLRScore(1, 0, 20)).toBe(1000);
+    });
+
+    it('returns 0 when ratio is 0', () => {
+      expect(service.computeMatchLRScore(0, 5000, 20)).toBe(0);
+    });
+
+    it('returns proportional points for partial ratio', () => {
+      // ratio=0.5, responseTime=0 → speedBonus=1000 → 0.5*1000=500
+      expect(service.computeMatchLRScore(0.5, 0, 20)).toBe(500);
+    });
+
+    it('applies speed bonus correctly (half-time response)', () => {
+      // ratio=1, responseTime=10000ms, timerSeconds=20 → speedBonus=750 → 1*750=750
+      expect(service.computeMatchLRScore(1, 10000, 20)).toBe(750);
+    });
+  });
+
   describe('nextQuestion', () => {
     const baseSession = {
       id: 'session-1',
