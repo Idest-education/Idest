@@ -133,10 +133,14 @@ export class GameGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
     gameSessionId: string;
     correctAnswer: string;
     questionId: string;
+    distribution: { label: string; text: string; count: number; pct: number; isCorrect: boolean }[];
+    unansweredCount: number;
     questionPoints: { userId: string; pointsAwarded: number }[];
   }) {
     this.server.to(payload.gameSessionId).emit('game:question_ended', {
       correctAnswer: payload.correctAnswer,
+      distribution: payload.distribution,
+      unansweredCount: payload.unansweredCount,
       pointsBreakdown: payload.questionPoints,
     });
   }
@@ -168,4 +172,51 @@ export class GameGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
       this.lbDebouncers.delete(payload.gameSessionId);
     }
   }
+
+  @OnEvent('game.session.paused')
+  handleSessionPaused(payload: { gameSessionId: string; pausedAt: Date }) {
+    this.server.to(payload.gameSessionId).emit('game:session_paused', {
+      pausedAt: payload.pausedAt,
+    });
+  }
+
+  @OnEvent('game.session.resumed')
+  handleSessionResumed(payload: { gameSessionId: string; elapsedSeconds: number }) {
+    this.server.to(payload.gameSessionId).emit('game:session_resumed', {
+      elapsedSeconds: payload.elapsedSeconds,
+    });
+  }
+
+  @OnEvent('game.timer.extended')
+  handleTimerExtended(payload: {
+    gameSessionId: string;
+    newTimerSeconds: number;
+    elapsedSeconds: number;
+  }) {
+    this.server.to(payload.gameSessionId).emit('game:timer_extended', {
+      newTimerSeconds: payload.newTimerSeconds,
+      elapsedSeconds: payload.elapsedSeconds,
+    });
+  }
+
+  @OnEvent('game.word_cloud.updated')
+  handleWordCloudUpdated(payload: { gameSessionId: string; words: { text: string; count: number }[] }) {
+    this.server.to(payload.gameSessionId).emit('game:word_cloud_updated', {
+      words: payload.words,
+    });
+  }
+
+  @OnEvent('game.answer.revealed')
+  handleAnswerRevealed(payload: {
+    gameSessionId: string;
+    correctAnswer: string;
+    distribution: { label: string; text: string; count: number; pct: number; isCorrect: boolean }[];
+  }) {
+    this.server.to(payload.gameSessionId).emit('game:answer_revealed', {
+      correctAnswer: payload.correctAnswer,
+      distribution: payload.distribution,
+    });
+  }
+
+  // TODO: Implement game.medal.earned handler in Phase 2
 }
