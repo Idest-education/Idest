@@ -659,15 +659,10 @@ describe('GameSessionService', () => {
         { id: 'p1', userId: 'u1', score: 800 },
         { id: 'p2', userId: 'u2', score: 0 },
       ]);
-      mockPrisma.gameAnswer.findMany
-        .mockResolvedValueOnce([  // per-question answers
-          { participantId: 'p1', answer: 'B', isCorrect: true, responseTimeMs: 3000 },
-          { participantId: 'p2', answer: 'A', isCorrect: false, responseTimeMs: 8000 },
-        ])
-        .mockResolvedValueOnce([ // per-student answers for export
-          { participantId: 'p1', answer: 'B', isCorrect: true, responseTimeMs: 3000 },
-          { participantId: 'p2', answer: 'A', isCorrect: false, responseTimeMs: 8000 },
-        ]);
+      mockPrisma.gameAnswer.findMany.mockResolvedValue([
+        { participantId: 'p1', questionId: 'q1', answer: 'B', isCorrect: true, responseTimeMs: 3000 },
+        { participantId: 'p2', questionId: 'q1', answer: 'A', isCorrect: false, responseTimeMs: 8000 },
+      ]);
       mockPrisma.user.findMany.mockResolvedValue([
         { id: 'u1', full_name: 'Alice' },
         { id: 'u2', full_name: 'Bob' },
@@ -727,6 +722,26 @@ describe('GameSessionService', () => {
       expect(result as string).toMatch(/^studentName,score,accuracy/);
       expect(result as string).toContain('Alice');
       expect(result as string).toContain('Bob');
+      expect(result as string).toContain(',900,'); // score for Alice
+    });
+
+    it('escapes special characters in student names for CSV', async () => {
+      mockPrisma.gameSession.findUnique.mockResolvedValue({
+        id: 'gs1', status: 'ENDED', startedBy: 'teacher-1',
+        template: { questions: [] },
+      });
+      mockPrisma.gameParticipant.findMany.mockResolvedValue([
+        { id: 'p1', userId: 'u1', score: 100 },
+      ]);
+      mockPrisma.user.findMany.mockResolvedValue([
+        { id: 'u1', full_name: '=HYPERLINK("evil.com","click me")' },
+      ]);
+      mockPrisma.gameAnswer.findMany.mockResolvedValue([]);
+
+      const result = await service.exportSession('gs1', 'teacher-1', 'csv') as string;
+      // The field must not open with a bare =HYPERLINK (i.e. "=HYPERLINK at start of quoted value)
+      expect(result).not.toMatch(/"=HYPERLINK/);
+      expect(result).toContain("'=HYPERLINK");
     });
 
     it('JSON happy path: returns array with expected fields per student', async () => {

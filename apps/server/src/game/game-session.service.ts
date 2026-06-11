@@ -547,14 +547,20 @@ export class GameSessionService {
     });
     const participantCount = participants.length;
 
-    const questionStats = await Promise.all(
-      questions.map(async (q, idx) => {
-        const answers = await this.prisma.gameAnswer.findMany({
-          where: { sessionId: gameSessionId, questionId: q.id },
-        });
+    const allAnswersForSession = await this.prisma.gameAnswer.findMany({
+      where: { sessionId: gameSessionId },
+    });
+    const answersByQuestion = new Map<string, typeof allAnswersForSession>();
+    for (const a of allAnswersForSession) {
+      if (!answersByQuestion.has(a.questionId)) answersByQuestion.set(a.questionId, []);
+      answersByQuestion.get(a.questionId)!.push(a);
+    }
+
+    const questionStats = questions.map((q, idx) => {
+        const answers = answersByQuestion.get(q.id) ?? [];
         const correctCount = answers.filter((a) => a.isCorrect).length;
         const incorrectCount = answers.filter((a) => !a.isCorrect).length;
-        const unansweredCount = participantCount - answers.length;
+        const unansweredCount = Math.max(0, participantCount - answers.length);
         const avgResponseTimeMs =
           answers.length > 0
             ? Math.round(answers.reduce((s, a) => s + a.responseTimeMs, 0) / answers.length)
@@ -577,8 +583,7 @@ export class GameSessionService {
           distribution,
           difficultyScore,
         };
-      }),
-    );
+      });
 
     const totalCorrect = questionStats.reduce((s, q) => s + q.correctCount, 0);
     const totalAnswered = questionStats.reduce((s, q) => s + q.totalResponses, 0);
@@ -587,14 +592,16 @@ export class GameSessionService {
       questionStats.length > 0
         ? Math.round(questionStats.reduce((s, q) => s + q.avgResponseTimeMs, 0) / questionStats.length)
         : 0;
-    const hardestQuestion = questionStats.reduce(
-      (max, q, idx) => (q.difficultyScore > (questionStats[max]?.difficultyScore ?? 0) ? idx : max),
-      0,
-    );
-    const easiestQuestion = questionStats.reduce(
-      (min, q, idx) => (q.difficultyScore < (questionStats[min]?.difficultyScore ?? 1) ? idx : min),
-      0,
-    );
+    const hardestQuestion =
+      questionStats.length === 0
+        ? null
+        : questionStats.reduce((maxIdx, q, idx) =>
+            q.difficultyScore > questionStats[maxIdx].difficultyScore ? idx : maxIdx, 0);
+    const easiestQuestion =
+      questionStats.length === 0
+        ? null
+        : questionStats.reduce((minIdx, q, idx) =>
+            q.difficultyScore < questionStats[minIdx].difficultyScore ? idx : minIdx, 0);
 
     return {
       questions: questionStats,
@@ -657,10 +664,12 @@ export class GameSessionService {
     if (format === 'json') return rows;
 
     // CSV
+    const sanitizeCsvField = (s: string) =>
+      '"' + String(s).replace(/"/g, '""').replace(/^[=+\-@\t\r]/, "'$&") + '"';
+
     const headers = 'studentName,score,accuracy,avgResponseTimeMs,answeredCount,correctCount\n';
-    const csvRows = rows.map(
-      (r) =>
-        `"${r.studentName}",${r.score},${r.accuracy},${r.avgResponseTimeMs},${r.answeredCount},${r.correctCount}`,
+    const csvRows = rows.map((r) =>
+      `${sanitizeCsvField(r.studentName)},${r.score},${r.accuracy},${r.avgResponseTimeMs},${r.answeredCount},${r.correctCount}`,
     );
     return headers + csvRows.join('\n');
   }
