@@ -693,6 +693,73 @@ describe('GameSessionService', () => {
     });
   });
 
+  describe('exportSession', () => {
+    const session = {
+      id: 'gs1',
+      status: 'ENDED',
+      startedBy: 'teacher-1',
+      template: { questions: [] },
+    };
+    const participants = [
+      { id: 'p1', userId: 'u1', score: 900, sessionId: 'gs1' },
+      { id: 'p2', userId: 'u2', score: 400, sessionId: 'gs1' },
+    ];
+    const users = [
+      { id: 'u1', full_name: 'Alice' },
+      { id: 'u2', full_name: 'Bob' },
+    ];
+    const answers = [
+      { participantId: 'p1', sessionId: 'gs1', isCorrect: true,  responseTimeMs: 2000 },
+      { participantId: 'p1', sessionId: 'gs1', isCorrect: true,  responseTimeMs: 3000 },
+      { participantId: 'p2', sessionId: 'gs1', isCorrect: false, responseTimeMs: 5000 },
+      { participantId: 'p2', sessionId: 'gs1', isCorrect: true,  responseTimeMs: 6000 },
+    ];
+
+    it('CSV happy path: returns a string with correct headers and student names', async () => {
+      mockPrisma.gameSession.findUnique.mockResolvedValue(session);
+      mockPrisma.gameParticipant.findMany.mockResolvedValue(participants);
+      mockPrisma.user.findMany.mockResolvedValue(users);
+      mockPrisma.gameAnswer.findMany.mockResolvedValue(answers);
+
+      const result = await service.exportSession('gs1', 'teacher-1', 'csv');
+
+      expect(typeof result).toBe('string');
+      expect(result as string).toMatch(/^studentName,score,accuracy/);
+      expect(result as string).toContain('Alice');
+      expect(result as string).toContain('Bob');
+    });
+
+    it('JSON happy path: returns array with expected fields per student', async () => {
+      mockPrisma.gameSession.findUnique.mockResolvedValue(session);
+      mockPrisma.gameParticipant.findMany.mockResolvedValue(participants);
+      mockPrisma.user.findMany.mockResolvedValue(users);
+      mockPrisma.gameAnswer.findMany.mockResolvedValue(answers);
+
+      const result = await service.exportSession('gs1', 'teacher-1', 'json');
+
+      expect(Array.isArray(result)).toBe(true);
+      const rows = result as Array<Record<string, unknown>>;
+      expect(rows[0]).toMatchObject({
+        studentName: expect.any(String),
+        score: expect.any(Number),
+        accuracy: expect.any(Number),
+        correctCount: expect.any(Number),
+      });
+    });
+
+    it('throws ForbiddenException when requesterId is not the session owner', async () => {
+      mockPrisma.gameSession.findUnique.mockResolvedValue({ ...session, startedBy: 'teacher-1' });
+
+      await expect(service.exportSession('gs1', 'other', 'csv')).rejects.toThrow(ForbiddenException);
+    });
+
+    it('throws NotFoundException when session does not exist', async () => {
+      mockPrisma.gameSession.findUnique.mockResolvedValue(null);
+
+      await expect(service.exportSession('gs1', 'teacher-1', 'csv')).rejects.toThrow(NotFoundException);
+    });
+  });
+
   describe('nextQuestion', () => {
     const baseSession = {
       id: 'session-1',
