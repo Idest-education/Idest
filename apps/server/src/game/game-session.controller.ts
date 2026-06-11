@@ -9,6 +9,7 @@ import {
   UseGuards,
   HttpCode,
   HttpStatus,
+  BadRequestException,
 } from '@nestjs/common';
 import {
   ApiTags,
@@ -146,8 +147,12 @@ export class GameSessionController {
     @CurrentUser() user: userPayload,
     @Param('id') id: string,
     @Query('format') format: string = 'json',
+    // @Res() without passthrough: NestJS interceptors are bypassed intentionally (manual send)
     @Res() res: Response,
   ) {
+    if (format !== 'csv' && format !== 'json') {
+      throw new BadRequestException("format must be 'csv' or 'json'");
+    }
     const data = await this.service.exportSession(id, user.id, format as 'csv' | 'json');
     if (format === 'csv') {
       res.setHeader('Content-Type', 'text/csv');
