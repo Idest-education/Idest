@@ -17,7 +17,7 @@ export class GameTemplateService {
       include: {
         questions: {
           orderBy: { order: 'asc' },
-          include: { options: true },
+          include: { options: true, matchPairs: true },
         },
       },
       orderBy: { createdAt: 'desc' },
@@ -30,7 +30,7 @@ export class GameTemplateService {
       include: {
         questions: {
           orderBy: { order: 'asc' },
-          include: { options: true },
+          include: { options: true, matchPairs: true },
         },
       },
     });
@@ -51,15 +51,19 @@ export class GameTemplateService {
             type: q.type,
             order: q.order,
             timerSeconds: q.timerSeconds,
-            correctAnswer: q.correctAnswer,
+            correctAnswer: q.correctAnswer ?? '',
+            isMultiAnswer: q.isMultiAnswer ?? false,
             options: q.options
               ? { create: q.options.map((o) => ({ label: o.label, text: o.text })) }
+              : undefined,
+            matchPairs: q.matchPairs
+              ? { create: q.matchPairs.map((p) => ({ leftLabel: p.leftText, rightText: p.rightText })) }
               : undefined,
           })),
         },
       },
       include: {
-        questions: { include: { options: true } },
+        questions: { include: { options: true, matchPairs: true } },
       },
     });
   }
@@ -79,15 +83,19 @@ export class GameTemplateService {
                 type: q.type,
                 order: q.order,
                 timerSeconds: q.timerSeconds,
-                correctAnswer: q.correctAnswer,
+                correctAnswer: q.correctAnswer ?? '',
+                isMultiAnswer: q.isMultiAnswer ?? false,
                 options: q.options
                   ? { create: q.options.map((o) => ({ label: o.label, text: o.text })) }
+                  : undefined,
+                matchPairs: q.matchPairs
+                  ? { create: q.matchPairs.map((p) => ({ leftLabel: p.leftText, rightText: p.rightText })) }
                   : undefined,
               })),
             }
           : undefined,
       },
-      include: { questions: { orderBy: { order: 'asc' }, include: { options: true } } },
+      include: { questions: { orderBy: { order: 'asc' }, include: { options: true, matchPairs: true } } },
     });
   }
 
