@@ -1,311 +1,367 @@
 "use client";
-
-import { useState, useEffect } from "react";
-import { Loader2 } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { useState, useEffect, useRef } from "react";
 import { useGameStore } from "@/hooks/useGameStore";
+import { GameTimer } from "./GameTimer";
+import { GameHUD } from "./GameHUD";
+import { GameWordCloud } from "./GameWordCloud";
+import { GameMatchLR } from "./GameMatchLR";
 import { submitAnswer } from "@/services/game.service";
 
-const OPTION_COLORS = ["#1e3a5f", "#3b1f6b", "#1a3a1a", "#3a1a1a"];
-const OPTION_COLORS_SUBMITTED = [
-  "rgba(30,58,95,0.45)",
-  "rgba(59,31,107,0.45)",
-  "rgba(26,58,26,0.45)",
-  "rgba(58,26,26,0.45)",
-];
+const OPTION_COLORS: Record<string, { bg: string; border: string }> = {
+  A: { bg: "#1d4ed8", border: "#2563eb" },
+  B: { bg: "#5b21b6", border: "#7c3aed" },
+  C: { bg: "#065f46", border: "#059669" },
+  D: { bg: "#92400e", border: "#d97706" },
+};
 
 interface GameActiveStudentProps {
   gameSessionId: string;
+  userId?: string;
 }
 
-export function GameActiveStudent({ gameSessionId }: GameActiveStudentProps) {
-  const currentQuestion = useGameStore((s) => s.currentQuestion);
-  const hasSubmitted = useGameStore((s) => s.hasSubmitted);
-  const roundResult = useGameStore((s) => s.roundResult);
-  const myScore = useGameStore((s) => s.myScore);
-  const setHasSubmitted = useGameStore((s) => s.setHasSubmitted);
-  const [fillText, setFillText] = useState("");
-  const [submitting, setSubmitting] = useState(false);
-  const [selectedOption, setSelectedOption] = useState<string | null>(null);
-  const [timeLeft, setTimeLeft] = useState(0);
+export function GameActiveStudent({ gameSessionId, userId: _userId }: GameActiveStudentProps) {
+  const {
+    currentQuestion,
+    myScore,
+    myRank,
+    hasSubmitted,
+    roundResult,
+    answerStreak,
+    distribution,
+    isPaused,
+    wordCloudWords,
+    leaderboard,
+    setHasSubmitted,
+    setMyScore,
+    setAnswerStreak,
+  } = useGameStore();
 
+  const [elapsedSeconds, setElapsedSeconds] = useState(0);
+  const [selectedOptions, setSelectedOptions] = useState<Set<string>>(new Set());
+  const [fillInput, setFillInput] = useState("");
+  const [wordInput, setWordInput] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const [prevRank, setPrevRank] = useState<number | null>(null);
+  const [shownPoints, setShownPoints] = useState(0);
+  const intervalRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Reset per-question state when new question arrives
   useEffect(() => {
     if (!currentQuestion) return;
-    setSelectedOption(null);
-    setFillText("");
-    const total = currentQuestion.timerSeconds - (currentQuestion.elapsedSeconds ?? 0);
-    setTimeLeft(total);
-    const interval = setInterval(() => setTimeLeft((t) => Math.max(0, t - 1)), 1000);
-    return () => clearInterval(interval);
-  }, [currentQuestion]);
+    setElapsedSeconds(currentQuestion.elapsedSeconds ?? 0);
+    setSelectedOptions(new Set());
+    setFillInput("");
+    setWordInput("");
+    setSubmitting(false);
+    setPrevRank(myRank);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentQuestion?.questionIndex]);
 
-  const handleSubmit = async (answer: string) => {
-    if (hasSubmitted || submitting) return;
+  // Count up elapsed time
+  useEffect(() => {
+    if (!currentQuestion || isPaused || hasSubmitted) {
+      if (intervalRef.current) clearInterval(intervalRef.current);
+      return;
+    }
+    intervalRef.current = setInterval(() => {
+      setElapsedSeconds((s) => s + 1);
+    }, 1000);
+    return () => {
+      if (intervalRef.current) clearInterval(intervalRef.current);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentQuestion?.questionIndex, isPaused, hasSubmitted]);
+
+  // Animate points when roundResult arrives
+  useEffect(() => {
+    if (!roundResult) return;
+    const target = roundResult.pointsAwarded;
+    let current = 0;
+    const step = Math.max(1, Math.ceil(target / 20));
+    const t = setInterval(() => {
+      current = Math.min(current + step, target);
+      setShownPoints(current);
+      if (current >= target) clearInterval(t);
+    }, 40);
+    return () => clearInterval(t);
+  }, [roundResult]);
+
+  async function doSubmit(answer: string) {
+    if (submitting || hasSubmitted) return;
     setSubmitting(true);
     try {
-      await submitAnswer(gameSessionId, { answer });
+      const res = await submitAnswer(gameSessionId, { answer });
       setHasSubmitted(true);
+      setMyScore(myScore + res.pointsAwarded);
+      setAnswerStreak(res.answerStreak, res.maxAnswerStreak);
+    } catch {
+      // duplicate submission or session ended — silently ignore
     } finally {
       setSubmitting(false);
     }
-  };
+  }
+
+  function handleMCSelect(label: string) {
+    if (hasSubmitted || submitting) return;
+    doSubmit(label);
+  }
+
+  function handleMultiToggle(label: string) {
+    if (hasSubmitted || submitting) return;
+    setSelectedOptions((prev) => {
+      const next = new Set(prev);
+      next.has(label) ? next.delete(label) : next.add(label);
+      return next;
+    });
+  }
+
+  function handleMultiSubmit() {
+    const answer = [...selectedOptions].sort().join(",");
+    doSubmit(answer);
+  }
+
+  function handleMatchSubmit(pairs: { left: string; right: string }[]) {
+    doSubmit(JSON.stringify(pairs));
+  }
 
   if (!currentQuestion) return null;
 
-  const timerPercent =
-    currentQuestion.timerSeconds > 0 ? (timeLeft / currentQuestion.timerSeconds) * 100 : 0;
-  const timerColor = timerPercent > 40 ? "#7c3aed" : timerPercent > 15 ? "#f59e0b" : "#ef4444";
+  const rankChange =
+    myRank !== null && prevRank !== null && prevRank !== myRank
+      ? prevRank - myRank
+      : 0;
 
-  // Build a readable correct-answer string for MULTIPLE_CHOICE
-  const correctOptionText =
-    roundResult && currentQuestion.type === "MULTIPLE_CHOICE"
-      ? currentQuestion.options.find((o) => o.label === roundResult.correctAnswer)?.text
-      : null;
-  const displayCorrectAnswer = correctOptionText
-    ? `${roundResult?.correctAnswer} · ${correctOptionText}`
-    : roundResult?.correctAnswer;
+  // MATCH_LR: GameQuestionStartedEvent doesn't carry matchPairs; derive from options if possible
+  // matchPairs shape for GameMatchLR: { leftLabel, rightText }[]
+  // options have { id, label, text } — we pass options + empty matchPairs and let component handle it
+  const matchPairsForComponent = (currentQuestion as unknown as { matchPairs?: { leftLabel: string; rightText: string }[] }).matchPairs ?? [];
 
   return (
-    <div className="relative flex flex-col h-full overflow-hidden">
-      {/* ── Question view ── */}
-      <div className="flex flex-col gap-4 p-4 h-full overflow-y-auto">
-        {/* Timer */}
-        <div style={{ height: 5, background: "#2a2a2a", borderRadius: 99, overflow: "hidden" }}>
-          <div
-            style={{
-              height: "100%",
-              width: `${timerPercent}%`,
-              background: timerColor,
-              borderRadius: 99,
-              transition: "width 1s linear, background 0.5s",
-            }}
-          />
-        </div>
-        <div className="flex justify-between items-center" style={{ marginTop: -8 }}>
-          <span style={{ fontSize: 11, color: "rgba(255,250,245,0.25)" }}>
-            Q {currentQuestion.questionIndex + 1}
-          </span>
-          <span style={{ fontSize: 11, fontWeight: 600, color: timerColor }}>{timeLeft}s</span>
-        </div>
+    <div
+      className="flex flex-col gap-4 h-full overflow-y-auto"
+      style={{ background: "#0b0b0b", color: "#fffaf5", padding: "16px" }}
+    >
+      {/* HUD */}
+      <GameHUD
+        score={myScore}
+        answerStreak={answerStreak}
+        rank={myRank}
+        totalPlayers={leaderboard.length}
+      />
 
-        <p style={{ fontSize: 15, fontWeight: 600, color: "#fffaf5", lineHeight: 1.55 }}>
-          {currentQuestion.text}
-        </p>
-
-        {currentQuestion.type === "MULTIPLE_CHOICE" ? (
-          <div className="grid grid-cols-2 gap-3 flex-1">
-            {currentQuestion.options.map((opt, i) => {
-              const isSelected = selectedOption === opt.label;
-              return (
-                <button
-                  key={opt.id}
-                  disabled={hasSubmitted || submitting}
-                  onClick={() => {
-                    setSelectedOption(opt.label);
-                    handleSubmit(opt.label);
-                  }}
-                  style={{
-                    padding: "16px 12px",
-                    background: hasSubmitted
-                      ? isSelected
-                        ? OPTION_COLORS[i % 4]
-                        : OPTION_COLORS_SUBMITTED[i % 4]
-                      : OPTION_COLORS[i % 4],
-                    borderRadius: 10,
-                    border: isSelected
-                      ? "2px solid rgba(255,250,245,0.45)"
-                      : "2px solid transparent",
-                    cursor: hasSubmitted ? "default" : "pointer",
-                    fontSize: 13,
-                    fontWeight: 500,
-                    color:
-                      hasSubmitted && !isSelected ? "rgba(255,250,245,0.3)" : "#fffaf5",
-                    textAlign: "left",
-                    transition: "background 0.2s",
-                    display: "flex",
-                    flexDirection: "column",
-                    gap: 4,
-                  }}
-                >
-                  <span style={{ fontSize: 11, fontWeight: 700, opacity: 0.6 }}>{opt.label}</span>
-                  <span>{opt.text}</span>
-                </button>
-              );
-            })}
-          </div>
-        ) : (
-          /* Fill-in-the-blank: centered, large */
-          <div className="flex flex-1 flex-col items-center justify-center gap-5">
-            <p style={{ fontSize: 13, color: "rgba(255,250,245,0.4)", textAlign: "center" }}>
-              Type your answer below
-            </p>
-            <Input
-              value={fillText}
-              onChange={(e) => setFillText(e.target.value)}
-              placeholder="Your answer…"
-              disabled={hasSubmitted}
-              onKeyDown={(e) => e.key === "Enter" && !hasSubmitted && handleSubmit(fillText)}
-              style={{
-                background: "#1e1e1e",
-                border: "1px solid #3a2a5a",
-                color: "#fffaf5",
-                height: 56,
-                fontSize: 18,
-                textAlign: "center",
-                maxWidth: 360,
-                width: "100%",
-                borderRadius: 10,
-              }}
-            />
-            <Button
-              onClick={() => handleSubmit(fillText)}
-              disabled={hasSubmitted || submitting || !fillText.trim()}
-              style={{
-                background: hasSubmitted ? "#2a2a2a" : "#7c3aed",
-                color: hasSubmitted ? "rgba(255,250,245,0.4)" : "white",
-                height: 48,
-                fontSize: 15,
-                paddingInline: 40,
-                borderRadius: 10,
-                transition: "background 0.2s",
-              }}
-            >
-              {submitting ? <Loader2 className="h-5 w-5 animate-spin" /> : hasSubmitted ? "Submitted ✓" : "Submit"}
-            </Button>
-          </div>
-        )}
-
-        {hasSubmitted && !roundResult && (
-          <p
-            style={{
-              fontSize: 12,
-              color: "rgba(255,250,245,0.35)",
-              fontStyle: "italic",
-              textAlign: "center",
-            }}
-          >
-            Answer submitted — waiting for results…
-          </p>
-        )}
+      {/* Timer + Question */}
+      <div className="flex flex-col items-center gap-3">
+        <GameTimer
+          timerSeconds={currentQuestion.timerSeconds}
+          elapsedSeconds={elapsedSeconds}
+          isPaused={isPaused}
+        />
+        <p className="text-lg font-bold text-center max-w-lg">{currentQuestion.text}</p>
       </div>
 
-      {/* ── Round result popup overlay ── */}
+      {/* Answer area */}
+      {!hasSubmitted ? (
+        <div className="flex flex-col gap-3">
+          {currentQuestion.type === "MULTIPLE_CHOICE" &&
+            currentQuestion.options.map((opt) => (
+              <button
+                key={opt.id}
+                onClick={() => handleMCSelect(opt.label)}
+                disabled={submitting}
+                className="rounded-xl px-5 py-4 text-left font-semibold text-base transition-transform active:scale-95"
+                style={{
+                  background: OPTION_COLORS[opt.label]?.bg ?? "#374151",
+                  border: `2px solid ${OPTION_COLORS[opt.label]?.border ?? "#6b7280"}`,
+                  color: "#fff",
+                }}
+              >
+                <span className="font-bold mr-3 opacity-80">{opt.label}.</span>
+                {opt.text}
+              </button>
+            ))}
+
+          {currentQuestion.type === "MULTI_CHOICE" && (
+            <>
+              {currentQuestion.options.map((opt) => {
+                const sel = selectedOptions.has(opt.label);
+                return (
+                  <button
+                    key={opt.id}
+                    onClick={() => handleMultiToggle(opt.label)}
+                    disabled={submitting}
+                    className="rounded-xl px-5 py-4 text-left font-semibold text-base transition-all"
+                    style={{
+                      background: sel
+                        ? (OPTION_COLORS[opt.label]?.bg ?? "#374151")
+                        : "rgba(255,255,255,0.06)",
+                      border: `2px solid ${
+                        sel
+                          ? (OPTION_COLORS[opt.label]?.border ?? "#6b7280")
+                          : "rgba(255,255,255,0.15)"
+                      }`,
+                      color: "#fff",
+                    }}
+                  >
+                    <span className="mr-3">{sel ? "☑" : "☐"}</span>
+                    <span className="font-bold mr-2 opacity-80">{opt.label}.</span>
+                    {opt.text}
+                  </button>
+                );
+              })}
+              {selectedOptions.size > 0 && (
+                <button
+                  onClick={handleMultiSubmit}
+                  disabled={submitting}
+                  className="rounded-xl py-3 font-bold text-base"
+                  style={{ background: "#7c3aed", color: "#fff" }}
+                >
+                  Submit →
+                </button>
+              )}
+            </>
+          )}
+
+          {currentQuestion.type === "FILL_BLANK" && (
+            <div className="flex gap-2">
+              <input
+                value={fillInput}
+                onChange={(e) => setFillInput(e.target.value)}
+                onKeyDown={(e) =>
+                  e.key === "Enter" && fillInput.trim() && doSubmit(fillInput.trim())
+                }
+                placeholder="Type your answer…"
+                className="flex-1 rounded-xl px-4 py-3 text-base"
+                style={{
+                  background: "rgba(255,255,255,0.08)",
+                  border: "1px solid rgba(255,255,255,0.2)",
+                  color: "#fffaf5",
+                  outline: "none",
+                }}
+              />
+              <button
+                onClick={() => fillInput.trim() && doSubmit(fillInput.trim())}
+                disabled={submitting || !fillInput.trim()}
+                className="rounded-xl px-5 py-3 font-bold"
+                style={{ background: "#7c3aed", color: "#fff" }}
+              >
+                →
+              </button>
+            </div>
+          )}
+
+          {currentQuestion.type === "MATCH_LR" && (
+            <GameMatchLR
+              options={currentQuestion.options}
+              matchPairs={matchPairsForComponent}
+              onSubmit={handleMatchSubmit}
+              disabled={submitting}
+            />
+          )}
+
+          {currentQuestion.type === "WORD_CLOUD" && (
+            <div className="flex gap-2">
+              <input
+                value={wordInput}
+                onChange={(e) => setWordInput(e.target.value.replace(/\s/g, ""))}
+                placeholder="Type one word…"
+                maxLength={30}
+                className="flex-1 rounded-xl px-4 py-3 text-base"
+                style={{
+                  background: "rgba(255,255,255,0.08)",
+                  border: "1px solid rgba(255,255,255,0.2)",
+                  color: "#fffaf5",
+                  outline: "none",
+                }}
+              />
+              <button
+                onClick={() => wordInput.trim() && doSubmit(wordInput.trim())}
+                disabled={submitting || !wordInput.trim()}
+                className="rounded-xl px-5 py-3 font-bold"
+                style={{ background: "#7c3aed", color: "#fff" }}
+              >
+                →
+              </button>
+            </div>
+          )}
+        </div>
+      ) : (
+        <div className="flex flex-col items-center gap-2 py-6">
+          <span className="text-3xl animate-pulse">⏳</span>
+          <p className="text-sm" style={{ color: "#9ca3af" }}>
+            Waiting for results…
+          </p>
+          {currentQuestion.type === "WORD_CLOUD" && wordCloudWords.length > 0 && (
+            <GameWordCloud words={wordCloudWords} />
+          )}
+        </div>
+      )}
+
+      {/* Answer reveal overlay */}
       {roundResult && (
         <div
+          className="fixed inset-0 flex flex-col items-center justify-center gap-4 z-50"
           style={{
-            position: "absolute",
-            inset: 0,
-            background: "rgba(11,11,11,0.78)",
-            backdropFilter: "blur(6px)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            padding: 20,
-            zIndex: 20,
+            background: "rgba(11,11,11,0.95)",
+            backdropFilter: "blur(8px)",
           }}
         >
+          <div className="text-6xl">{roundResult.isCorrect ? "✅" : "❌"}</div>
           <div
-            style={{
-              background: "#181818",
-              border: `2px solid ${roundResult.isCorrect ? "#22c55e" : "#ef4444"}`,
-              borderRadius: 18,
-              padding: "28px 32px",
-              maxWidth: 320,
-              width: "100%",
-              textAlign: "center",
-              display: "flex",
-              flexDirection: "column",
-              alignItems: "center",
-              gap: 18,
-              boxShadow: `0 0 40px ${roundResult.isCorrect ? "rgba(34,197,94,0.15)" : "rgba(239,68,68,0.15)"}`,
-            }}
+            className="text-4xl font-bold"
+            style={{ color: roundResult.isCorrect ? "#059669" : "#ef4444" }}
           >
-            {/* Icon */}
-            <div
-              style={{
-                width: 64,
-                height: 64,
-                borderRadius: "50%",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                background: roundResult.isCorrect
-                  ? "rgba(34,197,94,0.15)"
-                  : "rgba(239,68,68,0.15)",
-                border: `2px solid ${roundResult.isCorrect ? "#22c55e" : "#ef4444"}`,
-                fontSize: 28,
-                color: roundResult.isCorrect ? "#22c55e" : "#ef4444",
-              }}
-            >
-              {roundResult.isCorrect ? "✓" : "✗"}
-            </div>
-
-            {/* Points */}
-            <div>
-              <p
-                style={{
-                  fontSize: 44,
-                  fontWeight: 800,
-                  lineHeight: 1,
-                  color: roundResult.isCorrect ? "#86efac" : "rgba(255,250,245,0.25)",
-                }}
-              >
-                {roundResult.isCorrect ? `+${roundResult.pointsAwarded}` : "+0"}
-              </p>
-              <p style={{ fontSize: 12, color: "rgba(255,250,245,0.35)", marginTop: 4 }}>points</p>
-            </div>
-
-            {/* Correct answer — always shown */}
-            {displayCorrectAnswer && (
-              <div
-                style={{
-                  background: "rgba(22,163,74,0.12)",
-                  border: "1px solid rgba(34,197,94,0.35)",
-                  borderRadius: 10,
-                  padding: "10px 16px",
-                  width: "100%",
-                }}
-              >
-                <p
-                  style={{
-                    fontSize: 10,
-                    color: "rgba(134,239,172,0.55)",
-                    fontWeight: 700,
-                    textTransform: "uppercase",
-                    letterSpacing: "0.08em",
-                    marginBottom: 5,
-                  }}
-                >
-                  Correct Answer
-                </p>
-                <p style={{ fontSize: 15, fontWeight: 700, color: "#86efac" }}>
-                  {displayCorrectAnswer}
-                </p>
-              </div>
-            )}
-
-            {/* Total score only — no rank shown */}
-            <div
-              style={{
-                background: "rgba(124,58,237,0.1)",
-                border: "1px solid rgba(124,58,237,0.25)",
-                borderRadius: 10,
-                padding: "10px 24px",
-              }}
-            >
-              <p style={{ fontSize: 10, color: "rgba(255,250,245,0.35)", marginBottom: 3 }}>
-                Total Score
-              </p>
-              <p style={{ fontSize: 24, fontWeight: 700, color: "#fffaf5" }}>
-                {myScore.toLocaleString()}
-              </p>
-            </div>
-
-            <p style={{ fontSize: 11, color: "rgba(255,250,245,0.22)", fontStyle: "italic" }}>
-              Waiting for next question…
-            </p>
+            +{shownPoints} pts
           </div>
+
+          {roundResult.correctAnswer && (
+            <div
+              className="rounded-xl px-6 py-3 text-center"
+              style={{ background: "rgba(255,255,255,0.08)", color: "#fffaf5" }}
+            >
+              <span className="text-xs opacity-60 block mb-1">Correct answer</span>
+              <span className="font-bold">{roundResult.correctAnswer}</span>
+            </div>
+          )}
+
+          {/* Distribution bars */}
+          {distribution.length > 0 && (
+            <div className="w-full max-w-sm flex flex-col gap-2 px-4">
+              {distribution.map((d) => (
+                <div key={d.label} className="flex items-center gap-2">
+                  <span className="text-xs w-4 font-bold">{d.label}</span>
+                  <div
+                    className="flex-1 h-5 rounded-full overflow-hidden"
+                    style={{ background: "rgba(255,255,255,0.1)" }}
+                  >
+                    <div
+                      className="h-full rounded-full transition-all duration-700"
+                      style={{
+                        width: `${d.pct}%`,
+                        background: d.isCorrect ? "#059669" : "#374151",
+                      }}
+                    />
+                  </div>
+                  <span className="text-xs w-8 text-right opacity-70">{d.pct}%</span>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Rank change */}
+          {rankChange !== 0 && (
+            <div
+              className="text-sm font-semibold"
+              style={{ color: rankChange > 0 ? "#7c3aed" : "#ef4444" }}
+            >
+              {rankChange > 0
+                ? `↑ +${rankChange} positions`
+                : `↓ ${Math.abs(rankChange)} positions`}
+            </div>
+          )}
+
+          <p style={{ fontSize: 11, color: "rgba(255,250,245,0.3)", fontStyle: "italic" }}>
+            Waiting for next question…
+          </p>
         </div>
       )}
     </div>
