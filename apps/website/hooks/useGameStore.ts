@@ -8,6 +8,7 @@ import {
   GameStatus,
   WordCloudEntry,
   DistributionEntry,
+  Medal,
 } from "@/types/game";
 
 interface RoundResult {
@@ -46,6 +47,10 @@ interface GameStore {
   setDistribution: (entries: DistributionEntry[]) => void;
   setIsPaused: (paused: boolean) => void;
   setTimerExtended: (data: { newTimerSeconds: number; elapsedSeconds: number } | null) => void;
+  medalHolderIds: Set<string>;
+  recentMedal: Medal | null;
+  setMedalHolderIds: (ids: Set<string>) => void;
+  setRecentMedal: (medal: Medal | null) => void;
   reset: () => void;
 }
 
@@ -65,6 +70,8 @@ const initial = {
   distribution: [] as DistributionEntry[],
   isPaused: false,
   timerExtended: null as { newTimerSeconds: number; elapsedSeconds: number } | null,
+  medalHolderIds: new Set<string>(),
+  recentMedal: null as Medal | null,
 };
 
 export const useGameStore = create<GameStore>((set) => ({
@@ -84,5 +91,7 @@ export const useGameStore = create<GameStore>((set) => ({
   setDistribution: (distribution) => set({ distribution }),
   setIsPaused: (isPaused) => set({ isPaused }),
   setTimerExtended: (timerExtended) => set({ timerExtended }),
-  reset: () => set({ ...initial }),
+  setMedalHolderIds: (medalHolderIds) => set({ medalHolderIds }),
+  setRecentMedal: (recentMedal) => set({ recentMedal }),
+  reset: () => set({ ...initial, medalHolderIds: new Set<string>(), recentMedal: null }),
 }));

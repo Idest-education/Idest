@@ -154,3 +154,60 @@ export interface SubmitAnswerResponse {
   answerStreak: number;
   maxAnswerStreak: number;
 }
+
+// Phase 2: Medal types
+export type MedalCategory = 'WINNING' | 'STREAK' | 'LEADERBOARD' | 'PARTICIPATION' | 'ACCURACY' | 'SPEED';
+
+export interface Medal {
+  key: string;
+  category: MedalCategory;
+  name: string;
+  description: string;
+  icon: string;
+}
+
+export interface MedalAward {
+  key: string;
+  name: string;
+  icon: string;
+  awardedAt: string;
+}
+
+export interface MedalProgress {
+  medalKey: string;
+  current: number;
+  target: number;
+  pct: number;
+}
+
+export interface ClassStatsEntry {
+  rank: number;
+  userId: string;
+  displayName: string;
+  points: number;
+  totalWins: number;
+  totalGames: number;
+}
+
+export interface MyClassStats {
+  stats: {
+    totalPoints: number;
+    weeklyPoints: number;
+    monthlyPoints: number;
+    totalWins: number;
+    totalGames: number;
+    correctAnswers: number;
+    totalAnswers: number;
+    consecutiveWins: number;
+    maxConsecWins: number;
+  } | null;
+  earned: MedalAward[];
+  progress: MedalProgress[];
+}
+
+// WS event
+export interface GameMedalEarnedEvent {
+  userId: string;
+  classId: string;
+  medal: Medal;
+}

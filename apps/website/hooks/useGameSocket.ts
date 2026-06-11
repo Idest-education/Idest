@@ -16,6 +16,7 @@ import {
   GameSessionResumedEvent,
   GameWordCloudUpdatedEvent,
   GameAnswerRevealedEvent,
+  GameMedalEarnedEvent,
 } from "@/types/game";
 
 export function useGameSocket(gameSessionId: string | null) {
@@ -32,6 +33,7 @@ export function useGameSocket(gameSessionId: string | null) {
   const setDistribution = useGameStore((state) => state.setDistribution);
   const setIsPaused = useGameStore((state) => state.setIsPaused);
   const setTimerExtended = useGameStore((state) => state.setTimerExtended);
+  const setRecentMedal = useGameStore((state) => state.setRecentMedal);
   const reset = useGameStore((state) => state.reset);
 
   const connect = useCallback(
@@ -113,9 +115,18 @@ export function useGameSocket(gameSessionId: string | null) {
         setCurrentQuestion(null);
       });
 
+      socket.on("game:medal_earned", (payload: GameMedalEarnedEvent) => {
+        const currentUserId = useMeetStore.getState().localUserId;
+        if (payload.userId === currentUserId) {
+          setRecentMedal(payload.medal);
+          // Auto-clear after 5s
+          setTimeout(() => setRecentMedal(null), 5000);
+        }
+      });
+
       socket.connect();
     },
-    [setCurrentQuestion, setGameStatus, setHasSubmitted, setLeaderboard, setMyRank, setMyScore, setRoundResult, setWordCloudWords, setDistribution, setIsPaused, setTimerExtended],
+    [setCurrentQuestion, setGameStatus, setHasSubmitted, setLeaderboard, setMyRank, setMyScore, setRoundResult, setWordCloudWords, setDistribution, setIsPaused, setTimerExtended, setRecentMedal],
   );
 
   const disconnect = useCallback(() => {

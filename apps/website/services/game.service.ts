@@ -8,6 +8,9 @@ import {
   StartGameSessionDto,
   SubmitAnswerDto,
   SubmitAnswerResponse,
+  ClassStatsEntry,
+  MyClassStats,
+  MedalAward,
 } from "@/types/game";
 
 // ── Templates ──────────────────────────────────────────────────────────
@@ -93,4 +96,22 @@ export async function revealAnswer(gameSessionId: string): Promise<void> {
 export async function hideWord(gameSessionId: string, word: string): Promise<void> {
   const res = await http.post(`/game-sessions/${gameSessionId}/hide-word`, { word });
   return unwrapResponse(res.data);
+}
+
+// ── Class Stats & Medals ────────────────────────────────────────────────
+
+export async function getClassLeaderboard(classId: string, period: 'weekly' | 'monthly' | 'all-time' = 'all-time') {
+  return http.get<ClassStatsEntry[]>(`/game-classes/${classId}/leaderboard`, { params: { period } }).then(unwrapResponse);
+}
+
+export async function getMedalHolders(classId: string) {
+  return http.get<{ userIds: string[] }>(`/game-classes/${classId}/medal-holders`).then(unwrapResponse);
+}
+
+export async function getMyClassStats(classId: string) {
+  return http.get<MyClassStats>(`/game-classes/${classId}/my-stats`).then(unwrapResponse);
+}
+
+export async function getUserMedals(classId: string, userId: string) {
+  return http.get<MedalAward[]>(`/game-classes/${classId}/medals/${userId}`).then(unwrapResponse);
 }
