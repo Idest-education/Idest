@@ -290,8 +290,11 @@ export function GameActiveStudent({ gameSessionId, userId: _userId }: GameActive
           <p className="text-sm" style={{ color: "#9ca3af" }}>
             Waiting for results…
           </p>
-          {currentQuestion.type === "WORD_CLOUD" && wordCloudWords.length > 0 && (
-            <GameWordCloud words={wordCloudWords} />
+          {currentQuestion.type === "WORD_CLOUD" && (
+            <>
+              <p className="text-base font-semibold" style={{ color: "#059669" }}>✓ Submitted</p>
+              {wordCloudWords.length > 0 && <GameWordCloud words={wordCloudWords} />}
+            </>
           )}
         </div>
       )}
