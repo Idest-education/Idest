@@ -22,6 +22,8 @@ import { CurrentUser } from 'src/common/decorator/currentUser.decorator';
 import { userPayload } from 'src/common/types/userPayload.interface';
 import { GameSessionService } from './game-session.service';
 import { SubmitAnswerDto } from './dto/submit-answer.dto';
+import { ExtendTimerDto } from './dto/extend-timer.dto';
+import { HideWordDto } from './dto/hide-word.dto';
 
 class StartSessionDto {
   @ApiProperty()
@@ -77,5 +79,55 @@ export class GameSessionController {
   @ApiQuery({ name: 'sessionId', required: true })
   getActive(@Query('sessionId') sessionId: string) {
     return this.service.getActiveSession(sessionId);
+  }
+
+  @Post(':id/pause')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Pause the current game round' })
+  pause(@CurrentUser() user: userPayload, @Param('id') id: string) {
+    return this.service.pauseSession(id, user.id);
+  }
+
+  @Post(':id/resume')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Resume a paused game round' })
+  resume(@CurrentUser() user: userPayload, @Param('id') id: string) {
+    return this.service.resumeSession(id, user.id);
+  }
+
+  @Post(':id/extend')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Extend the current question timer' })
+  extend(
+    @CurrentUser() user: userPayload,
+    @Param('id') id: string,
+    @Body() dto: ExtendTimerDto,
+  ) {
+    return this.service.extendTimer(id, user.id, dto.extraSeconds);
+  }
+
+  @Post(':id/skip')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Skip the current question (0 pts for all)' })
+  skip(@CurrentUser() user: userPayload, @Param('id') id: string) {
+    return this.service.skipQuestion(id, user.id);
+  }
+
+  @Post(':id/reveal')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Manually reveal the answer before timer ends' })
+  reveal(@CurrentUser() user: userPayload, @Param('id') id: string) {
+    return this.service.revealAnswer(id, user.id);
+  }
+
+  @Post(':id/hide-word')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Hide a word from the word cloud' })
+  hideWord(
+    @CurrentUser() user: userPayload,
+    @Param('id') id: string,
+    @Body() dto: HideWordDto,
+  ) {
+    return this.service.hideWord(id, user.id, dto.word);
   }
 }
