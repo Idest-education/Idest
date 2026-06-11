@@ -115,7 +115,7 @@ export class GameSessionService {
 
     const template = await this.prisma.gameTemplate.findUnique({
       where: { id: templateId },
-      include: { questions: { orderBy: { order: 'asc' }, include: { options: true } } },
+      include: { questions: { orderBy: { order: 'asc' }, include: { options: true, matchPairs: true } } },
     });
     if (!template) throw new NotFoundException('Game template not found');
     if (template.createdBy !== startedBy) throw new ForbiddenException('Not your template');
@@ -130,7 +130,7 @@ export class GameSessionService {
         currentQuestionIndex: 0,
       },
       include: {
-        template: { include: { questions: { orderBy: { order: 'asc' }, include: { options: true } } } },
+        template: { include: { questions: { orderBy: { order: 'asc' }, include: { options: true, matchPairs: true } } } },
       },
     });
 
@@ -165,7 +165,7 @@ export class GameSessionService {
     const session = await this.prisma.gameSession.findUnique({
       where: { id: gameSessionId },
       include: {
-        template: { include: { questions: { orderBy: { order: 'asc' }, include: { options: true } } } },
+        template: { include: { questions: { orderBy: { order: 'asc' }, include: { options: true, matchPairs: true } } } },
       },
     });
     if (!session) throw new NotFoundException('Game session not found');
@@ -230,7 +230,14 @@ export class GameSessionService {
     const session = await this.prisma.gameSession.findUnique({
       where: { id: gameSessionId },
       include: {
-        template: { include: { questions: { orderBy: { order: 'asc' }, include: { options: true } } } },
+        template: {
+          include: {
+            questions: {
+              orderBy: { order: 'asc' },
+              include: { options: true, matchPairs: true },
+            },
+          },
+        },
       },
     });
     if (!session) throw new NotFoundException('Game session not found');
@@ -258,12 +265,26 @@ export class GameSessionService {
 
     const startedAt = this.questionStartedAt.get(gameSessionId) ?? new Date();
     const responseTimeMs = Date.now() - startedAt.getTime();
-    const isCorrect = this.checkAnswer(
-      currentQuestion.type as 'MULTIPLE_CHOICE' | 'FILL_BLANK',
-      currentQuestion.correctAnswer,
-      answer,
-    );
-    const pointsAwarded = this.computeScore(responseTimeMs, currentQuestion.timerSeconds, isCorrect);
+
+    let isCorrect: boolean;
+    let pointsAwarded: number;
+
+    if (currentQuestion.type === 'MATCH_LR') {
+      const submitted: { left: string; right: string }[] = JSON.parse(answer);
+      const ratio = this.checkMatchLR(currentQuestion.matchPairs, submitted);
+      isCorrect = ratio === 1;
+      pointsAwarded = this.computeMatchLRScore(ratio, responseTimeMs, currentQuestion.timerSeconds);
+    } else if (currentQuestion.type === 'WORD_CLOUD') {
+      isCorrect = true;
+      pointsAwarded = 100;
+    } else {
+      isCorrect = this.checkAnswer(
+        currentQuestion.type as 'MULTIPLE_CHOICE' | 'FILL_BLANK' | 'MULTI_CHOICE',
+        currentQuestion.correctAnswer,
+        answer,
+      );
+      pointsAwarded = this.computeScore(responseTimeMs, currentQuestion.timerSeconds, isCorrect);
+    }
 
     try {
       await this.prisma.gameAnswer.create({
@@ -284,21 +305,35 @@ export class GameSessionService {
       throw e;
     }
 
-    await this.prisma.gameParticipant.update({
+    const newStreak = isCorrect ? participant.answerStreak + 1 : 0;
+    const newMax = Math.max(newStreak, participant.maxAnswerStreak);
+
+    const updatedParticipant = await this.prisma.gameParticipant.update({
       where: { id: participant.id },
-      data: { score: { increment: pointsAwarded } },
+      data: {
+        score: { increment: pointsAwarded },
+        ...(isCorrect
+          ? { answerStreak: { increment: 1 }, maxAnswerStreak: newMax }
+          : { answerStreak: 0 }),
+      },
     });
 
     this.eventEmitter.emit('game.leaderboard.update_requested', { gameSessionId });
 
-    return { isCorrect, pointsAwarded, responseTimeMs };
+    return {
+      isCorrect,
+      pointsAwarded,
+      responseTimeMs,
+      answerStreak: updatedParticipant.answerStreak,
+      maxAnswerStreak: updatedParticipant.maxAnswerStreak,
+    };
   }
 
   async getActiveSession(meetingSessionId: string) {
     return this.prisma.gameSession.findFirst({
       where: { sessionId: meetingSessionId, status: 'IN_PROGRESS' },
       include: {
-        template: { include: { questions: { orderBy: { order: 'asc' }, include: { options: true } } } },
+        template: { include: { questions: { orderBy: { order: 'asc' }, include: { options: true, matchPairs: true } } } },
       },
     });
   }
@@ -333,7 +368,7 @@ export class GameSessionService {
     return this.prisma.gameSession.findUnique({
       where: { id: gameSessionId },
       include: {
-        template: { include: { questions: { orderBy: { order: 'asc' }, include: { options: true } } } },
+        template: { include: { questions: { orderBy: { order: 'asc' }, include: { options: true, matchPairs: true } } } },
       },
     });
   }
@@ -409,7 +444,7 @@ export class GameSessionService {
   async revealAnswer(gameSessionId: string, requesterId: string) {
     const session = await this.prisma.gameSession.findUnique({
       where: { id: gameSessionId },
-      include: { template: { include: { questions: { orderBy: { order: 'asc' }, include: { options: true } } } } },
+      include: { template: { include: { questions: { orderBy: { order: 'asc' }, include: { options: true, matchPairs: true } } } } },
     });
     if (!session) throw new NotFoundException('Game session not found');
     if (session.startedBy !== requesterId) throw new ForbiddenException('Only the teacher can reveal');

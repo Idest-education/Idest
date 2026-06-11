@@ -439,6 +439,108 @@ describe('GameSessionService', () => {
     });
   });
 
+  describe('submitAnswer — new question types', () => {
+    it('handles MULTI_CHOICE: exact set match scores points', async () => {
+      const session = {
+        id: 'gs1', status: 'IN_PROGRESS', currentQuestionIndex: 0,
+        template: { questions: [{ id: 'q1', type: 'MULTI_CHOICE', correctAnswer: 'A,C', timerSeconds: 20, options: [], matchPairs: [] }] },
+      };
+      mockPrisma.gameSession.findUnique.mockResolvedValue(session);
+      mockPrisma.gameParticipant.upsert.mockResolvedValue({ id: 'p1', answerStreak: 0, maxAnswerStreak: 0 });
+      mockPrisma.gameAnswer.findUnique.mockResolvedValue(null);
+      mockPrisma.gameAnswer.create.mockResolvedValue({});
+      mockPrisma.gameParticipant.update.mockResolvedValue({ answerStreak: 1, maxAnswerStreak: 1 });
+
+      const result = await service.submitAnswer('gs1', 'u1', 'C,A');
+      expect(result.isCorrect).toBe(true);
+      expect(result.pointsAwarded).toBeGreaterThan(0);
+      expect(result.answerStreak).toBe(1);
+    });
+
+    it('handles WORD_CLOUD: always correct, always 100 pts', async () => {
+      const session = {
+        id: 'gs1', status: 'IN_PROGRESS', currentQuestionIndex: 0,
+        template: { questions: [{ id: 'q1', type: 'WORD_CLOUD', correctAnswer: '', timerSeconds: 20, options: [], matchPairs: [] }] },
+      };
+      mockPrisma.gameSession.findUnique.mockResolvedValue(session);
+      mockPrisma.gameParticipant.upsert.mockResolvedValue({ id: 'p1', answerStreak: 0, maxAnswerStreak: 0 });
+      mockPrisma.gameAnswer.findUnique.mockResolvedValue(null);
+      mockPrisma.gameAnswer.create.mockResolvedValue({});
+      mockPrisma.gameParticipant.update.mockResolvedValue({ answerStreak: 1, maxAnswerStreak: 1 });
+
+      const result = await service.submitAnswer('gs1', 'u1', 'happy');
+      expect(result.isCorrect).toBe(true);
+      expect(result.pointsAwarded).toBe(100);
+    });
+
+    it('handles MATCH_LR: partial credit, updates streak', async () => {
+      const session = {
+        id: 'gs1', status: 'IN_PROGRESS', currentQuestionIndex: 0,
+        template: { questions: [{
+          id: 'q1', type: 'MATCH_LR', correctAnswer: '', timerSeconds: 20, options: [],
+          matchPairs: [
+            { leftLabel: 'A', rightText: 'Joyful' },
+            { leftLabel: 'B', rightText: 'Sad' },
+          ],
+        }] },
+      };
+      mockPrisma.gameSession.findUnique.mockResolvedValue(session);
+      mockPrisma.gameParticipant.upsert.mockResolvedValue({ id: 'p1', answerStreak: 2, maxAnswerStreak: 2 });
+      mockPrisma.gameAnswer.findUnique.mockResolvedValue(null);
+      mockPrisma.gameAnswer.create.mockResolvedValue({});
+      mockPrisma.gameParticipant.update.mockResolvedValue({ answerStreak: 0, maxAnswerStreak: 2 });
+
+      // Submit only 1 of 2 pairs correct → ratio=0.5 → partial points, isCorrect=false
+      const submitted = JSON.stringify([{ left: 'A', right: 'Joyful' }, { left: 'B', right: 'Wrong' }]);
+      const result = await service.submitAnswer('gs1', 'u1', submitted);
+      expect(result.isCorrect).toBe(false);
+      expect(result.pointsAwarded).toBeGreaterThan(0);
+      expect(result.pointsAwarded).toBeLessThan(1000);
+    });
+
+    it('streak increments on correct answer', async () => {
+      const session = {
+        id: 'gs1', status: 'IN_PROGRESS', currentQuestionIndex: 0,
+        template: { questions: [{ id: 'q1', type: 'MULTIPLE_CHOICE', correctAnswer: 'A', timerSeconds: 20, options: [], matchPairs: [] }] },
+      };
+      mockPrisma.gameSession.findUnique.mockResolvedValue(session);
+      mockPrisma.gameParticipant.upsert.mockResolvedValue({ id: 'p1', answerStreak: 3, maxAnswerStreak: 3 });
+      mockPrisma.gameAnswer.findUnique.mockResolvedValue(null);
+      mockPrisma.gameAnswer.create.mockResolvedValue({});
+      mockPrisma.gameParticipant.update.mockResolvedValue({ answerStreak: 4, maxAnswerStreak: 4 });
+
+      const result = await service.submitAnswer('gs1', 'u1', 'A');
+      expect(result.answerStreak).toBe(4);
+      expect(result.maxAnswerStreak).toBe(4);
+      // streak update called with increment
+      expect(mockPrisma.gameParticipant.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({ answerStreak: { increment: 1 } }),
+        }),
+      );
+    });
+
+    it('streak resets on wrong answer', async () => {
+      const session = {
+        id: 'gs1', status: 'IN_PROGRESS', currentQuestionIndex: 0,
+        template: { questions: [{ id: 'q1', type: 'MULTIPLE_CHOICE', correctAnswer: 'A', timerSeconds: 20, options: [], matchPairs: [] }] },
+      };
+      mockPrisma.gameSession.findUnique.mockResolvedValue(session);
+      mockPrisma.gameParticipant.upsert.mockResolvedValue({ id: 'p1', answerStreak: 5, maxAnswerStreak: 5 });
+      mockPrisma.gameAnswer.findUnique.mockResolvedValue(null);
+      mockPrisma.gameAnswer.create.mockResolvedValue({});
+      mockPrisma.gameParticipant.update.mockResolvedValue({ answerStreak: 0, maxAnswerStreak: 5 });
+
+      const result = await service.submitAnswer('gs1', 'u1', 'B');
+      expect(result.answerStreak).toBe(0);
+      expect(mockPrisma.gameParticipant.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({ answerStreak: 0 }),
+        }),
+      );
+    });
+  });
+
   describe('nextQuestion', () => {
     const baseSession = {
       id: 'session-1',
