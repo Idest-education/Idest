@@ -2,10 +2,19 @@
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { GameMatchLREditor } from "@/components/game/GameMatchLREditor";
 import { CreateGameTemplateDto, QuestionType } from "@/types/game";
 import { Plus, Trash2 } from "lucide-react";
 
-type QuestionDraft = CreateGameTemplateDto["questions"][number];
+interface MatchPairInput {
+  leftText: string;
+  rightText: string;
+}
+
+// Extend the base DTO type locally to carry match-pair data while editing
+type QuestionDraft = CreateGameTemplateDto["questions"][number] & {
+  matchPairs?: MatchPairInput[];
+};
 
 interface GameQuestionEditorProps {
   questions: QuestionDraft[];
@@ -63,16 +72,25 @@ export function GameQuestionEditor({ questions, onChange }: GameQuestionEditorPr
           <div className="flex gap-3 mb-3">
             <select
               value={q.type}
-              onChange={(e) => update(i, {
-                type: e.target.value as QuestionType,
-                options: e.target.value === "MULTIPLE_CHOICE"
-                  ? [{ label: "A", text: "" }, { label: "B", text: "" }, { label: "C", text: "" }, { label: "D", text: "" }]
-                  : undefined,
-              })}
+              onChange={(e) => {
+                const newType = e.target.value as QuestionType;
+                update(i, {
+                  type: newType,
+                  options:
+                    newType === "MULTIPLE_CHOICE" || newType === "MULTI_CHOICE"
+                      ? [{ label: "A", text: "" }, { label: "B", text: "" }, { label: "C", text: "" }, { label: "D", text: "" }]
+                      : undefined,
+                  matchPairs: newType === "MATCH_LR" ? [{ leftText: "", rightText: "" }] : undefined,
+                  correctAnswer: "",
+                });
+              }}
               style={{ background: "var(--color-surface-card)", border: "1px solid var(--color-border-default)", color: "var(--color-text-primary)", borderRadius: 6, padding: "6px 10px", fontSize: 13 }}
             >
               <option value="MULTIPLE_CHOICE">Multiple Choice</option>
+              <option value="MULTI_CHOICE">Multi-Select</option>
               <option value="FILL_BLANK">Fill in the Blank</option>
+              <option value="MATCH_LR">Match Left / Right</option>
+              <option value="WORD_CLOUD">Word Cloud</option>
             </select>
 
             <Input
@@ -86,7 +104,8 @@ export function GameQuestionEditor({ questions, onChange }: GameQuestionEditorPr
             />
           </div>
 
-          {q.type === "MULTIPLE_CHOICE" && (
+          {/* Options list — MULTIPLE_CHOICE and MULTI_CHOICE */}
+          {(q.type === "MULTIPLE_CHOICE" || q.type === "MULTI_CHOICE") && (
             <div className="flex flex-col gap-2 mb-3">
               {(q.options ?? []).map((opt, oi) => (
                 <div key={opt.label} className="flex items-center gap-2">
@@ -106,11 +125,30 @@ export function GameQuestionEditor({ questions, onChange }: GameQuestionEditorPr
             </div>
           )}
 
-          <Input
-            placeholder={q.type === "MULTIPLE_CHOICE" ? "Correct option label (A/B/C/D)" : "Correct answer"}
-            value={q.correctAnswer}
-            onChange={(e) => update(i, { correctAnswer: e.target.value })}
-          />
+          {/* Match pairs editor — MATCH_LR */}
+          {q.type === "MATCH_LR" && (
+            <div className="mb-3">
+              <GameMatchLREditor
+                pairs={q.matchPairs ?? []}
+                onChange={(pairs) => update(i, { matchPairs: pairs })}
+              />
+            </div>
+          )}
+
+          {/* Correct answer — hidden for WORD_CLOUD and MATCH_LR */}
+          {q.type !== "WORD_CLOUD" && q.type !== "MATCH_LR" && (
+            <Input
+              placeholder={
+                q.type === "MULTIPLE_CHOICE"
+                  ? "Correct option label (A/B/C/D)"
+                  : q.type === "MULTI_CHOICE"
+                  ? "Correct labels, comma-separated (e.g. A,C)"
+                  : "Correct answer"
+              }
+              value={q.correctAnswer}
+              onChange={(e) => update(i, { correctAnswer: e.target.value })}
+            />
+          )}
         </div>
       ))}
 
