@@ -9,6 +9,7 @@ import { GameLauncher } from "./GameLauncher";
 import { GameActiveTeacher } from "./GameActiveTeacher";
 import { GameActiveStudent } from "./GameActiveStudent";
 import { GameEnded } from "./GameEnded";
+import { nextQuestion } from "@/services/game.service";
 
 interface GameTabProps {
   meetingSessionId: string;
@@ -61,13 +62,11 @@ export function GameTab({ meetingSessionId, isTeacher }: GameTabProps) {
     return <GameLauncher meetingSessionId={meetingSessionId} />;
   }
 
-  const questionCount = activeSession?.template?.questions?.length ?? 0;
-
   if (isTeacher) {
     return (
       <GameActiveTeacher
         gameSessionId={activeGameSessionId}
-        questionCount={questionCount}
+        onNext={() => nextQuestion(activeGameSessionId)}
       />
     );
   }

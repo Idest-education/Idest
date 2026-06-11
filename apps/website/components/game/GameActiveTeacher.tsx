@@ -1,323 +1,257 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { Loader2, ChevronRight } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { useState, useEffect, useRef } from "react";
 import { useGameStore } from "@/hooks/useGameStore";
-import { nextQuestion } from "@/services/game.service";
-
-const OPTION_COLORS = ["#1e3a5f", "#3b1f6b", "#1a3a1a", "#3a1a1a"];
-const OPTION_COLORS_DIM = [
-  "rgba(30,58,95,0.35)",
-  "rgba(59,31,107,0.35)",
-  "rgba(26,58,26,0.35)",
-  "rgba(58,26,26,0.35)",
-];
+import { GameTimer } from "./GameTimer";
+import { GameWordCloud } from "./GameWordCloud";
+import {
+  pauseGame,
+  resumeGame,
+  extendTimer,
+  skipQuestion,
+  revealAnswer,
+} from "@/services/game.service";
 
 interface GameActiveTeacherProps {
   gameSessionId: string;
-  questionCount: number;
+  onNext: () => void;
 }
 
-export function GameActiveTeacher({ gameSessionId, questionCount }: GameActiveTeacherProps) {
+export function GameActiveTeacher({ gameSessionId, onNext }: GameActiveTeacherProps) {
   const currentQuestion = useGameStore((s) => s.currentQuestion);
   const leaderboard = useGameStore((s) => s.leaderboard);
-  const roundResult = useGameStore((s) => s.roundResult);
-  const activeSession = useGameStore((s) => s.activeSession);
-  const [advancing, setAdvancing] = useState(false);
-  const [timeLeft, setTimeLeft] = useState(0);
+  const distribution = useGameStore((s) => s.distribution);
+  const isPaused = useGameStore((s) => s.isPaused);
+  const wordCloudWords = useGameStore((s) => s.wordCloudWords);
+  const timerExtended = useGameStore((s) => s.timerExtended);
 
-  const questionEnded = roundResult !== null;
+  const [elapsedSeconds, setElapsedSeconds] = useState(0);
+  const [prevLeaderboard, setPrevLeaderboard] = useState<typeof leaderboard>([]);
+  const [answerCount, setAnswerCount] = useState(0);
+  const [totalPlayers, setTotalPlayers] = useState(0);
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const [actionLoading, setActionLoading] = useState<string | null>(null);
 
-  const templateAnswer =
-    activeSession?.template?.questions?.[currentQuestion?.questionIndex ?? -1]?.correctAnswer;
-  const correctAnswer = roundResult?.correctAnswer ?? templateAnswer;
-
+  // Reset timer when question changes
   useEffect(() => {
     if (!currentQuestion) return;
-    const total = currentQuestion.timerSeconds - (currentQuestion.elapsedSeconds ?? 0);
-    setTimeLeft(total);
-    if (questionEnded) return;
-    const interval = setInterval(() => setTimeLeft((t) => Math.max(0, t - 1)), 1000);
-    return () => clearInterval(interval);
-  }, [currentQuestion, questionEnded]);
+    setElapsedSeconds(currentQuestion.elapsedSeconds ?? 0);
+    setPrevLeaderboard(leaderboard);
+    setAnswerCount(0);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentQuestion?.questionIndex]);
 
-  const handleNext = async () => {
-    setAdvancing(true);
-    try {
-      await nextQuestion(gameSessionId);
-    } finally {
-      setAdvancing(false);
+  // Track total players from leaderboard
+  useEffect(() => {
+    if (leaderboard.length > totalPlayers) setTotalPlayers(leaderboard.length);
+  }, [leaderboard, totalPlayers]);
+
+  // Count up elapsed seconds
+  useEffect(() => {
+    if (!currentQuestion || isPaused) {
+      if (intervalRef.current) clearInterval(intervalRef.current);
+      return;
     }
-  };
+    intervalRef.current = setInterval(() => setElapsedSeconds((s) => s + 1), 1000);
+    return () => {
+      if (intervalRef.current) clearInterval(intervalRef.current);
+    };
+  }, [currentQuestion?.questionIndex, isPaused]);
+
+  // Update answer count from distribution
+  useEffect(() => {
+    const total = distribution.reduce((s, d) => s + d.count, 0);
+    setAnswerCount(total);
+  }, [distribution]);
+
+  async function doAction(name: string, fn: () => Promise<unknown>) {
+    setActionLoading(name);
+    try {
+      await fn();
+    } catch {
+      // ignore
+    } finally {
+      setActionLoading(null);
+    }
+  }
+
+  function getRankChange(userId: string): number {
+    const prev = prevLeaderboard.findIndex((e) => e.userId === userId);
+    const curr = leaderboard.findIndex((e) => e.userId === userId);
+    if (prev === -1 || curr === -1) return 0;
+    return prev - curr; // positive = moved up
+  }
+
+  const effectiveTimer = timerExtended
+    ? timerExtended.newTimerSeconds
+    : currentQuestion?.timerSeconds ?? 20;
 
   if (!currentQuestion) return null;
 
-  const timerPercent =
-    currentQuestion.timerSeconds > 0 ? (timeLeft / currentQuestion.timerSeconds) * 100 : 0;
-  const timerColor = timerPercent > 40 ? "#7c3aed" : timerPercent > 15 ? "#f59e0b" : "#ef4444";
+  const answeredPct =
+    totalPlayers > 0 ? Math.round((answerCount / totalPlayers) * 100) : 0;
 
   return (
-    <div className="flex h-full overflow-hidden" style={{ color: "#fffaf5" }}>
-      {/* ── Left panel: question + options ── */}
-      <div
-        style={{
-          // Shrink to 1/3 after round ends, otherwise take remaining space
-          flex: questionEnded ? "0 0 33%" : "1 1 auto",
-          minWidth: 0,
-          overflow: "hidden",
-          display: "flex",
-          flexDirection: "column",
-          transition: "flex 0.5s ease-in-out",
-        }}
-      >
-        {/* Header: counter + timer + next button */}
-        <div
-          className="flex-shrink-0 px-4 pt-3 pb-3"
-          style={{ borderBottom: "1px solid #2a2a2a" }}
-        >
-          <div className="flex items-center justify-between mb-2">
-            <span style={{ fontSize: 13, fontWeight: 600, color: "rgba(255,250,245,0.5)" }}>
-              Q {currentQuestion.questionIndex + 1} / {questionCount}
-            </span>
-            <div className="flex items-center gap-2">
-              {!questionEnded && (
-                <span
-                  style={{ fontSize: 12, fontWeight: 600, color: timerColor, minWidth: 28, textAlign: "right" }}
-                >
-                  {timeLeft}s
-                </span>
-              )}
-              <Button
-                size="sm"
-                onClick={handleNext}
-                disabled={advancing}
-                style={{ background: "#7c3aed", color: "white", fontSize: 12 }}
-              >
-                {advancing ? (
-                  <Loader2 className="h-3 w-3 animate-spin mr-1" />
-                ) : (
-                  <ChevronRight className="h-3 w-3 mr-1" />
-                )}
-                Next
-              </Button>
-            </div>
-          </div>
-
-          <div style={{ height: 4, background: "#2a2a2a", borderRadius: 99, overflow: "hidden" }}>
-            <div
-              style={{
-                height: "100%",
-                width: questionEnded ? "0%" : `${timerPercent}%`,
-                background: timerColor,
-                borderRadius: 99,
-                transition: "width 1s linear, background 0.5s",
-              }}
-            />
-          </div>
-        </div>
-
-        {/* Question body */}
-        <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-4">
-          <p style={{ fontSize: 15, fontWeight: 600, lineHeight: 1.55 }}>
-            {currentQuestion.text}
-          </p>
-
-          {currentQuestion.type === "MULTIPLE_CHOICE" && currentQuestion.options.length > 0 && (
-            <div className="grid grid-cols-2 gap-2">
-              {currentQuestion.options.map((opt, i) => {
-                const isCorrect = correctAnswer ? opt.label === correctAnswer : false;
-                return (
-                  <div
-                    key={opt.id}
-                    style={{
-                      padding: "10px 12px",
-                      borderRadius: 8,
-                      background: questionEnded
-                        ? isCorrect
-                          ? "rgba(22,163,74,0.25)"
-                          : OPTION_COLORS_DIM[i % 4]
-                        : isCorrect && correctAnswer
-                        ? "rgba(22,163,74,0.2)"
-                        : OPTION_COLORS[i % 4],
-                      border: `1.5px solid ${isCorrect && correctAnswer ? "#22c55e" : "transparent"}`,
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 8,
-                      transition: "background 0.4s, border-color 0.4s",
-                    }}
-                  >
-                    <span
-                      style={{
-                        fontSize: 11,
-                        fontWeight: 700,
-                        color:
-                          isCorrect && correctAnswer ? "#86efac" : "rgba(255,250,245,0.5)",
-                        width: 14,
-                        flexShrink: 0,
-                      }}
-                    >
-                      {opt.label}
-                    </span>
-                    <span
-                      style={{
-                        fontSize: 12,
-                        color:
-                          questionEnded && !isCorrect
-                            ? "rgba(255,250,245,0.3)"
-                            : "#fffaf5",
-                        flex: 1,
-                      }}
-                    >
-                      {opt.text}
-                    </span>
-                    {isCorrect && correctAnswer && (
-                      <span style={{ fontSize: 12, color: "#86efac" }}>✓</span>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          )}
-
-          {currentQuestion.type === "FILL_BLANK" && (
-            <div
-              style={{
-                borderRadius: 8,
-                border: "1px solid #3a2a5a",
-                background: "rgba(124,58,237,0.08)",
-                padding: "14px 16px",
-              }}
-            >
-              <p style={{ fontSize: 12, color: "rgba(255,250,245,0.4)" }}>Fill in the blank</p>
-              {questionEnded && correctAnswer && (
-                <p style={{ fontSize: 15, fontWeight: 600, color: "#86efac", marginTop: 6 }}>
-                  {correctAnswer}
-                </p>
-              )}
-            </div>
-          )}
-
-          {questionEnded && correctAnswer && currentQuestion.type === "MULTIPLE_CHOICE" && (
-            <div
-              style={{
-                background: "rgba(22,163,74,0.12)",
-                border: "1px solid rgba(34,197,94,0.3)",
-                borderRadius: 8,
-                padding: "8px 14px",
-              }}
-            >
-              <p style={{ fontSize: 12, color: "#86efac", fontWeight: 600 }}>
-                Correct answer: {correctAnswer}
-              </p>
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* ── Right panel: live leaderboard ── */}
-      <div
-        style={{
-          // Expand to 2/3 after round ends, otherwise fixed narrow width
-          flex: questionEnded ? "0 0 67%" : "0 0 196px",
-          borderLeft: "1px solid #2a2a2a",
-          display: "flex",
-          flexDirection: "column",
-          overflow: "hidden",
-          transition: "flex 0.5s ease-in-out",
-        }}
-      >
-        <div
-          className="flex-shrink-0 px-4 pt-3 pb-2"
-          style={{ borderBottom: "1px solid #2a2a2a" }}
-        >
-          <p
+    <div
+      className="flex gap-4 h-full"
+      style={{ background: "#0b0b0b", color: "#fffaf5", padding: "16px" }}
+    >
+      {/* Left: Question + Controls (60%) */}
+      <div className="flex flex-col gap-4" style={{ flex: "0 0 60%" }}>
+        {/* Controls bar */}
+        <div className="flex gap-2 flex-wrap">
+          <button
+            onClick={() => doAction("skip", () => skipQuestion(gameSessionId))}
+            disabled={!!actionLoading}
+            className="rounded-lg px-3 py-2 text-sm font-semibold"
             style={{
-              fontSize: 10,
-              fontWeight: 700,
-              color: "rgba(255,250,245,0.3)",
-              textTransform: "uppercase",
-              letterSpacing: "0.1em",
+              background: "rgba(239,68,68,0.2)",
+              color: "#ef4444",
+              border: "1px solid rgba(239,68,68,0.3)",
             }}
           >
-            {questionEnded ? "Round Results" : "Live Standings"}
-          </p>
+            {actionLoading === "skip" ? "…" : "Skip"}
+          </button>
+
+          <button
+            onClick={() => doAction("extend", () => extendTimer(gameSessionId, 30))}
+            disabled={!!actionLoading}
+            className="rounded-lg px-3 py-2 text-sm font-semibold"
+            style={{
+              background: "rgba(245,158,11,0.2)",
+              color: "#f59e0b",
+              border: "1px solid rgba(245,158,11,0.3)",
+            }}
+          >
+            {actionLoading === "extend" ? "…" : "+30s"}
+          </button>
+
+          <button
+            onClick={() => doAction("reveal", () => revealAnswer(gameSessionId))}
+            disabled={!!actionLoading}
+            className="rounded-lg px-3 py-2 text-sm font-semibold"
+            style={{
+              background: "rgba(5,150,105,0.2)",
+              color: "#059669",
+              border: "1px solid rgba(5,150,105,0.3)",
+            }}
+          >
+            {actionLoading === "reveal" ? "…" : "Reveal"}
+          </button>
+
+          <button
+            onClick={() =>
+              doAction("pause", () =>
+                isPaused ? resumeGame(gameSessionId) : pauseGame(gameSessionId)
+              )
+            }
+            disabled={!!actionLoading}
+            className="rounded-lg px-3 py-2 text-sm font-semibold"
+            style={{
+              background: "rgba(124,58,237,0.2)",
+              color: "#7c3aed",
+              border: "1px solid rgba(124,58,237,0.3)",
+            }}
+          >
+            {isPaused ? "▶ Resume" : "⏸ Pause"}
+          </button>
+
+          <button
+            onClick={onNext}
+            disabled={!!actionLoading}
+            className="rounded-lg px-4 py-2 text-sm font-bold ml-auto"
+            style={{ background: "#7c3aed", color: "#fff" }}
+          >
+            Next →
+          </button>
         </div>
 
-        <div className="flex-1 overflow-y-auto py-2 px-3 flex flex-col gap-1.5">
-          {leaderboard.length === 0 ? (
-            <p
-              style={{
-                fontSize: 12,
-                color: "rgba(255,250,245,0.2)",
-                textAlign: "center",
-                marginTop: 20,
-                fontStyle: "italic",
-              }}
-            >
-              Waiting for answers…
+        {/* Timer + question text */}
+        <div className="flex items-center gap-4">
+          <GameTimer
+            timerSeconds={effectiveTimer}
+            elapsedSeconds={elapsedSeconds}
+            isPaused={isPaused}
+          />
+          <div className="flex-1">
+            <p className="font-bold text-base">{currentQuestion.text}</p>
+            <p className="text-sm mt-1" style={{ color: "#9ca3af" }}>
+              {answerCount} / {totalPlayers || "?"} answered ({answeredPct}%)
             </p>
-          ) : (
-            leaderboard.map((entry, i) => {
-              const rankColor =
-                i === 0
-                  ? "#fbbf24"
-                  : i === 1
-                  ? "#94a3b8"
-                  : i === 2
-                  ? "#cd7c2f"
-                  : "rgba(255,250,245,0.25)";
-              return (
+          </div>
+        </div>
+
+        {/* Live distribution bars */}
+        {distribution.length > 0 && (
+          <div className="flex flex-col gap-2">
+            {distribution.map((d) => (
+              <div key={d.label} className="flex items-center gap-2">
+                <span className="text-xs font-bold w-4">{d.label}</span>
                 <div
-                  key={entry.userId}
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 10,
-                    padding: questionEnded ? "9px 12px" : "5px 8px",
-                    borderRadius: 7,
-                    background:
-                      i === 0 ? "rgba(251,191,36,0.1)" : "rgba(255,255,255,0.03)",
-                    transition: "padding 0.4s",
-                  }}
+                  className="flex-1 h-5 rounded-full overflow-hidden"
+                  style={{ background: "rgba(255,255,255,0.08)" }}
                 >
-                  <span
+                  <div
+                    className="h-full rounded-full transition-all duration-500"
                     style={{
-                      width: 20,
-                      fontSize: questionEnded ? 13 : 11,
-                      fontWeight: 700,
-                      color: rankColor,
-                      flexShrink: 0,
+                      width: `${d.pct}%`,
+                      background: d.isCorrect ? "#059669" : "#374151",
                     }}
-                  >
-                    {i + 1}
-                  </span>
-                  <span
-                    style={{
-                      flex: 1,
-                      fontSize: questionEnded ? 14 : 12,
-                      color: "#fffaf5",
-                      overflow: "hidden",
-                      textOverflow: "ellipsis",
-                      whiteSpace: "nowrap",
-                    }}
-                  >
-                    {entry.displayName}
-                  </span>
-                  <span
-                    style={{
-                      fontSize: questionEnded ? 14 : 11,
-                      fontWeight: 700,
-                      color: "#a78bfa",
-                      flexShrink: 0,
-                    }}
-                  >
-                    {entry.score.toLocaleString()}
-                  </span>
+                  />
                 </div>
-              );
-            })
-          )}
+                <span className="text-xs w-8 text-right opacity-60">{d.count}</span>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Word cloud (visible for WORD_CLOUD questions) */}
+        {currentQuestion.type === "WORD_CLOUD" && wordCloudWords.length > 0 && (
+          <GameWordCloud words={wordCloudWords} />
+        )}
+      </div>
+
+      {/* Right: Live leaderboard (40%) */}
+      <div className="flex flex-col gap-2" style={{ flex: "0 0 38%" }}>
+        <h3 className="text-sm font-semibold" style={{ color: "#9ca3af" }}>
+          Live Leaderboard
+        </h3>
+        <div
+          className="flex flex-col gap-1 overflow-y-auto"
+          style={{ maxHeight: "calc(100vh - 200px)" }}
+        >
+          {leaderboard.slice(0, 10).map((entry, i) => {
+            const change = getRankChange(entry.userId);
+            return (
+              <div
+                key={entry.userId}
+                className="flex items-center gap-2 rounded-lg px-3 py-2"
+                style={{
+                  background:
+                    i === 0 ? "rgba(124,58,237,0.2)" : "rgba(255,255,255,0.04)",
+                }}
+              >
+                <span
+                  className="text-xs font-bold w-5 text-center"
+                  style={{ color: "#6b7280" }}
+                >
+                  #{i + 1}
+                </span>
+                <span className="flex-1 text-sm truncate">{entry.displayName}</span>
+                {change !== 0 && (
+                  <span
+                    className="text-xs font-bold"
+                    style={{ color: change > 0 ? "#059669" : "#ef4444" }}
+                  >
+                    {change > 0 ? `↑${change}` : `↓${Math.abs(change)}`}
+                  </span>
+                )}
+                <span className="text-xs font-bold" style={{ color: "#7c3aed" }}>
+                  {entry.score.toLocaleString()}
+                </span>
+              </div>
+            );
+          })}
         </div>
       </div>
     </div>
