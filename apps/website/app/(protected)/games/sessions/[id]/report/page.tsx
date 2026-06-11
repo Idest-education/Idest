@@ -28,7 +28,7 @@ interface QuestionStat {
 
 interface SessionStats {
   sessionId: string;
-  totalParticipants: number;
+  participantCount: number;
   avgAccuracy: number;       // 0–100
   avgResponseTimeMs: number;
   durationMs: number;
@@ -102,10 +102,12 @@ export default function SessionReportPage() {
       const a = document.createElement("a");
       a.href = url;
       a.download = `session-${id}.${format}`;
+      document.body.appendChild(a);
       a.click();
+      document.body.removeChild(a);
       URL.revokeObjectURL(url);
     } catch {
-      // silently fail — could add a toast here
+      setError('Export failed. Please try again.');
     } finally {
       setExporting(null);
     }
@@ -193,7 +195,7 @@ export default function SessionReportPage() {
           marginBottom: 40,
         }}
       >
-        <StatCard label="Total Participants" value={String(stats.totalParticipants)} />
+        <StatCard label="Total Participants" value={String(stats.participantCount)} />
         <StatCard label="Avg Accuracy" value={`${Math.round(stats.avgAccuracy)}%`} />
         <StatCard label="Avg Response Time" value={`${Math.round(stats.avgResponseTimeMs)} ms`} />
         <StatCard label="Session Duration" value={formatDuration(stats.durationMs)} />
