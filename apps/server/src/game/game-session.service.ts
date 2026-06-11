@@ -13,6 +13,7 @@ import { PrismaService } from 'src/prisma/prisma.service';
 export class GameSessionService {
   // Tracks when the current question started: gameSessionId → Date
   private questionStartedAt = new Map<string, Date>();
+  private readonly autoTimers = new Map<string, NodeJS.Timeout>();
 
   constructor(
     private readonly prisma: PrismaService,
@@ -69,6 +70,22 @@ export class GameSessionService {
     const timeRatio = Math.min(1, responseTimeMs / (timerSeconds * 1000));
     const speedBonus = Math.min(1000, Math.max(500, Math.round(500 + 500 * (1 - timeRatio))));
     return Math.round(ratio * speedBonus);
+  }
+
+  private scheduleAutoAdvance(gameSessionId: string, timerSeconds: number): void {
+    this.cancelAutoAdvance(gameSessionId);
+    const timer = setTimeout(() => {
+      void this.nextQuestion(gameSessionId, '__auto__');
+    }, timerSeconds * 1000);
+    this.autoTimers.set(gameSessionId, timer);
+  }
+
+  private cancelAutoAdvance(gameSessionId: string): void {
+    const timer = this.autoTimers.get(gameSessionId);
+    if (timer !== undefined) {
+      clearTimeout(timer);
+      this.autoTimers.delete(gameSessionId);
+    }
   }
 
   private levenshtein(a: string, b: string): number {
@@ -137,10 +154,14 @@ export class GameSessionService {
       elapsedSeconds: 0,
     });
 
+    this.scheduleAutoAdvance(session.id, firstQuestion.timerSeconds);
+
     return session;
   }
 
   async nextQuestion(gameSessionId: string, requesterId: string) {
+    this.cancelAutoAdvance(gameSessionId);
+
     const session = await this.prisma.gameSession.findUnique({
       where: { id: gameSessionId },
       include: {
@@ -148,7 +169,7 @@ export class GameSessionService {
       },
     });
     if (!session) throw new NotFoundException('Game session not found');
-    if (session.startedBy !== requesterId) throw new ForbiddenException('Only the teacher can advance questions');
+    if (session.startedBy !== requesterId && requesterId !== '__auto__') throw new ForbiddenException('Only the teacher can advance questions');
     if (session.status === 'ENDED') throw new BadRequestException('Game has already ended');
 
     const questions = session.template.questions;
@@ -199,6 +220,8 @@ export class GameSessionService {
       timerSeconds: nextQuestion.timerSeconds,
       elapsedSeconds: 0,
     });
+
+    this.scheduleAutoAdvance(gameSessionId, nextQuestion.timerSeconds);
 
     return updated;
   }

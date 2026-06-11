@@ -239,6 +239,75 @@ describe('GameSessionService', () => {
     });
   });
 
+  describe('auto-advance timer', () => {
+    beforeEach(() => {
+      jest.useFakeTimers();
+    });
+
+    afterEach(() => {
+      jest.useRealTimers();
+    });
+
+    it('schedules auto-advance after startSession', async () => {
+      const template = {
+        id: 'tmpl-1',
+        createdBy: 'teacher-1',
+        questions: [
+          { id: 'q1', type: 'MULTIPLE_CHOICE', correctAnswer: 'A', timerSeconds: 10, order: 1, options: [] },
+        ],
+      };
+      mockPrisma.gameSession.findFirst.mockResolvedValue(null);
+      mockPrisma.gameTemplate.findUnique.mockResolvedValue(template);
+      mockPrisma.gameSession.create.mockResolvedValue({
+        id: 'gs1',
+        templateId: 'tmpl-1',
+        sessionId: 'meet-1',
+        startedBy: 'teacher-1',
+        status: 'IN_PROGRESS',
+        currentQuestionIndex: 0,
+        template: { questions: template.questions },
+      });
+
+      await service.startSession('tmpl-1', 'meet-1', 'teacher-1');
+
+      // Timer should be scheduled
+      expect(jest.getTimerCount()).toBe(1);
+    });
+
+    it('auto-advances question when timer fires', async () => {
+      const questions = [
+        { id: 'q1', type: 'MULTIPLE_CHOICE', correctAnswer: 'A', timerSeconds: 10, order: 1, options: [] },
+        { id: 'q2', type: 'MULTIPLE_CHOICE', correctAnswer: 'B', timerSeconds: 10, order: 2, options: [] },
+      ];
+      const session = {
+        id: 'gs1',
+        status: 'IN_PROGRESS',
+        startedBy: 'teacher-1',
+        currentQuestionIndex: 0,
+        template: { questions },
+      };
+      mockPrisma.gameSession.findFirst.mockResolvedValue(null);
+      mockPrisma.gameTemplate.findUnique.mockResolvedValue({
+        id: 'tmpl-1',
+        createdBy: 'teacher-1',
+        questions,
+      });
+      mockPrisma.gameSession.create.mockResolvedValue({ ...session, template: { questions } });
+      mockPrisma.gameSession.findUnique.mockResolvedValue(session);
+      mockPrisma.gameAnswer.findMany.mockResolvedValue([]);
+      mockPrisma.gameSession.update.mockResolvedValue({ ...session, currentQuestionIndex: 1 });
+
+      await service.startSession('tmpl-1', 'meet-1', 'teacher-1');
+      jest.advanceTimersByTime(10001);
+      // flush microtasks — multiple rounds needed for the async nextQuestion chain
+      for (let i = 0; i < 10; i++) await Promise.resolve();
+
+      expect(mockPrisma.gameSession.update).toHaveBeenCalledWith(
+        expect.objectContaining({ data: { currentQuestionIndex: 1 } }),
+      );
+    });
+  });
+
   describe('nextQuestion', () => {
     const baseSession = {
       id: 'session-1',
