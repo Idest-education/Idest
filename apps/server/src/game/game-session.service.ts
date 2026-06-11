@@ -343,4 +343,121 @@ export class GameSessionService {
     if (!startedAt) return 0;
     return Math.floor((Date.now() - startedAt.getTime()) / 1000);
   }
+
+  async pauseSession(gameSessionId: string, requesterId: string) {
+    const session = await this.prisma.gameSession.findUnique({ where: { id: gameSessionId } });
+    if (!session) throw new NotFoundException('Game session not found');
+    if (session.startedBy !== requesterId) throw new ForbiddenException('Only the teacher can pause');
+    if (session.status !== 'IN_PROGRESS') throw new BadRequestException('Session is not in progress');
+
+    this.cancelAutoAdvance(gameSessionId);
+    const now = new Date();
+    await this.prisma.gameSession.update({
+      where: { id: gameSessionId },
+      data: { status: 'PAUSED', pausedAt: now },
+    });
+    this.eventEmitter.emit('game.session.paused', { gameSessionId, pausedAt: now });
+  }
+
+  async resumeSession(gameSessionId: string, requesterId: string) {
+    const session = await this.prisma.gameSession.findUnique({
+      where: { id: gameSessionId },
+      include: { template: { include: { questions: { orderBy: { order: 'asc' } } } } },
+    });
+    if (!session) throw new NotFoundException('Game session not found');
+    if (session.startedBy !== requesterId) throw new ForbiddenException('Only the teacher can resume');
+    if (session.status !== 'PAUSED') throw new BadRequestException('Session is not paused');
+
+    await this.prisma.gameSession.update({
+      where: { id: gameSessionId },
+      data: { status: 'IN_PROGRESS', pausedAt: null },
+    });
+    const elapsedSeconds = this.getQuestionElapsedSeconds(gameSessionId);
+    const currentQuestion = session.template.questions[session.currentQuestionIndex];
+    const remainingSeconds = Math.max(0, currentQuestion.timerSeconds - elapsedSeconds);
+    this.scheduleAutoAdvance(gameSessionId, remainingSeconds);
+    this.eventEmitter.emit('game.session.resumed', { gameSessionId, elapsedSeconds });
+  }
+
+  async extendTimer(gameSessionId: string, requesterId: string, extraSeconds: number) {
+    const session = await this.prisma.gameSession.findUnique({
+      where: { id: gameSessionId },
+      include: { template: { include: { questions: { orderBy: { order: 'asc' } } } } },
+    });
+    if (!session) throw new NotFoundException('Game session not found');
+    if (session.startedBy !== requesterId) throw new ForbiddenException('Only the teacher can extend');
+    if (session.status !== 'IN_PROGRESS') throw new BadRequestException('Session is not in progress');
+
+    this.cancelAutoAdvance(gameSessionId);
+    const elapsedSeconds = this.getQuestionElapsedSeconds(gameSessionId);
+    const currentQuestion = session.template.questions[session.currentQuestionIndex];
+    const newTimerSeconds = currentQuestion.timerSeconds + extraSeconds;
+    this.scheduleAutoAdvance(gameSessionId, Math.max(1, newTimerSeconds - elapsedSeconds));
+
+    this.eventEmitter.emit('game.timer.extended', {
+      gameSessionId,
+      extraSeconds,
+      newTimerSeconds,
+      elapsedSeconds,
+    });
+  }
+
+  async skipQuestion(gameSessionId: string, requesterId: string) {
+    return this.nextQuestion(gameSessionId, requesterId);
+  }
+
+  async revealAnswer(gameSessionId: string, requesterId: string) {
+    const session = await this.prisma.gameSession.findUnique({
+      where: { id: gameSessionId },
+      include: { template: { include: { questions: { orderBy: { order: 'asc' }, include: { options: true } } } } },
+    });
+    if (!session) throw new NotFoundException('Game session not found');
+    if (session.startedBy !== requesterId) throw new ForbiddenException('Only the teacher can reveal');
+    if (session.status !== 'IN_PROGRESS') throw new BadRequestException('Session is not in progress');
+
+    this.cancelAutoAdvance(gameSessionId);
+    const currentQuestion = session.template.questions[session.currentQuestionIndex];
+    const answers = await this.prisma.gameAnswer.findMany({
+      where: { sessionId: gameSessionId, questionId: currentQuestion.id },
+    });
+    const distribution = this.computeDistribution(currentQuestion, answers);
+    this.eventEmitter.emit('game.answer.revealed', {
+      gameSessionId,
+      correctAnswer: currentQuestion.correctAnswer,
+      distribution,
+    });
+  }
+
+  async hideWord(gameSessionId: string, requesterId: string, word: string) {
+    const session = await this.prisma.gameSession.findUnique({ where: { id: gameSessionId } });
+    if (!session) throw new NotFoundException('Game session not found');
+    if (session.startedBy !== requesterId) throw new ForbiddenException('Only the teacher can hide words');
+
+    const existing: string[] = session.hiddenWords ? JSON.parse(session.hiddenWords) : [];
+    if (!existing.includes(word)) existing.push(word);
+    await this.prisma.gameSession.update({
+      where: { id: gameSessionId },
+      data: { hiddenWords: JSON.stringify(existing) },
+    });
+  }
+
+  computeDistribution(
+    question: { options: { label: string; text: string }[]; correctAnswer: string; type: string },
+    answers: { answer: string }[],
+  ) {
+    const total = answers.length;
+    const countMap = new Map<string, number>();
+    for (const a of answers) {
+      countMap.set(a.answer, (countMap.get(a.answer) ?? 0) + 1);
+    }
+    return question.options.map((opt) => ({
+      label: opt.label,
+      text: opt.text,
+      count: countMap.get(opt.label) ?? 0,
+      pct: total > 0 ? Math.round(((countMap.get(opt.label) ?? 0) / total) * 100) : 0,
+      isCorrect: question.type === 'MULTI_CHOICE'
+        ? question.correctAnswer.split(',').map((s) => s.trim()).includes(opt.label)
+        : opt.label === question.correctAnswer,
+    }));
+  }
 }

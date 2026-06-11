@@ -308,6 +308,137 @@ describe('GameSessionService', () => {
     });
   });
 
+  describe('pauseSession', () => {
+    const session = {
+      id: 'gs1', status: 'IN_PROGRESS', startedBy: 'teacher-1',
+      currentQuestionIndex: 0,
+      template: { questions: [{ id: 'q1', timerSeconds: 20 }] },
+    };
+
+    it('sets status to PAUSED and emits game.session.paused', async () => {
+      mockPrisma.gameSession.findUnique.mockResolvedValue(session);
+      mockPrisma.gameSession.update.mockResolvedValue({ ...session, status: 'PAUSED' });
+
+      await service.pauseSession('gs1', 'teacher-1');
+
+      expect(mockPrisma.gameSession.update).toHaveBeenCalledWith(
+        expect.objectContaining({ data: expect.objectContaining({ status: 'PAUSED' }) }),
+      );
+      expect(mockEventEmitter.emit).toHaveBeenCalledWith('game.session.paused', expect.objectContaining({ gameSessionId: 'gs1' }));
+    });
+
+    it('throws ForbiddenException if not the teacher', async () => {
+      mockPrisma.gameSession.findUnique.mockResolvedValue(session);
+      await expect(service.pauseSession('gs1', 'other')).rejects.toThrow(ForbiddenException);
+    });
+
+    it('throws BadRequestException if not IN_PROGRESS', async () => {
+      mockPrisma.gameSession.findUnique.mockResolvedValue({ ...session, status: 'ENDED' });
+      await expect(service.pauseSession('gs1', 'teacher-1')).rejects.toThrow(BadRequestException);
+    });
+  });
+
+  describe('resumeSession', () => {
+    const session = {
+      id: 'gs1', status: 'PAUSED', startedBy: 'teacher-1',
+      currentQuestionIndex: 0,
+      template: { questions: [{ id: 'q1', timerSeconds: 20 }] },
+    };
+
+    it('sets status to IN_PROGRESS and emits game.session.resumed', async () => {
+      mockPrisma.gameSession.findUnique.mockResolvedValue(session);
+      mockPrisma.gameSession.update.mockResolvedValue({ ...session, status: 'IN_PROGRESS' });
+
+      await service.resumeSession('gs1', 'teacher-1');
+
+      expect(mockPrisma.gameSession.update).toHaveBeenCalledWith(
+        expect.objectContaining({ data: expect.objectContaining({ status: 'IN_PROGRESS' }) }),
+      );
+      expect(mockEventEmitter.emit).toHaveBeenCalledWith('game.session.resumed', expect.any(Object));
+    });
+
+    it('throws BadRequestException if not PAUSED', async () => {
+      mockPrisma.gameSession.findUnique.mockResolvedValue({ ...session, status: 'IN_PROGRESS' });
+      await expect(service.resumeSession('gs1', 'teacher-1')).rejects.toThrow(BadRequestException);
+    });
+  });
+
+  describe('extendTimer', () => {
+    const session = {
+      id: 'gs1', status: 'IN_PROGRESS', startedBy: 'teacher-1',
+      currentQuestionIndex: 0,
+      template: { questions: [{ id: 'q1', timerSeconds: 20 }] },
+    };
+
+    it('emits game.timer.extended with correct payload', async () => {
+      mockPrisma.gameSession.findUnique.mockResolvedValue(session);
+
+      await service.extendTimer('gs1', 'teacher-1', 30);
+
+      expect(mockEventEmitter.emit).toHaveBeenCalledWith(
+        'game.timer.extended',
+        expect.objectContaining({ gameSessionId: 'gs1', extraSeconds: 30 }),
+      );
+    });
+
+    it('throws ForbiddenException if not the teacher', async () => {
+      mockPrisma.gameSession.findUnique.mockResolvedValue(session);
+      await expect(service.extendTimer('gs1', 'other', 30)).rejects.toThrow(ForbiddenException);
+    });
+  });
+
+  describe('skipQuestion', () => {
+    const session = {
+      id: 'gs1', status: 'IN_PROGRESS', startedBy: 'teacher-1',
+      currentQuestionIndex: 0,
+      template: { questions: [{ id: 'q1', timerSeconds: 20 }, { id: 'q2', timerSeconds: 20 }] },
+    };
+
+    it('advances to next question (same as nextQuestion)', async () => {
+      mockPrisma.gameSession.findUnique.mockResolvedValue(session);
+      mockPrisma.gameAnswer.findMany.mockResolvedValue([]);
+      mockPrisma.gameSession.update.mockResolvedValue({ ...session, currentQuestionIndex: 1 });
+
+      await service.skipQuestion('gs1', 'teacher-1');
+
+      expect(mockPrisma.gameSession.update).toHaveBeenCalledWith(
+        expect.objectContaining({ data: { currentQuestionIndex: 1 } }),
+      );
+    });
+  });
+
+  describe('hideWord', () => {
+    it('adds word to hiddenWords JSON array in GameSession', async () => {
+      mockPrisma.gameSession.findUnique.mockResolvedValue({
+        id: 'gs1', status: 'IN_PROGRESS', startedBy: 'teacher-1', hiddenWords: null,
+      });
+      mockPrisma.gameSession.update.mockResolvedValue({});
+
+      await service.hideWord('gs1', 'teacher-1', 'badword');
+
+      expect(mockPrisma.gameSession.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({ hiddenWords: JSON.stringify(['badword']) }),
+        }),
+      );
+    });
+
+    it('appends to existing hiddenWords list', async () => {
+      mockPrisma.gameSession.findUnique.mockResolvedValue({
+        id: 'gs1', status: 'IN_PROGRESS', startedBy: 'teacher-1', hiddenWords: JSON.stringify(['first']),
+      });
+      mockPrisma.gameSession.update.mockResolvedValue({});
+
+      await service.hideWord('gs1', 'teacher-1', 'second');
+
+      expect(mockPrisma.gameSession.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({ hiddenWords: JSON.stringify(['first', 'second']) }),
+        }),
+      );
+    });
+  });
+
   describe('nextQuestion', () => {
     const baseSession = {
       id: 'session-1',
