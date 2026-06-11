@@ -637,6 +637,62 @@ describe('GameSessionService', () => {
     });
   });
 
+  describe('getSessionStats', () => {
+    it('returns per-question stats with distribution and summary', async () => {
+      const session = {
+        id: 'gs1',
+        status: 'ENDED',
+        startedBy: 'teacher-1',
+        startedAt: new Date('2025-01-01T10:00:00Z'),
+        endedAt: new Date('2025-01-01T10:15:00Z'),
+        template: {
+          questions: [
+            { id: 'q1', text: 'Q1?', type: 'MULTIPLE_CHOICE', correctAnswer: 'B', timerSeconds: 20, order: 1, options: [
+              { id: 'o1', label: 'A', text: 'Wrong' },
+              { id: 'o2', label: 'B', text: 'Correct' },
+            ], matchPairs: [] },
+          ],
+        },
+      };
+      mockPrisma.gameSession.findUnique.mockResolvedValue(session);
+      mockPrisma.gameParticipant.findMany.mockResolvedValue([
+        { id: 'p1', userId: 'u1', score: 800 },
+        { id: 'p2', userId: 'u2', score: 0 },
+      ]);
+      mockPrisma.gameAnswer.findMany
+        .mockResolvedValueOnce([  // per-question answers
+          { participantId: 'p1', answer: 'B', isCorrect: true, responseTimeMs: 3000 },
+          { participantId: 'p2', answer: 'A', isCorrect: false, responseTimeMs: 8000 },
+        ])
+        .mockResolvedValueOnce([ // per-student answers for export
+          { participantId: 'p1', answer: 'B', isCorrect: true, responseTimeMs: 3000 },
+          { participantId: 'p2', answer: 'A', isCorrect: false, responseTimeMs: 8000 },
+        ]);
+      mockPrisma.user.findMany.mockResolvedValue([
+        { id: 'u1', full_name: 'Alice' },
+        { id: 'u2', full_name: 'Bob' },
+      ]);
+
+      const result = await service.getSessionStats('gs1', 'teacher-1');
+
+      expect(result.questions).toHaveLength(1);
+      expect(result.questions[0].correctCount).toBe(1);
+      expect(result.questions[0].incorrectCount).toBe(1);
+      expect(result.questions[0].unansweredCount).toBe(0);
+      expect(result.questions[0].difficultyScore).toBeCloseTo(0.5);
+      expect(result.summary.participantCount).toBe(2);
+      expect(result.summary.avgAccuracy).toBe(50);
+    });
+
+    it('throws ForbiddenException if caller is not the session owner', async () => {
+      mockPrisma.gameSession.findUnique.mockResolvedValue({
+        id: 'gs1', status: 'ENDED', startedBy: 'teacher-1',
+        template: { questions: [] },
+      });
+      await expect(service.getSessionStats('gs1', 'other')).rejects.toThrow(ForbiddenException);
+    });
+  });
+
   describe('nextQuestion', () => {
     const baseSession = {
       id: 'session-1',

@@ -524,6 +524,147 @@ export class GameSessionService {
     });
   }
 
+  async getSessionStats(gameSessionId: string, requesterId: string) {
+    const session = await this.prisma.gameSession.findUnique({
+      where: { id: gameSessionId },
+      include: {
+        template: {
+          include: {
+            questions: {
+              orderBy: { order: 'asc' },
+              include: { options: true, matchPairs: true },
+            },
+          },
+        },
+      },
+    });
+    if (!session) throw new NotFoundException('Game session not found');
+    if (session.startedBy !== requesterId) throw new ForbiddenException('Only the teacher can view stats');
+
+    const questions = session.template.questions;
+    const participants = await this.prisma.gameParticipant.findMany({
+      where: { sessionId: gameSessionId },
+    });
+    const participantCount = participants.length;
+
+    const questionStats = await Promise.all(
+      questions.map(async (q, idx) => {
+        const answers = await this.prisma.gameAnswer.findMany({
+          where: { sessionId: gameSessionId, questionId: q.id },
+        });
+        const correctCount = answers.filter((a) => a.isCorrect).length;
+        const incorrectCount = answers.filter((a) => !a.isCorrect).length;
+        const unansweredCount = participantCount - answers.length;
+        const avgResponseTimeMs =
+          answers.length > 0
+            ? Math.round(answers.reduce((s, a) => s + a.responseTimeMs, 0) / answers.length)
+            : 0;
+        const totalResponses = answers.length;
+        const correctRate = totalResponses > 0 ? correctCount / totalResponses : 0;
+        const difficultyScore = Math.round((1 - correctRate) * 100) / 100;
+        const distribution = this.computeDistribution(q, answers);
+
+        return {
+          questionIndex: idx,
+          text: q.text,
+          type: q.type,
+          correctAnswer: q.correctAnswer,
+          totalResponses,
+          correctCount,
+          incorrectCount,
+          unansweredCount,
+          avgResponseTimeMs,
+          distribution,
+          difficultyScore,
+        };
+      }),
+    );
+
+    const totalCorrect = questionStats.reduce((s, q) => s + q.correctCount, 0);
+    const totalAnswered = questionStats.reduce((s, q) => s + q.totalResponses, 0);
+    const avgAccuracy = totalAnswered > 0 ? Math.round((totalCorrect / totalAnswered) * 100) : 0;
+    const avgResponseTimeMs =
+      questionStats.length > 0
+        ? Math.round(questionStats.reduce((s, q) => s + q.avgResponseTimeMs, 0) / questionStats.length)
+        : 0;
+    const hardestQuestion = questionStats.reduce(
+      (max, q, idx) => (q.difficultyScore > (questionStats[max]?.difficultyScore ?? 0) ? idx : max),
+      0,
+    );
+    const easiestQuestion = questionStats.reduce(
+      (min, q, idx) => (q.difficultyScore < (questionStats[min]?.difficultyScore ?? 1) ? idx : min),
+      0,
+    );
+
+    return {
+      questions: questionStats,
+      summary: {
+        participantCount,
+        avgAccuracy,
+        avgResponseTimeMs,
+        hardestQuestion,
+        easiestQuestion,
+        durationMs:
+          session.endedAt && session.startedAt
+            ? session.endedAt.getTime() - session.startedAt.getTime()
+            : null,
+      },
+    };
+  }
+
+  async exportSession(gameSessionId: string, requesterId: string, format: 'csv' | 'json') {
+    const session = await this.prisma.gameSession.findUnique({
+      where: { id: gameSessionId },
+      include: {
+        template: { include: { questions: { orderBy: { order: 'asc' } } } },
+      },
+    });
+    if (!session) throw new NotFoundException('Game session not found');
+    if (session.startedBy !== requesterId) throw new ForbiddenException('Only the teacher can export');
+
+    const participants = await this.prisma.gameParticipant.findMany({
+      where: { sessionId: gameSessionId },
+      orderBy: { score: 'desc' },
+    });
+    const userIds = participants.map((p) => p.userId);
+    const users = await this.prisma.user.findMany({
+      where: { id: { in: userIds } },
+      select: { id: true, full_name: true },
+    });
+    const nameMap = new Map(users.map((u) => [u.id, u.full_name]));
+
+    const answers = await this.prisma.gameAnswer.findMany({
+      where: { sessionId: gameSessionId },
+    });
+
+    const rows = participants.map((p) => {
+      const myAnswers = answers.filter((a) => a.participantId === p.id);
+      const correct = myAnswers.filter((a) => a.isCorrect).length;
+      const avgMs =
+        myAnswers.length > 0
+          ? Math.round(myAnswers.reduce((s, a) => s + a.responseTimeMs, 0) / myAnswers.length)
+          : 0;
+      return {
+        studentName: nameMap.get(p.userId) ?? p.userId,
+        score: p.score,
+        accuracy: myAnswers.length > 0 ? Math.round((correct / myAnswers.length) * 100) : 0,
+        avgResponseTimeMs: avgMs,
+        answeredCount: myAnswers.length,
+        correctCount: correct,
+      };
+    });
+
+    if (format === 'json') return rows;
+
+    // CSV
+    const headers = 'studentName,score,accuracy,avgResponseTimeMs,answeredCount,correctCount\n';
+    const csvRows = rows.map(
+      (r) =>
+        `"${r.studentName}",${r.score},${r.accuracy},${r.avgResponseTimeMs},${r.answeredCount},${r.correctCount}`,
+    );
+    return headers + csvRows.join('\n');
+  }
+
   computeDistribution(
     question: { options: { label: string; text: string }[]; correctAnswer: string; type: string },
     answers: { answer: string }[],
