@@ -6,6 +6,8 @@ import {
   GameQuestionStartedEvent,
   LeaderboardEntry,
   GameStatus,
+  WordCloudEntry,
+  DistributionEntry,
 } from "@/types/game";
 
 interface RoundResult {
@@ -24,6 +26,12 @@ interface GameStore {
   gameStatus: GameStatus;
   hasSubmitted: boolean;
   roundResult: RoundResult | null;
+  wordCloudWords: WordCloudEntry[];
+  answerStreak: number;
+  maxAnswerStreak: number;
+  distribution: DistributionEntry[];
+  isPaused: boolean;
+  timerExtended: { newTimerSeconds: number; elapsedSeconds: number } | null;
 
   setActiveSession: (session: GameSession | null) => void;
   setCurrentQuestion: (q: GameQuestionStartedEvent | null) => void;
@@ -33,6 +41,11 @@ interface GameStore {
   setGameStatus: (status: GameStatus) => void;
   setHasSubmitted: (v: boolean) => void;
   setRoundResult: (result: RoundResult | null) => void;
+  setWordCloudWords: (words: WordCloudEntry[]) => void;
+  setAnswerStreak: (streak: number, max: number) => void;
+  setDistribution: (entries: DistributionEntry[]) => void;
+  setIsPaused: (paused: boolean) => void;
+  setTimerExtended: (data: { newTimerSeconds: number; elapsedSeconds: number } | null) => void;
   reset: () => void;
 }
 
@@ -46,6 +59,12 @@ const initial = {
   gameStatus: 'idle' as GameStatus,
   hasSubmitted: false,
   roundResult: null,
+  wordCloudWords: [] as WordCloudEntry[],
+  answerStreak: 0,
+  maxAnswerStreak: 0,
+  distribution: [] as DistributionEntry[],
+  isPaused: false,
+  timerExtended: null as { newTimerSeconds: number; elapsedSeconds: number } | null,
 };
 
 export const useGameStore = create<GameStore>((set) => ({
@@ -60,5 +79,10 @@ export const useGameStore = create<GameStore>((set) => ({
   setGameStatus: (gameStatus) => set({ gameStatus }),
   setHasSubmitted: (hasSubmitted) => set({ hasSubmitted }),
   setRoundResult: (roundResult) => set({ roundResult }),
+  setWordCloudWords: (wordCloudWords) => set({ wordCloudWords }),
+  setAnswerStreak: (answerStreak, maxAnswerStreak) => set({ answerStreak, maxAnswerStreak }),
+  setDistribution: (distribution) => set({ distribution }),
+  setIsPaused: (isPaused) => set({ isPaused }),
+  setTimerExtended: (timerExtended) => set({ timerExtended }),
   reset: () => set({ ...initial }),
 }));

@@ -1,6 +1,6 @@
-export type QuestionType = 'MULTIPLE_CHOICE' | 'FILL_BLANK';
-export type GameSessionStatus = 'WAITING' | 'IN_PROGRESS' | 'ENDED';
-export type GameStatus = 'idle' | 'active' | 'ended';
+export type QuestionType = 'MULTIPLE_CHOICE' | 'FILL_BLANK' | 'MULTI_CHOICE' | 'MATCH_LR' | 'WORD_CLOUD';
+export type GameSessionStatus = 'WAITING' | 'IN_PROGRESS' | 'PAUSED' | 'ENDED';
+export type GameStatus = 'idle' | 'active' | 'paused' | 'ended';
 
 export interface GameOption {
   id: string;
@@ -16,6 +16,23 @@ export interface GameQuestion {
   timerSeconds: number;
   options: GameOption[];
   correctAnswer?: string; // Only present in teacher-facing template responses
+  isMultiAnswer?: boolean;
+  matchPairs?: { id: string; leftLabel: string; rightText: string }[];
+}
+
+// Distribution entry for answer analytics
+export interface DistributionEntry {
+  label: string;
+  text: string;
+  count: number;
+  pct: number;
+  isCorrect: boolean;
+}
+
+// Word cloud entry
+export interface WordCloudEntry {
+  text: string;
+  count: number;
 }
 
 export interface GameTemplate {
@@ -65,6 +82,8 @@ export interface GameQuestionStartedEvent {
 
 export interface GameQuestionEndedEvent {
   correctAnswer: string;
+  distribution: DistributionEntry[];
+  unansweredCount: number;
   pointsBreakdown: { userId: string; pointsAwarded: number }[];
 }
 
@@ -74,6 +93,29 @@ export interface GameLeaderboardUpdatedEvent {
 
 export interface GameSessionEndedEvent {
   leaderboard: LeaderboardEntry[];
+}
+
+// New WebSocket event types
+export interface GameTimerExtendedEvent {
+  newTimerSeconds: number;
+  elapsedSeconds: number;
+}
+
+export interface GameSessionPausedEvent {
+  pausedAt: string;
+}
+
+export interface GameSessionResumedEvent {
+  elapsedSeconds: number;
+}
+
+export interface GameWordCloudUpdatedEvent {
+  words: WordCloudEntry[];
+}
+
+export interface GameAnswerRevealedEvent {
+  correctAnswer: string;
+  distribution: DistributionEntry[];
 }
 
 // REST DTOs (client → server)
@@ -103,4 +145,12 @@ export interface StartGameSessionDto {
 
 export interface SubmitAnswerDto {
   answer: string;
+}
+
+export interface SubmitAnswerResponse {
+  isCorrect: boolean;
+  pointsAwarded: number;
+  responseTimeMs: number;
+  answerStreak: number;
+  maxAnswerStreak: number;
 }

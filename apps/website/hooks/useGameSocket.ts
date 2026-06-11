@@ -11,6 +11,11 @@ import {
   GameQuestionEndedEvent,
   GameLeaderboardUpdatedEvent,
   GameSessionEndedEvent,
+  GameTimerExtendedEvent,
+  GameSessionPausedEvent,
+  GameSessionResumedEvent,
+  GameWordCloudUpdatedEvent,
+  GameAnswerRevealedEvent,
 } from "@/types/game";
 
 export function useGameSocket(gameSessionId: string | null) {
@@ -23,6 +28,10 @@ export function useGameSocket(gameSessionId: string | null) {
   const setRoundResult = useGameStore((state) => state.setRoundResult);
   const setMyScore = useGameStore((state) => state.setMyScore);
   const setMyRank = useGameStore((state) => state.setMyRank);
+  const setWordCloudWords = useGameStore((state) => state.setWordCloudWords);
+  const setDistribution = useGameStore((state) => state.setDistribution);
+  const setIsPaused = useGameStore((state) => state.setIsPaused);
+  const setTimerExtended = useGameStore((state) => state.setTimerExtended);
   const reset = useGameStore((state) => state.reset);
 
   const connect = useCallback(
@@ -54,6 +63,29 @@ export function useGameSocket(gameSessionId: string | null) {
           pointsAwarded: myPoints?.pointsAwarded ?? 0,
           correctAnswer: payload.correctAnswer,
         });
+        setDistribution(payload.distribution ?? []);
+      });
+
+      socket.on("game:session_paused", (_payload: GameSessionPausedEvent) => {
+        setGameStatus("paused");
+        setIsPaused(true);
+      });
+
+      socket.on("game:session_resumed", (_payload: GameSessionResumedEvent) => {
+        setGameStatus("active");
+        setIsPaused(false);
+      });
+
+      socket.on("game:timer_extended", (payload: GameTimerExtendedEvent) => {
+        setTimerExtended({ newTimerSeconds: payload.newTimerSeconds, elapsedSeconds: payload.elapsedSeconds });
+      });
+
+      socket.on("game:word_cloud_updated", (payload: GameWordCloudUpdatedEvent) => {
+        setWordCloudWords(payload.words);
+      });
+
+      socket.on("game:answer_revealed", (payload: GameAnswerRevealedEvent) => {
+        setDistribution(payload.distribution);
       });
 
       socket.on("game:leaderboard_updated", (payload: GameLeaderboardUpdatedEvent) => {
@@ -83,7 +115,7 @@ export function useGameSocket(gameSessionId: string | null) {
 
       socket.connect();
     },
-    [setCurrentQuestion, setGameStatus, setHasSubmitted, setLeaderboard, setMyRank, setMyScore, setRoundResult],
+    [setCurrentQuestion, setGameStatus, setHasSubmitted, setLeaderboard, setMyRank, setMyScore, setRoundResult, setWordCloudWords, setDistribution, setIsPaused, setTimerExtended],
   );
 
   const disconnect = useCallback(() => {

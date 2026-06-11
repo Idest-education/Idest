@@ -7,6 +7,7 @@ import {
   UpdateGameTemplateDto,
   StartGameSessionDto,
   SubmitAnswerDto,
+  SubmitAnswerResponse,
 } from "@/types/game";
 
 // ── Templates ──────────────────────────────────────────────────────────
@@ -47,11 +48,7 @@ export async function nextQuestion(gameSessionId: string): Promise<GameSession> 
   return unwrapResponse<GameSession>(res.data);
 }
 
-export async function submitAnswer(gameSessionId: string, dto: SubmitAnswerDto): Promise<{
-  isCorrect: boolean;
-  pointsAwarded: number;
-  responseTimeMs: number;
-}> {
+export async function submitAnswer(gameSessionId: string, dto: SubmitAnswerDto): Promise<SubmitAnswerResponse> {
   const res = await http.post(`/game-sessions/${gameSessionId}/submit`, dto);
   return unwrapResponse(res.data);
 }
@@ -64,4 +61,36 @@ export async function getLeaderboard(gameSessionId: string): Promise<Leaderboard
 export async function getActiveGameSession(meetingSessionId: string): Promise<GameSession | null> {
   const res = await http.get(`/game-sessions/active?sessionId=${meetingSessionId}`);
   return unwrapResponse<GameSession | null>(res.data);
+}
+
+// ── Teacher Controls ────────────────────────────────────────────────────
+
+export async function pauseGame(gameSessionId: string): Promise<void> {
+  const res = await http.post(`/game-sessions/${gameSessionId}/pause`);
+  return unwrapResponse(res.data);
+}
+
+export async function resumeGame(gameSessionId: string): Promise<void> {
+  const res = await http.post(`/game-sessions/${gameSessionId}/resume`);
+  return unwrapResponse(res.data);
+}
+
+export async function extendTimer(gameSessionId: string, extraSeconds: number): Promise<void> {
+  const res = await http.post(`/game-sessions/${gameSessionId}/extend`, { extraSeconds });
+  return unwrapResponse(res.data);
+}
+
+export async function skipQuestion(gameSessionId: string): Promise<void> {
+  const res = await http.post(`/game-sessions/${gameSessionId}/skip`);
+  return unwrapResponse(res.data);
+}
+
+export async function revealAnswer(gameSessionId: string): Promise<void> {
+  const res = await http.post(`/game-sessions/${gameSessionId}/reveal`);
+  return unwrapResponse(res.data);
+}
+
+export async function hideWord(gameSessionId: string, word: string): Promise<void> {
+  const res = await http.post(`/game-sessions/${gameSessionId}/hide-word`, { word });
+  return unwrapResponse(res.data);
 }
