@@ -8,6 +8,8 @@ import {
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { GameSessionService } from './game-session.service';
 import { PrismaService } from 'src/prisma/prisma.service';
+import { ClassStatsService } from './class-stats.service';
+import { AchievementService } from './achievement.service';
 
 const mockPrisma = {
   gameSession: {
@@ -29,6 +31,8 @@ const mockPrisma = {
   user: { findMany: jest.fn() },
 };
 const mockEventEmitter = { emit: jest.fn() };
+const mockClassStatsService = { updateStats: jest.fn().mockResolvedValue(undefined) };
+const mockAchievementService = { checkAndAward: jest.fn().mockResolvedValue(undefined) };
 
 describe('GameSessionService', () => {
   let service: GameSessionService;
@@ -39,6 +43,8 @@ describe('GameSessionService', () => {
         GameSessionService,
         { provide: PrismaService, useValue: mockPrisma },
         { provide: EventEmitter2, useValue: mockEventEmitter },
+        { provide: ClassStatsService, useValue: mockClassStatsService },
+        { provide: AchievementService, useValue: mockAchievementService },
       ],
     }).compile();
     service = module.get<GameSessionService>(GameSessionService);

@@ -218,5 +218,16 @@ export class GameGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
     });
   }
 
-  // TODO: Implement game.medal.earned handler in Phase 2
+  @OnEvent('game.medal.earned')
+  handleMedalEarned(payload: {
+    userId: string;
+    classId: string;
+    medal: { key: string; name: string; description: string; icon: string };
+  }) {
+    this.server.emit('game:medal_earned', {
+      userId: payload.userId,
+      classId: payload.classId,
+      medal: payload.medal,
+    });
+  }
 }

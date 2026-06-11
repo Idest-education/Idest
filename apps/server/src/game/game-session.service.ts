@@ -1,5 +1,6 @@
 import {
   Injectable,
+  Logger,
   NotFoundException,
   ForbiddenException,
   ConflictException,
@@ -8,9 +9,13 @@ import {
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from 'src/prisma/prisma.service';
+import { ClassStatsService } from './class-stats.service';
+import { AchievementService } from './achievement.service';
 
 @Injectable()
 export class GameSessionService {
+  private readonly logger = new Logger(GameSessionService.name);
+
   // Tracks when the current question started: gameSessionId → Date
   private questionStartedAt = new Map<string, Date>();
   private readonly autoTimers = new Map<string, NodeJS.Timeout>();
@@ -18,6 +23,8 @@ export class GameSessionService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly eventEmitter: EventEmitter2,
+    private readonly classStatsService: ClassStatsService,
+    private readonly achievementService: AchievementService,
   ) {}
 
   // ── Pure helpers (public for testability) ──────────────────────────────
@@ -223,6 +230,14 @@ export class GameSessionService {
 
       const leaderboard = await this.buildLeaderboard(gameSessionId);
       this.eventEmitter.emit('game.session.ended', { gameSessionId, leaderboard });
+
+      await this.classStatsService.updateStats(gameSessionId).catch((e) =>
+        this.logger.warn('updateStats failed:', e),
+      );
+      await this.achievementService.checkAndAward(gameSessionId).catch((e) =>
+        this.logger.warn('checkAndAward failed:', e),
+      );
+
       return { ...session, status: 'ENDED' };
     }
 
