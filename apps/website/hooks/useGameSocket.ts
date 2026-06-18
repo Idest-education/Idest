@@ -26,6 +26,7 @@ export function useGameSocket(gameSessionId: string | null) {
   const setLeaderboard = useGameStore((state) => state.setLeaderboard);
   const setGameStatus = useGameStore((state) => state.setGameStatus);
   const setHasSubmitted = useGameStore((state) => state.setHasSubmitted);
+  const setQuestionEnded = useGameStore((state) => state.setQuestionEnded);
   const setRoundResult = useGameStore((state) => state.setRoundResult);
   const setMyScore = useGameStore((state) => state.setMyScore);
   const setMyRank = useGameStore((state) => state.setMyRank);
@@ -54,6 +55,7 @@ export function useGameSocket(gameSessionId: string | null) {
         setCurrentQuestion(payload);
         setGameStatus("active");
         setHasSubmitted(false);
+        setQuestionEnded(false);
         setRoundResult(null);
       });
 
@@ -66,6 +68,7 @@ export function useGameSocket(gameSessionId: string | null) {
           correctAnswer: payload.correctAnswer,
         });
         setDistribution(payload.distribution ?? []);
+        setQuestionEnded(true);
       });
 
       socket.on("game:session_paused", (_payload: GameSessionPausedEvent) => {
@@ -126,7 +129,7 @@ export function useGameSocket(gameSessionId: string | null) {
 
       socket.connect();
     },
-    [setCurrentQuestion, setGameStatus, setHasSubmitted, setLeaderboard, setMyRank, setMyScore, setRoundResult, setWordCloudWords, setDistribution, setIsPaused, setTimerExtended, setRecentMedal],
+    [setCurrentQuestion, setGameStatus, setHasSubmitted, setQuestionEnded, setLeaderboard, setMyRank, setMyScore, setRoundResult, setWordCloudWords, setDistribution, setIsPaused, setTimerExtended, setRecentMedal],
   );
 
   const disconnect = useCallback(() => {

@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import { useGameStore } from "@/hooks/useGameStore";
 import { GameTimer } from "./GameTimer";
 import { GameWordCloud } from "./GameWordCloud";
+import { GameMatchLR } from "./GameMatchLR";
 import {
   pauseGame,
   resumeGame,
@@ -11,6 +12,13 @@ import {
   skipQuestion,
   revealAnswer,
 } from "@/services/game.service";
+
+const OPTION_COLORS: Record<string, { bg: string; border: string }> = {
+  A: { bg: "#1d4ed8", border: "#2563eb" },
+  B: { bg: "#5b21b6", border: "#7c3aed" },
+  C: { bg: "#065f46", border: "#059669" },
+  D: { bg: "#92400e", border: "#d97706" },
+};
 
 interface GameActiveTeacherProps {
   gameSessionId: string;
@@ -180,6 +188,93 @@ export function GameActiveTeacher({ gameSessionId, onNext }: GameActiveTeacherPr
             </p>
           </div>
         </div>
+
+        {/* Answer Options Display */}
+        {currentQuestion.type === "MULTIPLE_CHOICE" && (
+          <div className="flex flex-col gap-2">
+            {currentQuestion.options.map((opt) => (
+              <div
+                key={opt.id}
+                className="rounded-lg px-4 py-3 text-left font-semibold text-sm"
+                style={{
+                  background: OPTION_COLORS[opt.label]?.bg ?? "#374151",
+                  border: `1px solid ${OPTION_COLORS[opt.label]?.border ?? "#6b7280"}`,
+                  color: "#fff",
+                }}
+              >
+                <span className="font-bold mr-2 opacity-80">{opt.label}.</span>
+                {opt.text}
+              </div>
+            ))}
+          </div>
+        )}
+
+        {currentQuestion.type === "MULTI_CHOICE" && (
+          <div className="flex flex-col gap-2">
+            {currentQuestion.options.map((opt) => (
+              <div
+                key={opt.id}
+                className="rounded-lg px-4 py-3 text-left font-semibold text-sm"
+                style={{
+                  background: "rgba(255,255,255,0.06)",
+                  border: "1px solid rgba(255,255,255,0.15)",
+                  color: "#fff",
+                }}
+              >
+                <span className="mr-2">☐</span>
+                <span className="font-bold mr-2 opacity-80">{opt.label}.</span>
+                {opt.text}
+              </div>
+            ))}
+          </div>
+        )}
+
+        {currentQuestion.type === "FILL_BLANK" && (
+          <div
+            className="rounded-lg px-4 py-3 text-center text-sm"
+            style={{
+              background: "rgba(255,255,255,0.06)",
+              border: "1px solid rgba(255,255,255,0.15)",
+              color: "#9ca3af",
+            }}
+          >
+            Fill in the blank
+          </div>
+        )}
+
+        {currentQuestion.type === "MATCH_LR" && (
+          <div
+            className="rounded-lg p-4"
+            style={{
+              background: "rgba(255,255,255,0.04)",
+              border: "1px solid rgba(255,255,255,0.1)",
+            }}
+          >
+            <p className="text-xs font-bold mb-3" style={{ color: "#9ca3af" }}>
+              Match the pairs
+            </p>
+            <div className="flex flex-col gap-2">
+              {currentQuestion.options.map((opt) => (
+                <div key={opt.id} className="text-sm" style={{ color: "#fffaf5" }}>
+                  {opt.text}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {currentQuestion.type === "WORD_CLOUD" && (
+          <div
+            className="rounded-lg px-4 py-3 text-center text-sm"
+            style={{
+              background: "rgba(255,255,255,0.06)",
+              border: "1px solid rgba(255,255,255,0.15)",
+              color: "#9ca3af",
+            }}
+          >
+            Students submit one word
+          </div>
+        )}
 
         {/* Live distribution bars */}
         {distribution.length > 0 && (

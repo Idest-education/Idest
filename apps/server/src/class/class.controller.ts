@@ -456,6 +456,29 @@ export class ClassController {
     return this.classService.getClassStatistics(classId, user.id);
   }
 
+  @Get('stats')
+  @Roles(Role.ADMIN)
+  @ApiOperation({
+    summary: 'Get class creation stats by month',
+    description: 'Returns class creation counts per month for the last 6 months. ADMIN only.',
+  })
+  @ApiOkResponse({
+    description: 'Class creation counts by month',
+    schema: {
+      type: 'array',
+      items: {
+        type: 'object',
+        properties: {
+          month: { type: 'string', example: '2025-06' },
+          count: { type: 'number', example: 5 },
+        },
+      },
+    },
+  })
+  async getClassStats(): Promise<{ month: string; count: number }[]> {
+    return this.classService.getClassMonthlyStats();
+  }
+
   @Get('search')
   @ApiOperation({
     summary: 'Search classes',

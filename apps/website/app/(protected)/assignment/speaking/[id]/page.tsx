@@ -8,7 +8,7 @@ import { SpeakingAssignmentDetail } from "@/types/assignment";
 import SidebarSpeaking from "@/components/assignment/SidebarSpeaking";
 import LoadingScreen from "@/components/loading-screen";
 import ProcessingScreen from "@/components/processing-screen";
-import { Mic } from "lucide-react";
+import { Loader2, Mic, Play } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import { toast } from "sonner";
 import Image from "next/image";
@@ -19,6 +19,20 @@ interface Props {
 }
 
 type RecorderTarget = "part1" | "part2" | "part3";
+
+function normalizePromptForSpeech(markdown: string) {
+    return markdown
+        .replace(/```[\s\S]*?```/g, " ")
+        .replace(/!\[([^\]]*)\]\(([^)]+)\)/g, "$1")
+        .replace(/\[([^\]]+)\]\(([^)]+)\)/g, "$1")
+        .replace(/^#{1,6}\s+/gm, "")
+        .replace(/^\s*[-*+]\s+/gm, "")
+        .replace(/^>\s?/gm, "")
+        .replace(/[*_`]/g, "")
+        .replace(/\r?\n+/g, " ")
+        .replace(/\s+/g, " ")
+        .trim();
+}
 
 export default function SpeakingAssignmentPage(props: Props) {
     const { id } = use(props.params);
@@ -41,9 +55,27 @@ export default function SpeakingAssignmentPage(props: Props) {
     const chunksRef = useRef<BlobPart[]>([]);
 
     const [submitting, setSubmitting] = useState(false);
+    const [ttsLoadingPart, setTtsLoadingPart] = useState<1 | 2 | 3 | null>(null);
+    const [ttsError, setTtsError] = useState<string | null>(null);
+    const ttsAudioRef = useRef<HTMLAudioElement | null>(null);
+    const ttsUrlCacheRef = useRef<Map<string, string>>(new Map());
+    const ttsActiveUrlRef = useRef<string | null>(null);
 
     const canRecord = useMemo(() => {
         return typeof window !== "undefined" && !!navigator.mediaDevices?.getUserMedia && typeof MediaRecorder !== "undefined";
+    }, []);
+
+    useEffect(() => {
+        const audio = ttsAudioRef.current;
+        const cachedUrls = Array.from(ttsUrlCacheRef.current.values());
+
+        return () => {
+            audio?.pause();
+            for (const url of cachedUrls) {
+                URL.revokeObjectURL(url);
+            }
+            ttsActiveUrlRef.current = null;
+        };
     }, []);
 
     useEffect(() => {
@@ -131,6 +163,92 @@ export default function SpeakingAssignmentPage(props: Props) {
         if (!file) return null;
         return URL.createObjectURL(file);
     }
+
+    async function playPrompt(partNumber: 1 | 2 | 3, prompt: string, autoplay = false) {
+        const text = normalizePromptForSpeech(prompt);
+        if (!text) return;
+
+        setTtsError(null);
+
+        const cachedUrl = ttsUrlCacheRef.current.get(text);
+        const audio = ttsAudioRef.current ?? new Audio();
+        ttsAudioRef.current = audio;
+
+        const playFromUrl = async (url: string) => {
+            audio.pause();
+            audio.currentTime = 0;
+            audio.src = url;
+            try {
+                await audio.play();
+            } catch (error) {
+                if (!autoplay) {
+                    console.error("Failed to play TTS audio:", error);
+                    toast.error("Không thể phát âm thanh câu hỏi.");
+                }
+            }
+        };
+
+        if (cachedUrl) {
+            await playFromUrl(cachedUrl);
+            return;
+        }
+
+        setTtsLoadingPart(partNumber);
+        try {
+            const response = await fetch("/api/tts", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ text }),
+            });
+
+            if (!response.ok) {
+                const details = await response.text();
+                throw new Error(details || "Failed to generate speech");
+            }
+
+            const blob = await response.blob();
+            const url = URL.createObjectURL(blob);
+            ttsUrlCacheRef.current.set(text, url);
+
+            if (ttsActiveUrlRef.current && ttsActiveUrlRef.current !== url) {
+                URL.revokeObjectURL(ttsActiveUrlRef.current);
+            }
+            ttsActiveUrlRef.current = url;
+
+            await playFromUrl(url);
+        } catch (error) {
+            console.error("Failed to generate TTS:", error);
+            setTtsError("Không thể tạo giọng đọc cho câu hỏi.");
+            if (!autoplay) {
+                toast.error("Không thể tạo giọng đọc cho câu hỏi.");
+            }
+        } finally {
+            setTtsLoadingPart((current) => (current === partNumber ? null : current));
+        }
+    }
+
+    useEffect(() => {
+        if (!assignment) return;
+
+        const prompt = activePart === 1 ? part1?.question : part2?.question;
+        void playPrompt(activePart === 1 ? 1 : 2, prompt ?? "", true);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [assignment, activePart]);
+
+    const renderSpeakButton = (partNumber: 1 | 2 | 3, prompt: string) => {
+        const isLoading = ttsLoadingPart === partNumber;
+        return (
+            <button
+                type="button"
+                onClick={() => void playPrompt(partNumber, prompt, false)}
+                disabled={isLoading}
+                className="inline-flex items-center gap-2 rounded-full border border-orange-200 bg-white px-3 py-1.5 text-sm font-semibold text-orange-700 shadow-sm transition hover:bg-orange-50 disabled:cursor-not-allowed disabled:opacity-70"
+            >
+                {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Play className="h-4 w-4" />}
+                Nghe câu hỏi
+            </button>
+        );
+    };
 
     async function handleSubmit() {
         if (!assignment || !audio1 || !audio2 || !audio3) {
@@ -241,9 +359,18 @@ export default function SpeakingAssignmentPage(props: Props) {
 
                         <h1 className="text-2xl font-semibold mb-4">{assignment.title}</h1>
 
+                        {ttsError && (
+                            <div className="mb-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+                                {ttsError}
+                            </div>
+                        )}
+
                         {activePart === 1 && part1 && (
                             <div className="space-y-4">
-                                <h2 className="text-lg font-semibold" style={{ color: "#c43d0f" }}>Phần 1: Trò chuyện chung (1-2 phút)</h2>
+                                <div className="flex flex-wrap items-center justify-between gap-3">
+                                    <h2 className="text-lg font-semibold" style={{ color: "#c43d0f" }}>Phần 1: Trò chuyện chung (1-2 phút)</h2>
+                                    {renderSpeakButton(1, part1.question)}
+                                </div>
                                 <div className="p-4 bg-white/50 rounded-lg border border-slate-200 whitespace-pre-wrap text-gray-800 leading-relaxed">
                                     <ReactMarkdown>{part1.question}</ReactMarkdown>
                                 </div>
@@ -254,7 +381,10 @@ export default function SpeakingAssignmentPage(props: Props) {
                             <div className="space-y-6">
                                 {part2 && (
                                     <div className="space-y-4">
-                                        <h2 className="text-lg font-semibold" style={{ color: "#9a2d08" }}>Phần 2: Bài nói dài (1-2 phút)</h2>
+                                        <div className="flex flex-wrap items-center justify-between gap-3">
+                                            <h2 className="text-lg font-semibold" style={{ color: "#9a2d08" }}>Phần 2: Bài nói dài (1-2 phút)</h2>
+                                            {renderSpeakButton(2, part2.question)}
+                                        </div>
                                         <div className="p-6 bg-white border-2 rounded-xl shadow-sm whitespace-pre-wrap text-gray-800 leading-relaxed" style={{ borderColor: "#ffd0b5" }}>
                                             <ReactMarkdown>{part2.question}</ReactMarkdown>
                                         </div>
@@ -263,7 +393,10 @@ export default function SpeakingAssignmentPage(props: Props) {
 
                                 {part3 && (
                                     <div className="space-y-4">
-                                        <h2 className="text-lg font-semibold" style={{ color: "#7a2005" }}>Phần 3: Thảo luận (4-5 phút)</h2>
+                                        <div className="flex flex-wrap items-center justify-between gap-3">
+                                            <h2 className="text-lg font-semibold" style={{ color: "#7a2005" }}>Phần 3: Thảo luận (4-5 phút)</h2>
+                                            {renderSpeakButton(3, part3.question)}
+                                        </div>
                                         <div className="p-6 bg-white border-2 rounded-xl shadow-sm whitespace-pre-wrap text-gray-800 leading-relaxed" style={{ borderColor: "#ffb088" }}>
                                             <ReactMarkdown>{part3.question}</ReactMarkdown>
                                         </div>

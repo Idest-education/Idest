@@ -26,6 +26,7 @@ interface GameStore {
   leaderboard: LeaderboardEntry[];
   gameStatus: GameStatus;
   hasSubmitted: boolean;
+  questionEnded: boolean;
   roundResult: RoundResult | null;
   wordCloudWords: WordCloudEntry[];
   answerStreak: number;
@@ -41,6 +42,7 @@ interface GameStore {
   setMyRank: (rank: number | null) => void;
   setGameStatus: (status: GameStatus) => void;
   setHasSubmitted: (v: boolean) => void;
+  setQuestionEnded: (v: boolean) => void;
   setRoundResult: (result: RoundResult | null) => void;
   setWordCloudWords: (words: WordCloudEntry[]) => void;
   setAnswerStreak: (streak: number, max: number) => void;
@@ -63,6 +65,7 @@ const initial = {
   leaderboard: [],
   gameStatus: 'idle' as GameStatus,
   hasSubmitted: false,
+  questionEnded: false,
   roundResult: null,
   wordCloudWords: [] as WordCloudEntry[],
   answerStreak: 0,
@@ -85,6 +88,7 @@ export const useGameStore = create<GameStore>((set) => ({
   setMyRank: (myRank) => set({ myRank }),
   setGameStatus: (gameStatus) => set({ gameStatus }),
   setHasSubmitted: (hasSubmitted) => set({ hasSubmitted }),
+  setQuestionEnded: (questionEnded) => set({ questionEnded }),
   setRoundResult: (roundResult) => set({ roundResult }),
   setWordCloudWords: (wordCloudWords) => set({ wordCloudWords }),
   setAnswerStreak: (answerStreak, maxAnswerStreak) => set({ answerStreak, maxAnswerStreak }),

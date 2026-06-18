@@ -1,8 +1,8 @@
 import { requireAdmin } from "@/lib/admin/require-admin";
 import { createClient } from "@/lib/supabase/server";
 import { Users, GraduationCap, Video, BookOpen } from "lucide-react";
-import { UserRoleDonut, SessionBarChart } from "@/components/admin/charts";
-import type { UserRoleStat, SessionMonthStat } from "@/services/analytics.service";
+import { UserStackedLineChart, ClassCreationLineChart } from "@/components/admin/charts";
+import type { UserMonthlyStat, ClassMonthlyStat } from "@/services/analytics.service";
 
 async function getDashboardData() {
   const supabase = await createClient();
@@ -12,11 +12,11 @@ async function getDashboardData() {
   const assignmentApiUrl = process.env.NEXT_PUBLIC_ASSIGNMENT_API_URL || "";
 
   if (!token) {
-    return { users: 0, classes: 0, sessions: 0, assignments: 0, userRoles: [], sessionStats: [] };
+    return { users: 0, classes: 0, sessions: 0, assignments: 0, userMonthly: [], classMonthly: [] };
   }
 
   try {
-    const [usersRes, classesRes, sessionsRes, userRolesRes, sessionStatsRes, assignmentsRes] =
+    const [usersRes, classesRes, sessionsRes, userMonthlyRes, classMonthlyRes, assignmentsRes] =
       await Promise.allSettled([
         fetch(`${apiUrl}/user/all?page=1&limit=1`, {
           headers: { Authorization: `Bearer ${token}` },
@@ -30,7 +30,7 @@ async function getDashboardData() {
         fetch(`${apiUrl}/user/stats`, {
           headers: { Authorization: `Bearer ${token}` },
         }).then((r) => r.ok ? r.json() : null),
-        fetch(`${apiUrl}/session/stats`, {
+        fetch(`${apiUrl}/class/stats`, {
           headers: { Authorization: `Bearer ${token}` },
         }).then((r) => r.ok ? r.json() : null),
         assignmentApiUrl
@@ -40,14 +40,13 @@ async function getDashboardData() {
           : Promise.resolve(null),
       ]);
 
-    const usersData = usersRes.status === "fulfilled" ? usersRes.value : null;
-    const classesData = classesRes.status === "fulfilled" ? classesRes.value : null;
-    const sessionsData = sessionsRes.status === "fulfilled" ? sessionsRes.value : null;
-    const userRolesData = userRolesRes.status === "fulfilled" ? userRolesRes.value : null;
-    const sessionStatsData = sessionStatsRes.status === "fulfilled" ? sessionStatsRes.value : null;
+    const usersData     = usersRes.status     === "fulfilled" ? usersRes.value     : null;
+    const classesData   = classesRes.status   === "fulfilled" ? classesRes.value   : null;
+    const sessionsData  = sessionsRes.status  === "fulfilled" ? sessionsRes.value  : null;
+    const userMonthData = userMonthlyRes.status === "fulfilled" ? userMonthlyRes.value : null;
+    const classMonthData = classMonthlyRes.status === "fulfilled" ? classMonthlyRes.value : null;
     const assignmentsData = assignmentsRes.status === "fulfilled" ? assignmentsRes.value : null;
 
-    // Count assignments across all skill arrays
     let assignmentCount = 0;
     if (assignmentsData && typeof assignmentsData === "object" && !Array.isArray(assignmentsData)) {
       for (const key of Object.keys(assignmentsData)) {
@@ -56,16 +55,16 @@ async function getDashboardData() {
       }
     }
 
-    const userRoles: UserRoleStat[] = Array.isArray(userRolesData?.data)
-      ? userRolesData.data
-      : Array.isArray(userRolesData)
-      ? userRolesData
+    const userMonthly: UserMonthlyStat[] = Array.isArray(userMonthData?.data)
+      ? userMonthData.data
+      : Array.isArray(userMonthData)
+      ? userMonthData
       : [];
 
-    const sessionStats: SessionMonthStat[] = Array.isArray(sessionStatsData?.data)
-      ? sessionStatsData.data
-      : Array.isArray(sessionStatsData)
-      ? sessionStatsData
+    const classMonthly: ClassMonthlyStat[] = Array.isArray(classMonthData?.data)
+      ? classMonthData.data
+      : Array.isArray(classMonthData)
+      ? classMonthData
       : [];
 
     return {
@@ -73,12 +72,12 @@ async function getDashboardData() {
       classes: classesData?.data?.total || classesData?.total || 0,
       sessions: sessionsData?.data?.pagination?.total || sessionsData?.pagination?.total || 0,
       assignments: assignmentCount,
-      userRoles,
-      sessionStats,
+      userMonthly,
+      classMonthly,
     };
   } catch (error) {
     console.error("Error fetching dashboard data:", error);
-    return { users: 0, classes: 0, sessions: 0, assignments: 0, userRoles: [], sessionStats: [] };
+    return { users: 0, classes: 0, sessions: 0, assignments: 0, userMonthly: [], classMonthly: [] };
   }
 }
 
@@ -87,10 +86,10 @@ export default async function AdminDashboard() {
   const data = await getDashboardData();
 
   const statCards = [
-    { label: "Tổng người dùng", value: data.users, icon: <Users className="w-5 h-5" style={{ color: "var(--color-brand)" }} /> },
-    { label: "Tổng lớp học", value: data.classes, icon: <GraduationCap className="w-5 h-5" style={{ color: "#3b82f6" }} /> },
-    { label: "Tổng buổi học", value: data.sessions, icon: <Video className="w-5 h-5" style={{ color: "#8b5cf6" }} /> },
-    { label: "Bài tập", value: data.assignments, icon: <BookOpen className="w-5 h-5" style={{ color: "#10b981" }} /> },
+    { label: "Tổng người dùng", value: data.users,       icon: <Users         className="w-5 h-5" style={{ color: "var(--color-brand)" }} /> },
+    { label: "Tổng lớp học",    value: data.classes,     icon: <GraduationCap className="w-5 h-5" style={{ color: "#3b82f6" }} /> },
+    { label: "Tổng buổi học",   value: data.sessions,    icon: <Video         className="w-5 h-5" style={{ color: "#8b5cf6" }} /> },
+    { label: "Bài tập",         value: data.assignments, icon: <BookOpen      className="w-5 h-5" style={{ color: "#10b981" }} /> },
   ];
 
   return (
@@ -153,7 +152,7 @@ export default async function AdminDashboard() {
 
       {/* Charts row */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {/* Users by role */}
+        {/* Stacked line: users created per month by role */}
         <div
           className="rounded-xl p-6"
           style={{
@@ -162,15 +161,18 @@ export default async function AdminDashboard() {
           }}
         >
           <h2
-            className="mb-4 text-sm font-semibold uppercase tracking-widest"
+            className="mb-1 text-sm font-semibold uppercase tracking-widest"
             style={{ color: "var(--color-text-secondary)", fontFamily: "Plus Jakarta Sans, sans-serif" }}
           >
-            Người dùng theo vai trò
+            Người dùng tạo mới theo tháng
           </h2>
-          <UserRoleDonut data={data.userRoles} />
+          <p className="mb-4 text-xs" style={{ color: "var(--color-text-muted)", fontFamily: "Plus Jakarta Sans, sans-serif" }}>
+            6 tháng gần nhất · phân theo vai trò
+          </p>
+          <UserStackedLineChart data={data.userMonthly} />
         </div>
 
-        {/* Sessions by month */}
+        {/* Line: classes created per month */}
         <div
           className="rounded-xl p-6"
           style={{
@@ -179,12 +181,15 @@ export default async function AdminDashboard() {
           }}
         >
           <h2
-            className="mb-4 text-sm font-semibold uppercase tracking-widest"
+            className="mb-1 text-sm font-semibold uppercase tracking-widest"
             style={{ color: "var(--color-text-secondary)", fontFamily: "Plus Jakarta Sans, sans-serif" }}
           >
-            Buổi học theo tháng (6 tháng gần nhất)
+            Lớp học tạo mới theo tháng
           </h2>
-          <SessionBarChart data={data.sessionStats} />
+          <p className="mb-4 text-xs" style={{ color: "var(--color-text-muted)", fontFamily: "Plus Jakarta Sans, sans-serif" }}>
+            6 tháng gần nhất
+          </p>
+          <ClassCreationLineChart data={data.classMonthly} />
         </div>
       </div>
     </div>

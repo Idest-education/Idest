@@ -261,4 +261,8 @@ export class ClassService {
   ): Promise<{ count: number }> {
     return this.membershipService.bulkRemoveStudents(classId, userId, dto);
   }
+
+  async getClassMonthlyStats(): Promise<{ month: string; count: number }[]> {
+    return this.queryService.getClassMonthlyStats();
+  }
 }

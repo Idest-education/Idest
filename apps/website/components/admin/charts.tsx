@@ -1,123 +1,184 @@
 "use client";
 
-import { UserRoleStat, SessionMonthStat } from "@/services/analytics.service";
+import { UserMonthlyStat, ClassMonthlyStat } from "@/services/analytics.service";
 
+// ── shared helpers ────────────────────────────────────────────────────────
+
+const CHART_W = 360;
+const CHART_H = 120;
+const PAD_LEFT = 28;
+const PAD_RIGHT = 12;
+const PAD_TOP = 14;
+const PAD_BOTTOM = 22;
+const INNER_W = CHART_W - PAD_LEFT - PAD_RIGHT;
+const INNER_H = CHART_H - PAD_TOP - PAD_BOTTOM;
+
+function formatMonth(key: string): string {
+  const [y, m] = key.split("-");
+  const date = new Date(Number(y), Number(m) - 1, 1);
+  return date.toLocaleDateString("vi-VN", { month: "short" });
+}
+
+function EmptyChart({ label }: { label: string }) {
+  return (
+    <div
+      className="flex items-center justify-center rounded-lg"
+      style={{ height: CHART_H, border: "1.5px dashed var(--color-border-default)" }}
+    >
+      <p
+        className="text-xs"
+        style={{ color: "var(--color-text-muted)", fontFamily: "Plus Jakarta Sans, sans-serif" }}
+      >
+        {label}
+      </p>
+    </div>
+  );
+}
+
+// ── stacked line chart: users by role per month ──────────────────────────
+
+const ROLES = ["ADMIN", "TEACHER", "STUDENT"] as const;
 const ROLE_COLORS: Record<string, string> = {
-  STUDENT: "#FF6B35",
-  TEACHER: "#3b82f6",
   ADMIN: "#8b5cf6",
+  TEACHER: "#3b82f6",
+  STUDENT: "#FF6B35",
 };
-
 const ROLE_LABELS: Record<string, string> = {
-  STUDENT: "Học viên",
-  TEACHER: "Giáo viên",
   ADMIN: "Quản trị",
+  TEACHER: "Giáo viên",
+  STUDENT: "Học viên",
 };
 
-// ── Donut chart for user roles ────────────────────────────────────────────
-export function UserRoleDonut({ data }: { data: UserRoleStat[] }) {
-  const total = data.reduce((s, d) => s + d.count, 0);
-  if (total === 0) return <EmptyChart label="Chưa có dữ liệu người dùng" />;
+export function UserStackedLineChart({ data }: { data: UserMonthlyStat[] }) {
+  if (data.length === 0) return <EmptyChart label="Chưa có dữ liệu người dùng" />;
 
-  const size = 140;
-  const cx = size / 2;
-  const cy = size / 2;
-  const r = 52;
-  const innerR = 32;
+  const n = data.length;
+  const xStep = n > 1 ? INNER_W / (n - 1) : INNER_W;
 
-  let cumulativeAngle = -Math.PI / 2;
-  const slices = data.map((d) => {
-    const angle = (d.count / total) * 2 * Math.PI;
-    const startAngle = cumulativeAngle;
-    const endAngle = startAngle + angle;
-    cumulativeAngle = endAngle;
-    const color = ROLE_COLORS[d.role] || "#94a3b8";
+  // For each point build cumulative stacks: ADMIN (bottom) → TEACHER → STUDENT (top)
+  const stacked = data.map((d) => ({
+    month: d.month,
+    ADMIN: d.ADMIN,
+    TEACHER: d.ADMIN + d.TEACHER,
+    STUDENT: d.ADMIN + d.TEACHER + d.STUDENT,
+  }));
 
-    // Full-circle case: SVG arc can't draw a complete circle in one command
-    if (Math.abs(angle - 2 * Math.PI) < 0.001) {
-      const pathD = [
-        `M ${cx} ${cy - r}`,
-        `A ${r} ${r} 0 1 1 ${cx - 0.001} ${cy - r}`,
-        `L ${cx - 0.001} ${cy - innerR}`,
-        `A ${innerR} ${innerR} 0 1 0 ${cx} ${cy - innerR}`,
-        "Z",
-      ].join(" ");
-      return { ...d, pathD, color };
-    }
+  const maxVal = Math.max(...stacked.map((d) => d.STUDENT), 1);
 
-    const x1 = cx + r * Math.cos(startAngle);
-    const y1 = cy + r * Math.sin(startAngle);
-    const x2 = cx + r * Math.cos(endAngle);
-    const y2 = cy + r * Math.sin(endAngle);
-    const ix1 = cx + innerR * Math.cos(endAngle);
-    const iy1 = cy + innerR * Math.sin(endAngle);
-    const ix2 = cx + innerR * Math.cos(startAngle);
-    const iy2 = cy + innerR * Math.sin(startAngle);
-    const largeArc = angle > Math.PI ? 1 : 0;
+  function toX(i: number) {
+    return PAD_LEFT + (n === 1 ? INNER_W / 2 : i * xStep);
+  }
+  function toY(v: number) {
+    return PAD_TOP + INNER_H - (v / maxVal) * INNER_H;
+  }
 
-    const pathD = [
-      `M ${x1} ${y1}`,
-      `A ${r} ${r} 0 ${largeArc} 1 ${x2} ${y2}`,
-      `L ${ix1} ${iy1}`,
-      `A ${innerR} ${innerR} 0 ${largeArc} 0 ${ix2} ${iy2}`,
-      "Z",
-    ].join(" ");
+  // Build filled area paths from ROLES top-to-bottom (fill between consecutive stack layers)
+  // Order: STUDENT fills from TEACHER baseline, TEACHER fills from ADMIN baseline, ADMIN fills from 0
+  const areaPaths = ROLES.map((role, ri) => {
+    const below = ri < ROLES.length - 1 ? ROLES[ri + 1] : null;
 
-    return { ...d, pathD, color };
+    const topPoints = data.map((_, i) => `${toX(i)},${toY(stacked[i][role])}`);
+    const botPoints = below
+      ? data.map((_, i) => `${toX(i)},${toY(stacked[i][below]!)}`).reverse()
+      : data.map((_, i) => `${toX(i)},${toY(0)}`).reverse();
+
+    return {
+      role,
+      d: `M ${topPoints[0]} L ${topPoints.join(" L ")} L ${botPoints[0]} L ${botPoints.join(" L ")} Z`,
+      linePts: topPoints.join(" L "),
+    };
   });
 
+  const yTicks = [0, Math.round(maxVal / 2), maxVal];
+
   return (
-    <div className="flex items-center gap-6">
-      <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} className="flex-shrink-0">
-        {slices.map((slice) => (
-          <path
-            key={slice.role}
-            d={slice.pathD}
-            fill={slice.color}
-            opacity={0.9}
-            className="transition-opacity hover:opacity-100"
+    <div>
+      <svg
+        width="100%"
+        viewBox={`0 0 ${CHART_W} ${CHART_H}`}
+        preserveAspectRatio="xMidYMid meet"
+        style={{ overflow: "visible" }}
+      >
+        {/* Y grid lines + labels */}
+        {yTicks.map((v) => (
+          <g key={v}>
+            <line
+              x1={PAD_LEFT}
+              y1={toY(v)}
+              x2={CHART_W - PAD_RIGHT}
+              y2={toY(v)}
+              stroke="var(--color-border-default)"
+              strokeWidth={0.5}
+              strokeDasharray="3 3"
+            />
+            <text
+              x={PAD_LEFT - 4}
+              y={toY(v) + 3}
+              textAnchor="end"
+              style={{ fontFamily: "JetBrains Mono, monospace", fontSize: 8, fill: "var(--color-text-muted)" }}
+            >
+              {v}
+            </text>
+          </g>
+        ))}
+
+        {/* Stacked filled areas */}
+        {areaPaths.map(({ role, d }) => (
+          <path key={role} d={d} fill={ROLE_COLORS[role]} fillOpacity={0.18} stroke="none" />
+        ))}
+
+        {/* Lines on top of fills */}
+        {areaPaths.map(({ role, linePts }) => (
+          <polyline
+            key={`line-${role}`}
+            points={linePts}
+            fill="none"
+            stroke={ROLE_COLORS[role]}
+            strokeWidth={1.8}
+            strokeLinejoin="round"
+            strokeLinecap="round"
           />
         ))}
-        <text
-          x={cx}
-          y={cy - 6}
-          textAnchor="middle"
-          className="fill-current"
-          style={{ fontFamily: "JetBrains Mono, monospace", fontWeight: 700, fontSize: 18, fill: "var(--color-text-primary)" }}
-        >
-          {total}
-        </text>
-        <text
-          x={cx}
-          y={cy + 10}
-          textAnchor="middle"
-          style={{ fontFamily: "Plus Jakarta Sans, sans-serif", fontSize: 9, fill: "var(--color-text-muted)" }}
-        >
-          tổng số
-        </text>
+
+        {/* Dots */}
+        {areaPaths.map(({ role, linePts: _ }) =>
+          data.map((d, i) => (
+            <circle
+              key={`dot-${role}-${i}`}
+              cx={toX(i)}
+              cy={toY(stacked[i][role])}
+              r={2.5}
+              fill={ROLE_COLORS[role]}
+              stroke="var(--color-surface-card)"
+              strokeWidth={1.2}
+            />
+          ))
+        )}
+
+        {/* X labels */}
+        {data.map((d, i) => (
+          <text
+            key={`xl-${i}`}
+            x={toX(i)}
+            y={CHART_H - 4}
+            textAnchor="middle"
+            style={{ fontFamily: "Plus Jakarta Sans, sans-serif", fontSize: 8, fill: "var(--color-text-muted)" }}
+          >
+            {formatMonth(d.month)}
+          </text>
+        ))}
       </svg>
 
-      <div className="space-y-2 flex-1">
-        {slices.map((slice) => (
-          <div key={slice.role} className="flex items-center gap-2">
-            <span className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ background: slice.color }} />
+      {/* Legend */}
+      <div className="flex items-center gap-4 mt-2 flex-wrap">
+        {ROLES.map((role) => (
+          <div key={role} className="flex items-center gap-1.5">
+            <span className="w-2.5 h-2.5 rounded-full" style={{ background: ROLE_COLORS[role] }} />
             <span
-              className="flex-1 text-xs"
+              className="text-[11px]"
               style={{ color: "var(--color-text-secondary)", fontFamily: "Plus Jakarta Sans, sans-serif" }}
             >
-              {ROLE_LABELS[slice.role] || slice.role}
-            </span>
-            <span
-              className="text-xs font-bold tabular-nums"
-              style={{ fontFamily: "JetBrains Mono, monospace", color: "var(--color-text-primary)" }}
-            >
-              {slice.count}
-            </span>
-            <span
-              className="text-[10px] w-9 text-right"
-              style={{ color: "var(--color-text-muted)", fontFamily: "Plus Jakarta Sans, sans-serif" }}
-            >
-              {total > 0 ? Math.round((slice.count / total) * 100) : 0}%
+              {ROLE_LABELS[role]}
             </span>
           </div>
         ))}
@@ -126,90 +187,113 @@ export function UserRoleDonut({ data }: { data: UserRoleStat[] }) {
   );
 }
 
-// ── Bar chart for sessions by month ──────────────────────────────────────
-function formatMonth(key: string): string {
-  const [y, m] = key.split("-");
-  const date = new Date(Number(y), Number(m) - 1, 1);
-  return date.toLocaleDateString("vi-VN", { month: "short" });
-}
+// ── line chart: class creation per month ─────────────────────────────────
 
-export function SessionBarChart({ data }: { data: SessionMonthStat[] }) {
-  if (data.length === 0) return <EmptyChart label="Chưa có dữ liệu buổi học" />;
+const CLASS_COLOR = "#10b981";
 
-  const chartH = 100;
-  const barW = 28;
-  const gap = 10;
-  const labelH = 20;
-  const maxCount = Math.max(...data.map((d) => d.count), 1);
-  const totalW = data.length * (barW + gap) - gap + 8;
+export function ClassCreationLineChart({ data }: { data: ClassMonthlyStat[] }) {
+  if (data.length === 0) return <EmptyChart label="Chưa có dữ liệu lớp học" />;
+
+  const n = data.length;
+  const xStep = n > 1 ? INNER_W / (n - 1) : INNER_W;
+  const maxVal = Math.max(...data.map((d) => d.count), 1);
+
+  function toX(i: number) {
+    return PAD_LEFT + (n === 1 ? INNER_W / 2 : i * xStep);
+  }
+  function toY(v: number) {
+    return PAD_TOP + INNER_H - (v / maxVal) * INNER_H;
+  }
+
+  const linePts = data.map((d, i) => `${toX(i)},${toY(d.count)}`).join(" L ");
+  const areaD = `M ${toX(0)},${toY(0)} L ${data.map((d, i) => `${toX(i)},${toY(d.count)}`).join(" L ")} L ${toX(n - 1)},${toY(0)} Z`;
+
+  const yTicks = [0, Math.round(maxVal / 2), maxVal];
 
   return (
     <svg
       width="100%"
-      viewBox={`0 0 ${totalW} ${chartH + labelH}`}
+      viewBox={`0 0 ${CHART_W} ${CHART_H}`}
       preserveAspectRatio="xMidYMid meet"
       style={{ overflow: "visible" }}
     >
-      {data.map((d, i) => {
-        const barH = Math.max(4, (d.count / maxCount) * chartH);
-        const x = i * (barW + gap) + 4;
-        const y = chartH - barH;
+      {/* Y grid lines + labels */}
+      {yTicks.map((v) => (
+        <g key={v}>
+          <line
+            x1={PAD_LEFT}
+            y1={toY(v)}
+            x2={CHART_W - PAD_RIGHT}
+            y2={toY(v)}
+            stroke="var(--color-border-default)"
+            strokeWidth={0.5}
+            strokeDasharray="3 3"
+          />
+          <text
+            x={PAD_LEFT - 4}
+            y={toY(v) + 3}
+            textAnchor="end"
+            style={{ fontFamily: "JetBrains Mono, monospace", fontSize: 8, fill: "var(--color-text-muted)" }}
+          >
+            {v}
+          </text>
+        </g>
+      ))}
 
-        return (
-          <g key={d.month}>
-            <rect
-              x={x}
-              y={y}
-              width={barW}
-              height={barH}
-              rx={4}
-              fill="#FF6B35"
-              opacity={0.85}
-              className="transition-opacity hover:opacity-100"
-            />
-            {d.count > 0 && (
-              <text
-                x={x + barW / 2}
-                y={y - 4}
-                textAnchor="middle"
-                style={{
-                  fontFamily: "JetBrains Mono, monospace",
-                  fontSize: 9,
-                  fontWeight: 700,
-                  fill: "var(--color-text-primary)",
-                }}
-              >
-                {d.count}
-              </text>
-            )}
+      {/* Fill area */}
+      <path d={areaD} fill={CLASS_COLOR} fillOpacity={0.12} stroke="none" />
+
+      {/* Line */}
+      <polyline
+        points={linePts}
+        fill="none"
+        stroke={CLASS_COLOR}
+        strokeWidth={2}
+        strokeLinejoin="round"
+        strokeLinecap="round"
+      />
+
+      {/* Dots + value labels */}
+      {data.map((d, i) => (
+        <g key={i}>
+          <circle
+            cx={toX(i)}
+            cy={toY(d.count)}
+            r={3}
+            fill={CLASS_COLOR}
+            stroke="var(--color-surface-card)"
+            strokeWidth={1.5}
+          />
+          {d.count > 0 && (
             <text
-              x={x + barW / 2}
-              y={chartH + labelH - 4}
+              x={toX(i)}
+              y={toY(d.count) - 6}
               textAnchor="middle"
               style={{
-                fontFamily: "Plus Jakarta Sans, sans-serif",
-                fontSize: 9,
-                fill: "var(--color-text-muted)",
+                fontFamily: "JetBrains Mono, monospace",
+                fontSize: 8,
+                fontWeight: 700,
+                fill: "var(--color-text-primary)",
               }}
             >
-              {formatMonth(d.month)}
+              {d.count}
             </text>
-          </g>
-        );
-      })}
-    </svg>
-  );
-}
+          )}
+        </g>
+      ))}
 
-function EmptyChart({ label }: { label: string }) {
-  return (
-    <div
-      className="flex items-center justify-center h-24 rounded-lg"
-      style={{ border: "1.5px dashed var(--color-border-default)" }}
-    >
-      <p className="text-xs" style={{ color: "var(--color-text-muted)", fontFamily: "Plus Jakarta Sans, sans-serif" }}>
-        {label}
-      </p>
-    </div>
+      {/* X labels */}
+      {data.map((d, i) => (
+        <text
+          key={`xl-${i}`}
+          x={toX(i)}
+          y={CHART_H - 4}
+          textAnchor="middle"
+          style={{ fontFamily: "Plus Jakarta Sans, sans-serif", fontSize: 8, fill: "var(--color-text-muted)" }}
+        >
+          {formatMonth(d.month)}
+        </text>
+      ))}
+    </svg>
   );
 }

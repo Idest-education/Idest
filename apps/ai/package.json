@@ -1,8 +1,0 @@
-{
-  "name": "idest-ai",
-  "version": "0.0.0",
-  "private": true,
-  "scripts": {
-    "dev": "uvicorn api:app --reload --port 8001"
-  }
-}

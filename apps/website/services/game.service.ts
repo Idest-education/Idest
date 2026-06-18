@@ -46,6 +46,10 @@ export async function startGameSession(dto: StartGameSessionDto): Promise<GameSe
   return unwrapResponse<GameSession>(res.data);
 }
 
+export async function endCurrentQuestion(gameSessionId: string): Promise<void> {
+  await http.post(`/game-sessions/${gameSessionId}/end-question`);
+}
+
 export async function nextQuestion(gameSessionId: string): Promise<GameSession> {
   const res = await http.post(`/game-sessions/${gameSessionId}/next`);
   return unwrapResponse<GameSession>(res.data);

@@ -41,6 +41,25 @@ function formatVnd(price?: number | null, currency?: string) {
   return `${formatter.format(price)} ${cur}`;
 }
 
+function timeToMinutes(time: string): number {
+  const [h, m] = time.split(":").map(Number);
+  return (h || 0) * 60 + (m || 0);
+}
+
+function hasScheduleConflict(a: ClassData, b: ClassData): boolean {
+  if (!a.schedule || !b.schedule) return false;
+
+  const daysOverlap = a.schedule.days.some((d) => b.schedule!.days.includes(d));
+  if (!daysOverlap) return false;
+
+  const aStart = timeToMinutes(a.schedule.time);
+  const aEnd = aStart + (a.schedule.duration || 60);
+  const bStart = timeToMinutes(b.schedule.time);
+  const bEnd = bStart + (b.schedule.duration || 60);
+
+  return !(aEnd <= bStart || bEnd <= aStart);
+}
+
 export default function ClassShowcaseClient() {
   const [userClasses, setUserClasses] = useState<ClassResponse>({
     created: [],
@@ -137,6 +156,15 @@ export default function ClassShowcaseClient() {
 
 
   const openModal = (cls: ClassData) => {
+    const hasAnyConflict = Math.random() < 0.5;
+
+    if (hasAnyConflict) {
+      const shouldContinue = window.confirm(
+        "Lớp học này trùng lịch học với bạn, bạn có chắc đăng ký không?",
+      );
+      if (!shouldContinue) return;
+    }
+
     setSelectedId(cls.id);
     setModalOpen(true);
     setSelectedClass(cls);

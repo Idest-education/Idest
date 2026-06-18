@@ -53,6 +53,13 @@ export class GameSessionController {
     return this.service.startSession(dto.templateId, dto.sessionId, user.id);
   }
 
+  @Post(':id/end-question')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'End the current question and reveal the answer (teacher pacing)' })
+  endQuestion(@CurrentUser() user: userPayload, @Param('id') id: string) {
+    return this.service.endCurrentQuestion(id, user.id);
+  }
+
   @Post(':id/next')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Advance to the next question or end the game' })

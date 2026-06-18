@@ -42,8 +42,13 @@ export function GameActiveStudent({ gameSessionId, userId: _userId }: GameActive
   const [wordInput, setWordInput] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [prevRank, setPrevRank] = useState<number | null>(null);
+  // Immediate feedback shown right after submit
+  const [submitFeedback, setSubmitFeedback] = useState<{ isCorrect: boolean; pointsAwarded: number } | null>(null);
+  // 'grade' = showing ✅/❌ briefly; 'waiting' = waiting for teacher to reveal
+  const [feedbackPhase, setFeedbackPhase] = useState<"grade" | "waiting">("waiting");
   const [shownPoints, setShownPoints] = useState(0);
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
+  const feedbackTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   // Reset per-question state when new question arrives
   useEffect(() => {
@@ -53,13 +58,17 @@ export function GameActiveStudent({ gameSessionId, userId: _userId }: GameActive
     setFillInput("");
     setWordInput("");
     setSubmitting(false);
+    setSubmitFeedback(null);
+    setFeedbackPhase("waiting");
+    setShownPoints(0);
     setPrevRank(myRank);
+    if (feedbackTimerRef.current) clearTimeout(feedbackTimerRef.current);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentQuestion?.questionIndex]);
 
-  // Count up elapsed time
+  // Timer always counts up while question is active (not paused) — keeps running after submit
   useEffect(() => {
-    if (!currentQuestion || isPaused || hasSubmitted) {
+    if (!currentQuestion || isPaused) {
       if (intervalRef.current) clearInterval(intervalRef.current);
       return;
     }
@@ -70,12 +79,12 @@ export function GameActiveStudent({ gameSessionId, userId: _userId }: GameActive
       if (intervalRef.current) clearInterval(intervalRef.current);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentQuestion?.questionIndex, isPaused, hasSubmitted]);
+  }, [currentQuestion?.questionIndex, isPaused]);
 
-  // Animate points when roundResult arrives
+  // Animate points when submitFeedback arrives (grade phase)
   useEffect(() => {
-    if (!roundResult) return;
-    const target = roundResult.pointsAwarded;
+    if (!submitFeedback) return;
+    const target = submitFeedback.pointsAwarded;
     let current = 0;
     const step = Math.max(1, Math.ceil(target / 20));
     const t = setInterval(() => {
@@ -84,7 +93,7 @@ export function GameActiveStudent({ gameSessionId, userId: _userId }: GameActive
       if (current >= target) clearInterval(t);
     }, 40);
     return () => clearInterval(t);
-  }, [roundResult]);
+  }, [submitFeedback]);
 
   async function doSubmit(answer: string) {
     if (submitting || hasSubmitted) return;
@@ -94,6 +103,11 @@ export function GameActiveStudent({ gameSessionId, userId: _userId }: GameActive
       setHasSubmitted(true);
       setMyScore(myScore + res.pointsAwarded);
       setAnswerStreak(res.answerStreak, res.maxAnswerStreak);
+      // Show grade flash immediately
+      setSubmitFeedback({ isCorrect: res.isCorrect, pointsAwarded: res.pointsAwarded });
+      setFeedbackPhase("grade");
+      // After 2s, transition to waiting-for-teacher state
+      feedbackTimerRef.current = setTimeout(() => setFeedbackPhase("waiting"), 2000);
     } catch {
       // duplicate submission or session ended — silently ignore
     } finally {
@@ -131,9 +145,6 @@ export function GameActiveStudent({ gameSessionId, userId: _userId }: GameActive
       ? prevRank - myRank
       : 0;
 
-  // MATCH_LR: GameQuestionStartedEvent doesn't carry matchPairs; derive from options if possible
-  // matchPairs shape for GameMatchLR: { leftLabel, rightText }[]
-  // options have { id, label, text } — we pass options + empty matchPairs and let component handle it
   const matchPairsForComponent = (currentQuestion as unknown as { matchPairs?: { leftLabel: string; rightText: string }[] }).matchPairs ?? [];
 
   return (
@@ -284,22 +295,35 @@ export function GameActiveStudent({ gameSessionId, userId: _userId }: GameActive
             </div>
           )}
         </div>
-      ) : (
+      ) : feedbackPhase === "grade" && submitFeedback ? (
+        /* Phase 1: brief grade flash (2 seconds) */
+        <div className="flex flex-col items-center gap-3 py-8 animate-in fade-in duration-300">
+          <div className="text-7xl">{submitFeedback.isCorrect ? "✅" : "❌"}</div>
+          <div
+            className="text-4xl font-bold"
+            style={{ color: submitFeedback.isCorrect ? "#059669" : "#ef4444" }}
+          >
+            +{shownPoints} pts
+          </div>
+          <p className="text-sm" style={{ color: "#9ca3af" }}>
+            {submitFeedback.isCorrect ? "Correct!" : "Incorrect"}
+          </p>
+        </div>
+      ) : !roundResult ? (
+        /* Phase 2: waiting for teacher to reveal answer */
         <div className="flex flex-col items-center gap-2 py-6">
           <span className="text-3xl animate-pulse">⏳</span>
+          <p className="text-base font-semibold" style={{ color: "#059669" }}>✓ Submitted</p>
           <p className="text-sm" style={{ color: "#9ca3af" }}>
-            Waiting for results…
+            Waiting for teacher to reveal answer…
           </p>
-          {currentQuestion.type === "WORD_CLOUD" && (
-            <>
-              <p className="text-base font-semibold" style={{ color: "#059669" }}>✓ Submitted</p>
-              {wordCloudWords.length > 0 && <GameWordCloud words={wordCloudWords} />}
-            </>
+          {currentQuestion.type === "WORD_CLOUD" && wordCloudWords.length > 0 && (
+            <GameWordCloud words={wordCloudWords} />
           )}
         </div>
-      )}
+      ) : null}
 
-      {/* Answer reveal overlay */}
+      {/* Answer reveal overlay — shown after game:question_ended, cleared on game:question_started */}
       {roundResult && (
         <div
           className="fixed inset-0 flex flex-col items-center justify-center gap-4 z-50"
@@ -363,7 +387,7 @@ export function GameActiveStudent({ gameSessionId, userId: _userId }: GameActive
           )}
 
           <p style={{ fontSize: 11, color: "rgba(255,250,245,0.3)", fontStyle: "italic" }}>
-            Waiting for next question…
+            Waiting for teacher to continue…
           </p>
         </div>
       )}

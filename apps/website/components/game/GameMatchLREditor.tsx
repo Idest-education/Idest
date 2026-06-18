@@ -51,7 +51,7 @@ export function GameMatchLREditor({ pairs, onChange }: GameMatchLREditorProps) {
             onChange={(e) => updatePair(i, "leftText", e.target.value)}
             placeholder="Left item"
             className="flex-1 rounded-lg px-3 py-2 text-sm"
-            style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.15)", color: "#fffaf5" }}
+            style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.15)", color: "#6b7280" }}
           />
           <span style={{ color: "#6b7280" }}>→</span>
           <input
@@ -59,7 +59,7 @@ export function GameMatchLREditor({ pairs, onChange }: GameMatchLREditorProps) {
             onChange={(e) => updatePair(i, "rightText", e.target.value)}
             placeholder="Right value"
             className="flex-1 rounded-lg px-3 py-2 text-sm"
-            style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.15)", color: "#fffaf5" }}
+            style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.15)", color: "#6b7280" }}
           />
           <button
             type="button"

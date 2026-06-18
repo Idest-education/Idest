@@ -19,6 +19,8 @@ export class GameSessionService {
   // Tracks when the current question started: gameSessionId → Date
   private questionStartedAt = new Map<string, Date>();
   private readonly autoTimers = new Map<string, NodeJS.Timeout>();
+  // Sessions where the question has ended (answer revealed) but teacher hasn't advanced yet
+  private readonly questionEndedSessions = new Set<string>();
 
   constructor(
     private readonly prisma: PrismaService,
@@ -82,7 +84,7 @@ export class GameSessionService {
   private scheduleAutoAdvance(gameSessionId: string, timerSeconds: number): void {
     this.cancelAutoAdvance(gameSessionId);
     const timer = setTimeout(() => {
-      void this.nextQuestion(gameSessionId, '__auto__');
+      void this.endCurrentQuestion(gameSessionId, '__auto__');
     }, timerSeconds * 1000);
     this.autoTimers.set(gameSessionId, timer);
   }
@@ -110,6 +112,60 @@ export class GameSessionService {
       }
     }
     return dp[m][n];
+  }
+
+  // ── Question pacing helpers ────────────────────────────────────────────
+
+  async endCurrentQuestion(gameSessionId: string, requesterId: string) {
+    const session = await this.prisma.gameSession.findUnique({
+      where: { id: gameSessionId },
+      include: {
+        template: { include: { questions: { orderBy: { order: 'asc' }, include: { options: true, matchPairs: true } } } },
+      },
+    });
+    if (!session) throw new NotFoundException('Game session not found');
+    if (session.startedBy !== requesterId && requesterId !== '__auto__')
+      throw new ForbiddenException('Only the teacher can end the question');
+    if (session.status !== 'IN_PROGRESS') return; // paused or ended — no-op
+    if (this.questionEndedSessions.has(gameSessionId)) return; // idempotent
+
+    this.cancelAutoAdvance(gameSessionId);
+
+    const questions = session.template.questions;
+    const currentQuestion = questions[session.currentQuestionIndex];
+
+    const questionAnswers = await this.prisma.gameAnswer.findMany({
+      where: { sessionId: gameSessionId, questionId: currentQuestion.id },
+      include: { participant: true },
+    });
+    const distribution = this.computeDistribution(currentQuestion, questionAnswers);
+    const totalParticipants = await this.prisma.gameParticipant.count({ where: { sessionId: gameSessionId } });
+    const unansweredCount = totalParticipants - questionAnswers.length;
+
+    this.eventEmitter.emit('game.question.ended', {
+      gameSessionId,
+      correctAnswer: currentQuestion.correctAnswer,
+      questionId: currentQuestion.id,
+      distribution,
+      unansweredCount,
+      questionPoints: questionAnswers.map((a) => ({
+        userId: a.participant?.userId ?? a.participantId,
+        pointsAwarded: a.pointsAwarded,
+      })),
+    });
+
+    if (currentQuestion.type === 'WORD_CLOUD') {
+      const wordCount = new Map<string, number>();
+      for (const a of questionAnswers) {
+        wordCount.set(a.answer, (wordCount.get(a.answer) ?? 0) + 1);
+      }
+      const words = [...wordCount.entries()]
+        .map(([text, count]) => ({ text, count }))
+        .sort((a, b) => b.count - a.count);
+      this.eventEmitter.emit('game.word_cloud.updated', { gameSessionId, words });
+    }
+
+    this.questionEndedSessions.add(gameSessionId);
   }
 
   // ── Session lifecycle ──────────────────────────────────────────────────
@@ -182,38 +238,41 @@ export class GameSessionService {
     const questions = session.template.questions;
     const currentQuestion = questions[session.currentQuestionIndex];
 
-    const questionAnswers = await this.prisma.gameAnswer.findMany({
-      where: { sessionId: gameSessionId, questionId: currentQuestion.id },
-      include: { participant: true },
-    });
+    const alreadyEnded = this.questionEndedSessions.has(gameSessionId);
+    this.questionEndedSessions.delete(gameSessionId);
 
-    // Compute distribution and unanswered count for the ended question
-    const distribution = this.computeDistribution(currentQuestion, questionAnswers);
-    const totalParticipants = await this.prisma.gameParticipant.count({ where: { sessionId: gameSessionId } });
-    const unansweredCount = totalParticipants - questionAnswers.length;
+    if (!alreadyEnded) {
+      // Skip path: emit question_ended immediately (no review phase)
+      const questionAnswers = await this.prisma.gameAnswer.findMany({
+        where: { sessionId: gameSessionId, questionId: currentQuestion.id },
+        include: { participant: true },
+      });
+      const distribution = this.computeDistribution(currentQuestion, questionAnswers);
+      const totalParticipants = await this.prisma.gameParticipant.count({ where: { sessionId: gameSessionId } });
+      const unansweredCount = totalParticipants - questionAnswers.length;
 
-    this.eventEmitter.emit('game.question.ended', {
-      gameSessionId,
-      correctAnswer: currentQuestion.correctAnswer,
-      questionId: currentQuestion.id,
-      distribution,
-      unansweredCount,
-      questionPoints: questionAnswers.map((a) => ({
-        userId: a.participant?.userId ?? a.participantId,
-        pointsAwarded: a.pointsAwarded,
-      })),
-    });
+      this.eventEmitter.emit('game.question.ended', {
+        gameSessionId,
+        correctAnswer: currentQuestion.correctAnswer,
+        questionId: currentQuestion.id,
+        distribution,
+        unansweredCount,
+        questionPoints: questionAnswers.map((a) => ({
+          userId: a.participant?.userId ?? a.participantId,
+          pointsAwarded: a.pointsAwarded,
+        })),
+      });
 
-    // Emit word cloud data when closing a WORD_CLOUD question
-    if (currentQuestion.type === 'WORD_CLOUD') {
-      const wordCount = new Map<string, number>();
-      for (const a of questionAnswers) {
-        wordCount.set(a.answer, (wordCount.get(a.answer) ?? 0) + 1);
+      if (currentQuestion.type === 'WORD_CLOUD') {
+        const wordCount = new Map<string, number>();
+        for (const a of questionAnswers) {
+          wordCount.set(a.answer, (wordCount.get(a.answer) ?? 0) + 1);
+        }
+        const words = [...wordCount.entries()]
+          .map(([text, count]) => ({ text, count }))
+          .sort((a, b) => b.count - a.count);
+        this.eventEmitter.emit('game.word_cloud.updated', { gameSessionId, words });
       }
-      const words = [...wordCount.entries()]
-        .map(([text, count]) => ({ text, count }))
-        .sort((a, b) => b.count - a.count);
-      this.eventEmitter.emit('game.word_cloud.updated', { gameSessionId, words });
     }
 
     const nextIndex = session.currentQuestionIndex + 1;

@@ -90,7 +90,7 @@ export function GameQuestionEditor({ questions, onChange }: GameQuestionEditorPr
               <option value="MULTI_CHOICE">Multi-Select</option>
               <option value="FILL_BLANK">Fill in the Blank</option>
               <option value="MATCH_LR">Match Left / Right</option>
-              <option value="WORD_CLOUD">Word Cloud</option>
+              {/* <option value="WORD_CLOUD">Word Cloud</option> */}
             </select>
 
             <Input

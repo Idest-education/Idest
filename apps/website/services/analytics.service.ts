@@ -1,16 +1,18 @@
 import { http } from "./http";
 
-export interface UserRoleStat {
-  role: string;
-  count: number;
+export interface UserMonthlyStat {
+  month: string;
+  STUDENT: number;
+  TEACHER: number;
+  ADMIN: number;
 }
 
-export interface SessionMonthStat {
+export interface ClassMonthlyStat {
   month: string;
   count: number;
 }
 
-export async function getUserRoleStats(): Promise<UserRoleStat[]> {
+export async function getUserMonthlyStats(): Promise<UserMonthlyStat[]> {
   try {
     const res = await http.get("/user/stats");
     const payload = res.data?.data ?? res.data;
@@ -20,9 +22,9 @@ export async function getUserRoleStats(): Promise<UserRoleStat[]> {
   }
 }
 
-export async function getSessionStats(): Promise<SessionMonthStat[]> {
+export async function getClassMonthlyStats(): Promise<ClassMonthlyStat[]> {
   try {
-    const res = await http.get("/session/stats");
+    const res = await http.get("/class/stats");
     const payload = res.data?.data ?? res.data;
     return Array.isArray(payload) ? payload : [];
   } catch {
@@ -37,7 +39,6 @@ export async function getAssignmentCount(assignmentApiUrl: string, token: string
     });
     if (!res.ok) return 0;
     const data = await res.json();
-    // The assignments API returns per-skill arrays; count total across all skills
     if (data && typeof data === "object" && !Array.isArray(data)) {
       let total = 0;
       for (const key of Object.keys(data)) {

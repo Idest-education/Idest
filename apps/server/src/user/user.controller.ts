@@ -237,24 +237,28 @@ export class UserController {
   @Get('stats')
   @Roles(Role.ADMIN)
   @ApiOperation({
-    summary: 'Get user role statistics',
-    description: 'Returns user counts grouped by role. ADMIN only.',
+    summary: 'Get user creation stats by role per month',
+    description: 'Returns user creation counts per month grouped by role for the last 6 months. ADMIN only.',
   })
   @ApiOkResponse({
-    description: 'User counts by role',
+    description: 'User creation counts by role per month',
     schema: {
       type: 'array',
       items: {
         type: 'object',
         properties: {
-          role: { type: 'string', example: 'STUDENT' },
-          count: { type: 'number', example: 42 },
+          month: { type: 'string', example: '2025-06' },
+          STUDENT: { type: 'number', example: 10 },
+          TEACHER: { type: 'number', example: 2 },
+          ADMIN: { type: 'number', example: 0 },
         },
       },
     },
   })
-  async getUserStats(): Promise<{ role: string; count: number }[]> {
-    return this.userService.getUserRoleStats();
+  async getUserStats(): Promise<
+    { month: string; STUDENT: number; TEACHER: number; ADMIN: number }[]
+  > {
+    return this.userService.getUserMonthlyStats();
   }
 
   @Get(':id')
