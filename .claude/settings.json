@@ -10,7 +10,6 @@
       "Read:(.lock)"
     ]
   },
-  "model": "sonnet",
   "hooks": {
     "Stop": [
       {
