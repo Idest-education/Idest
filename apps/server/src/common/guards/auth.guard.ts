@@ -2,14 +2,17 @@ import {
   CanActivate,
   ExecutionContext,
   Injectable,
+  Logger,
   UnauthorizedException,
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
-import { verifySupabaseJwt } from '@idest/shared';
+import { verifySupabaseJwt, JwtVerificationError } from '@idest/shared';
 import { PrismaService } from '../../prisma/prisma.service';
 
 @Injectable()
 export class AuthGuard implements CanActivate {
+  private readonly logger = new Logger(AuthGuard.name);
+
   constructor(
     private prisma: PrismaService,
     private reflector: Reflector,
@@ -36,7 +39,15 @@ export class AuthGuard implements CanActivate {
         supabaseUrl: process.env.SUPABASE_URL,
         issuer: process.env.JWT_ISSUER,
       });
-    } catch {
+    } catch (err) {
+      if (
+        err instanceof JwtVerificationError &&
+        err.reason === 'misconfigured'
+      ) {
+        this.logger.error(
+          'JWT verification misconfigured: set JWT_SECRET or SUPABASE_URL',
+        );
+      }
       throw new UnauthorizedException('Invalid or expired token');
     }
 

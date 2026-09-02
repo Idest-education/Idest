@@ -6,6 +6,14 @@ import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
+  const requiredEnv = ['MONGODB_URI', 'JWT_SECRET'];
+  const missing = requiredEnv.filter((k) => !process.env[k]);
+  if (missing.length) {
+    throw new Error(
+      `Missing required environment variables: ${missing.join(', ')}`,
+    );
+  }
+
   const corsOrigins = (process.env.CORS_ORIGINS || 'http://localhost:3000')
     .split(',')
     .map((s) => s.trim())

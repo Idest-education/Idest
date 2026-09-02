@@ -47,11 +47,12 @@ export class GameGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
       return;
     }
     try {
-      await verifySupabaseJwt(token, {
+      const payload = await verifySupabaseJwt(token, {
         jwtSecret: process.env.JWT_SECRET,
         supabaseUrl: process.env.SUPABASE_URL,
         issuer: process.env.JWT_ISSUER,
       });
+      client.data.userId = payload.sub;
       this.logger.log(`Game client connected: ${client.id}`);
     } catch {
       client.disconnect();
@@ -72,6 +73,22 @@ export class GameGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
     @ConnectedSocket() client: Socket,
     @MessageBody() data: { gameSessionId: string; userId: string },
   ) {
+    const userId = client.data.userId as string | undefined;
+    if (!userId) {
+      client.emit('game:join_error', { message: 'Not authenticated' });
+      return;
+    }
+    const allowed = await this.gameSessionService.canUserAccessSession(
+      data.gameSessionId,
+      userId,
+    );
+    if (!allowed) {
+      client.emit('game:join_error', {
+        message: 'You are not a member of this class',
+      });
+      return;
+    }
+
     await client.join(data.gameSessionId);
 
     if (!this.roomSockets.has(data.gameSessionId)) {

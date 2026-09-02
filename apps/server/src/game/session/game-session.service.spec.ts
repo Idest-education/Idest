@@ -193,6 +193,40 @@ describe('GameSessionService', () => {
     });
   });
 
+  describe('canUserAccessSession', () => {
+    it('returns true for an active member of the hosting class', async () => {
+      mockPrisma.gameSession.findUnique.mockResolvedValue({ sessionId: 'meeting-1' });
+      mockPrisma.session.findUnique.mockResolvedValue({ class_id: 'c1' });
+      mockPrisma.class.findUnique.mockResolvedValue({
+        id: 'c1',
+        created_by: 'teacher-x',
+        teachers: [],
+        members: [{ student_id: 'user-1', status: 'active' }],
+      });
+
+      await expect(service.canUserAccessSession('gs1', 'user-1')).resolves.toBe(true);
+    });
+
+    it('returns false for a user who is not a member of the hosting class', async () => {
+      mockPrisma.gameSession.findUnique.mockResolvedValue({ sessionId: 'meeting-1' });
+      mockPrisma.session.findUnique.mockResolvedValue({ class_id: 'c1' });
+      mockPrisma.class.findUnique.mockResolvedValue({
+        id: 'c1',
+        created_by: 'teacher-x',
+        teachers: [],
+        members: [],
+      });
+
+      await expect(service.canUserAccessSession('gs1', 'intruder')).resolves.toBe(false);
+    });
+
+    it('returns false when the game session does not exist', async () => {
+      mockPrisma.gameSession.findUnique.mockResolvedValue(null);
+
+      await expect(service.canUserAccessSession('missing', 'user-1')).resolves.toBe(false);
+    });
+  });
+
   describe('checkAnswer — MULTI_CHOICE', () => {
     it('returns true when submitted set exactly matches correct set (order-independent)', () => {
       expect(service.checkAnswer('MULTI_CHOICE', 'B,C', 'C,B')).toBe(true);

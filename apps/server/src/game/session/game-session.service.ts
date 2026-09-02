@@ -326,6 +326,24 @@ export class GameSessionService {
     return { ...session, currentQuestionIndex: nextIndex };
   }
 
+  /**
+   * True when the user is the creator, a teacher, or an active student of the
+   * class that hosts the meeting this game session belongs to.
+   */
+  async canUserAccessSession(gameSessionId: string, userId: string): Promise<boolean> {
+    const gameSession = await this.prisma.gameSession.findUnique({
+      where: { id: gameSessionId },
+      select: { sessionId: true },
+    });
+    if (!gameSession) return false;
+
+    const meeting = await this.prisma.session.findUnique({
+      where: { id: gameSession.sessionId },
+      select: { class_id: true },
+    });
+    return !!meeting && checkClassAccessById(meeting.class_id, userId, this.prisma);
+  }
+
   async submitAnswer(gameSessionId: string, userId: string, answer: string) {
     const session = await this.prisma.gameSession.findUnique({
       where: { id: gameSessionId },
@@ -343,14 +361,7 @@ export class GameSessionService {
     if (!session) throw new NotFoundException('Game session not found');
     if (session.status !== 'IN_PROGRESS') throw new BadRequestException('No active question');
 
-    const meeting = await this.prisma.session.findUnique({
-      where: { id: session.sessionId },
-      select: { class_id: true },
-    });
-    if (
-      !meeting ||
-      !(await checkClassAccessById(meeting.class_id, userId, this.prisma))
-    ) {
+    if (!(await this.canUserAccessSession(gameSessionId, userId))) {
       throw new ForbiddenException('You are not a member of this class');
     }
 
