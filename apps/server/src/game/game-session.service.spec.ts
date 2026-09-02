@@ -282,10 +282,10 @@ describe('GameSessionService', () => {
       expect(jest.getTimerCount()).toBe(1);
     });
 
-    it('auto-advances question when timer fires', async () => {
+    it('auto-ends (reveals) the current question when the timer fires', async () => {
       const questions = [
-        { id: 'q1', type: 'MULTIPLE_CHOICE', correctAnswer: 'A', timerSeconds: 10, order: 1, options: [] },
-        { id: 'q2', type: 'MULTIPLE_CHOICE', correctAnswer: 'B', timerSeconds: 10, order: 2, options: [] },
+        { id: 'q1', type: 'MULTIPLE_CHOICE', text: 'Q1', correctAnswer: 'A', timerSeconds: 10, order: 1, options: [], matchPairs: [] },
+        { id: 'q2', type: 'MULTIPLE_CHOICE', text: 'Q2', correctAnswer: 'B', timerSeconds: 10, order: 2, options: [], matchPairs: [] },
       ];
       const session = {
         id: 'gs1',
@@ -295,11 +295,7 @@ describe('GameSessionService', () => {
         template: { questions },
       };
       mockPrisma.gameSession.findFirst.mockResolvedValue(null);
-      mockPrisma.gameTemplate.findUnique.mockResolvedValue({
-        id: 'tmpl-1',
-        createdBy: 'teacher-1',
-        questions,
-      });
+      mockPrisma.gameTemplate.findUnique.mockResolvedValue({ id: 'tmpl-1', createdBy: 'teacher-1', questions });
       mockPrisma.gameSession.create.mockResolvedValue({ ...session, template: { questions } });
       mockPrisma.gameSession.findUnique.mockResolvedValue(session);
       mockPrisma.gameAnswer.findMany.mockResolvedValue([]);
@@ -308,10 +304,13 @@ describe('GameSessionService', () => {
 
       await service.startSession('tmpl-1', 'meet-1', 'teacher-1');
       jest.advanceTimersByTime(10001);
-      // flush microtasks — multiple rounds needed for the async nextQuestion chain
       for (let i = 0; i < 10; i++) await Promise.resolve();
 
-      expect(mockPrisma.gameSession.updateMany).toHaveBeenCalledWith(
+      expect(mockEventEmitter.emit).toHaveBeenCalledWith(
+        'game.question.ended',
+        expect.objectContaining({ gameSessionId: 'gs1', questionId: 'q1' }),
+      );
+      expect(mockPrisma.gameSession.updateMany).not.toHaveBeenCalledWith(
         expect.objectContaining({ data: { currentQuestionIndex: 1 } }),
       );
     });
