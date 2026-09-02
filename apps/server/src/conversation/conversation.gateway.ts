@@ -9,7 +9,7 @@ import {
 } from '@nestjs/websockets';
 import { Server, Socket } from 'socket.io';
 import { PrismaService } from 'src/prisma/prisma.service';
-import * as JWT from 'jsonwebtoken';
+import { verifySupabaseJwt } from '@idest/shared';
 import { checkClassAccess } from './conversation.util';
 
 @WebSocketGateway({
@@ -42,8 +42,11 @@ export class ConversationGateway implements OnGatewayInit {
           );
         }
 
-        const jwtSecret = process.env.JWT_SECRET as string;
-        const decoded: any = JWT.verify(token, jwtSecret);
+        const decoded = await verifySupabaseJwt(token, {
+          jwtSecret: process.env.JWT_SECRET,
+          supabaseUrl: process.env.SUPABASE_URL,
+          issuer: process.env.JWT_ISSUER,
+        });
 
         if (!decoded?.sub) {
           return next(new Error('Invalid token'));

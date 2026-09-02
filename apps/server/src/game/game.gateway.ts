@@ -12,7 +12,7 @@ import { Logger } from '@nestjs/common';
 import { OnEvent } from '@nestjs/event-emitter';
 import { Server, Socket } from 'socket.io';
 import { GameSessionService } from './game-session.service';
-import { verifyTokenAsync } from 'src/common/guard/auth.guard';
+import { verifySupabaseJwt } from '@idest/shared';
 
 @WebSocketGateway({
   cors: {
@@ -47,7 +47,11 @@ export class GameGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
       return;
     }
     try {
-      await verifyTokenAsync(token, process.env.JWT_SECRET!);
+      await verifySupabaseJwt(token, {
+        jwtSecret: process.env.JWT_SECRET,
+        supabaseUrl: process.env.SUPABASE_URL,
+        issuer: process.env.JWT_ISSUER,
+      });
       this.logger.log(`Game client connected: ${client.id}`);
     } catch {
       client.disconnect();

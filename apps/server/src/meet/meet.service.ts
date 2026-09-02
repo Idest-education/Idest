@@ -19,8 +19,7 @@ import {
   LiveKitService,
   type LiveKitDataMessageOptions,
 } from './utils/livekit.service';
-import { verifyTokenAsync } from 'src/common/guard/auth.guard';
-import { JwtPayload } from 'jsonwebtoken';
+import { verifySupabaseJwt, type SupabaseJwtPayload } from '@idest/shared';
 
 export interface LiveKitCredentials {
   url: string;
@@ -391,10 +390,14 @@ export class MeetService {
   /**
    * Validate JWT token
    */
-  async validateToken(token: string): Promise<JwtPayload> {
+  async validateToken(token: string): Promise<SupabaseJwtPayload> {
     try {
-      return await verifyTokenAsync(token, process.env.JWT_SECRET!);
-    } catch (error) {
+      return await verifySupabaseJwt(token, {
+        jwtSecret: process.env.JWT_SECRET,
+        supabaseUrl: process.env.SUPABASE_URL,
+        issuer: process.env.JWT_ISSUER,
+      });
+    } catch {
       throw new UnauthorizedException('Invalid token, please login again');
     }
   }
