@@ -39,8 +39,6 @@ importers:
         specifier: ^8.20.0
         version: 8.56.1(eslint@9.39.3(jiti@2.6.1))(typescript@5.9.3)
 
-  apps/ai: {}
-
   apps/assignments:
     dependencies:
       '@idest/shared':
@@ -85,6 +83,9 @@ importers:
       dotenv:
         specifier: ^17.2.2
         version: 17.3.1
+      jose:
+        specifier: ^5.9.6
+        version: 5.10.0
       jsonwebtoken:
         specifier: ^9.0.2
         version: 9.0.3
@@ -272,6 +273,9 @@ importers:
       http-proxy-middleware:
         specifier: ^3.0.5
         version: 3.0.5
+      jose:
+        specifier: ^5.9.6
+        version: 5.10.0
       jsonwebtoken:
         specifier: ^9.0.2
         version: 9.0.3
@@ -512,7 +516,11 @@ importers:
         specifier: ^1.0.7
         version: 1.0.7(tailwindcss@3.4.19)
 
-  packages/shared: {}
+  packages/shared:
+    dependencies:
+      jose:
+        specifier: ^5.9.6
+        version: 5.10.0
 
 packages:
 
