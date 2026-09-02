@@ -2,7 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import Navbar from "@/components/navbar-content";
 import ClassShowcaseClient from "@/components/class/ClassShowcaseClient";
 import SiteFooter from "@/components/site-footer";
-import LandingRoot from "./_components/LandingRoot";
+import LandingRoot from "@/components/landing/LandingRoot";
 
 export default async function Home() {
   const supabase = await createClient();
