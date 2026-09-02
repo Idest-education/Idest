@@ -59,4 +59,33 @@ describe('AppService', () => {
       await expect(service.getDevJwt('super-secret')).rejects.toThrow(InternalServerErrorException);
     });
   });
+
+  describe('getDevJwt guarding', () => {
+    const OLD = process.env;
+    afterEach(() => {
+      process.env = OLD;
+    });
+
+    it('is disabled in production', async () => {
+      process.env = { ...OLD, NODE_ENV: 'production', SECRET_PASS: 'x' };
+      const signIn = jest.fn();
+      const svc = new AppService({ auth: { signInWithPassword: signIn } } as any);
+      await expect(svc.getDevJwt('x')).rejects.toThrow(ForbiddenException);
+      expect(signIn).not.toHaveBeenCalled();
+    });
+
+    it('rejects a wrong secret without calling Supabase', async () => {
+      process.env = {
+        ...OLD,
+        NODE_ENV: 'development',
+        SECRET_PASS: 'right',
+        SUPABASE_DEV_EMAIL: 'a@b.co',
+        SUPABASE_DEV_PASSWORD: 'p',
+      };
+      const signIn = jest.fn();
+      const svc = new AppService({ auth: { signInWithPassword: signIn } } as any);
+      await expect(svc.getDevJwt('wrong')).rejects.toThrow(ForbiddenException);
+      expect(signIn).not.toHaveBeenCalled();
+    });
+  });
 });
