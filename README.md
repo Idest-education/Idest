@@ -14,6 +14,8 @@ Monorepo for the Idest English teaching platform: Next.js frontend, NestJS APIs,
 
 Workspace packages are declared in [`pnpm-workspace.yaml`](pnpm-workspace.yaml).
 
+`PRODUCT.md` and `DESIGN.md` are kept at the repo root because the `impeccable` tooling loads them from there. `models/` holds ML artifacts consumed by `apps/ai`. `pronunciation/` and `scraper/` are standalone (not pnpm workspaces). A fuller map lives in `docs/repo-structure.md`.
+
 ## Prerequisites
 
 - **Node.js** 18+ (LTS recommended)
