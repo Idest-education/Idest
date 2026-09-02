@@ -2,13 +2,31 @@ import { Injectable, OnModuleInit, OnModuleDestroy, Logger } from '@nestjs/commo
 import { ConfigService } from '@nestjs/config';
 import * as amqp from 'amqplib';
 
+/**
+ * Marker error for failures that are worth retrying (network blips, upstream
+ * 5xx, DB timeouts). Anything that is NOT a `TransientError` is treated as a
+ * poison message and dead-lettered immediately by `RabbitService.consume`.
+ */
+export class TransientError extends Error {}
+
 @Injectable()
 export class RabbitService implements OnModuleInit, OnModuleDestroy {
   private connection: any;
   private channel: any;
   private readonly logger = new Logger(RabbitService.name);
 
-  constructor(private configService: ConfigService) {}
+  // Retry policy — read once so tests can drive it via a stub ConfigService.
+  private readonly maxAttempts: number;
+  private readonly retryDelayMs: number;
+
+  constructor(private configService: ConfigService) {
+    this.maxAttempts = Number(
+      this.configService.get('RABBIT_MAX_ATTEMPTS') ?? 3,
+    );
+    this.retryDelayMs = Number(
+      this.configService.get('RABBIT_RETRY_DELAY_MS') ?? 5000,
+    );
+  }
 
   async onModuleInit() {
     await this.connect();
@@ -95,6 +113,12 @@ export class RabbitService implements OnModuleInit, OnModuleDestroy {
         throw new Error('RabbitMQ channel not initialized');
       }
 
+      // NOTE: the main queue is asserted with ONLY `{ durable: true }`. The live
+      // `grade_queue` was created without dead-letter args, so re-asserting it
+      // with `deadLetterExchange`/`deadLetterRoutingKey` would throw
+      // PRECONDITION_FAILED on a real broker. Dead-lettering is therefore done
+      // by explicitly publishing poison messages to a separate `<queue>.dead`
+      // queue and acking the original (see the catch block below).
       await this.channel.assertQueue(queue, {
         durable: true,
       });
@@ -110,15 +134,11 @@ export class RabbitService implements OnModuleInit, OnModuleDestroy {
             try {
               const content = JSON.parse(msg.content.toString());
               await callback(content);
-              
+
               this.channel.ack(msg);
               this.logger.log(`Message processed from queue "${queue}"`);
             } catch (error) {
-              this.logger.error(`Error processing message from queue "${queue}"`, error);
-              
-              if (this.channel) {
-                this.channel.nack(msg, false, true);
-              }
+              await this.handleConsumeFailure(queue, msg, error as Error);
             }
           }
         },
@@ -130,5 +150,61 @@ export class RabbitService implements OnModuleInit, OnModuleDestroy {
       this.logger.error(`Error consuming from queue "${queue}"`, error);
       throw error;
     }
+  }
+
+  /**
+   * Failure policy for a consumed message:
+   *  - `TransientError` and attempts still below the cap → bump the
+   *    `x-attempts` header, ack the original, and re-publish to the main queue
+   *    after `retryDelayMs`.
+   *  - non-transient error, OR the retry cap is reached → publish the raw
+   *    payload to `<queue>.dead` (asserted on demand) with an `x-death-reason`
+   *    header, then ack the original so it stops looping on the main queue.
+   */
+  private async handleConsumeFailure(
+    queue: string,
+    msg: amqp.ConsumeMessage,
+    error: Error,
+  ): Promise<void> {
+    if (!this.channel) {
+      return;
+    }
+
+    const headers = msg.properties.headers ?? {};
+    const attempts = Number(headers['x-attempts'] ?? 0);
+    const transient = error instanceof TransientError;
+
+    this.logger.error(
+      `Message from "${queue}" failed (attempt ${attempts}, transient=${transient}): ${error?.message}`,
+      error,
+    );
+
+    if (transient && attempts + 1 < this.maxAttempts) {
+      const retryHeaders = { ...headers, 'x-attempts': attempts + 1 };
+      this.channel.ack(msg);
+      setTimeout(() => {
+        this.channel?.sendToQueue(queue, msg.content, {
+          persistent: true,
+          headers: retryHeaders,
+        });
+      }, this.retryDelayMs);
+      this.logger.warn(
+        `Scheduled retry ${attempts + 1}/${this.maxAttempts} for "${queue}" in ${this.retryDelayMs}ms`,
+      );
+      return;
+    }
+
+    const deadQueue = `${queue}.dead`;
+    const reason = transient
+      ? `retry cap (${this.maxAttempts}) exhausted: ${error?.message ?? 'transient error'}`
+      : `non-transient error: ${error?.message ?? 'unknown error'}`;
+
+    await this.channel.assertQueue(deadQueue, { durable: true });
+    this.channel.sendToQueue(deadQueue, msg.content, {
+      persistent: true,
+      headers: { ...headers, 'x-death-reason': reason },
+    });
+    this.channel.ack(msg);
+    this.logger.warn(`Dead-lettered message from "${queue}" -> "${deadQueue}": ${reason}`);
   }
 }

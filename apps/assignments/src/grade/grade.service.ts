@@ -1,8 +1,17 @@
 import { Injectable, OnModuleInit, Logger } from '@nestjs/common';
 import { OpenAI } from 'openai';
-import { RabbitService } from '../rabbit/rabbit.service';
+import { RabbitService, TransientError } from '../rabbit/rabbit.service';
 import { ReadingService } from '../assignment/reading/reading.service';
 import { ListeningService } from '../assignment/listening/listening.service';
+
+/**
+ * Raised when grading fails for a reason that is worth retrying (DB timeout,
+ * upstream 5xx, transient network error). Extends `TransientError` so
+ * `RabbitService.consume` re-queues it up to the retry cap instead of
+ * dead-lettering it. Validation problems (e.g. unknown skill type) are logged
+ * and swallowed, never wrapped in this.
+ */
+export class TransientGradingError extends TransientError {}
 
 @Injectable()
 export class GradeService implements OnModuleInit {
@@ -29,22 +38,29 @@ export class GradeService implements OnModuleInit {
   private async processGradeMessage(message: any) {
     this.logger.log(`Processing grade message for skill: ${message.skill}`);
 
+    switch (message.skill) {
+      case 'reading':
+      case 'listening':
+        break;
+
+      default:
+        // Not retryable — an unknown skill will never become valid. Log and
+        // return so RabbitService acks the message instead of looping on it.
+        this.logger.error(`Unknown skill type: ${message.skill}`);
+        return;
+    }
+
     try {
-      switch (message.skill) {
-        case 'reading':
-          await this.gradeReading(message);
-          break;
-
-        case 'listening':
-          await this.gradeListening(message);
-          break;
-
-        default:
-          this.logger.error(`Unknown skill type: ${message.skill}`);
+      if (message.skill === 'reading') {
+        await this.gradeReading(message);
+      } else {
+        await this.gradeListening(message);
       }
     } catch (error) {
+      // Downstream grading failure — treat as transient so the broker retries
+      // it up to the configured cap, then dead-letters.
       this.logger.error(`Error processing ${message.skill} grade:`, error);
-      throw error; // This will cause the message to be requeued
+      throw new TransientGradingError((error as Error).message);
     }
   }
 
