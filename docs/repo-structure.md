@@ -55,9 +55,11 @@ not by discovery:
 
 | Path | Contents |
 |------|----------|
-| `docs/architecture/` | Reserved for system-overview material. Currently this file lives at `docs/` root; a `system-overview.md` is a planned future addition. |
-| `docs/modules/<name>/` | Per-feature design packets: `game/`, `progress-tracking/`. Files numbered `00-…` through `07-…` plus a `README.md`. |
+| `docs/manifest.md` | Routing table for every doc in the repo: what it is, when to read it, authority level. Start here. Keep rows current when docs change. |
+| `docs/repo-structure.md` | This file — the monorepo map and the move rules. |
+| `docs/modules/<name>/` | Per-feature design packets: `game/`, `progress-tracking/`. Files numbered `00-…` through `07-…`; entry point is `00-README.md`. |
 | `docs/specs/` | Dated design docs, `YYYY-MM-DD-<topic>-design.md`. The authoritative record. |
+| `docs/testing/` | Manual test procedures, `<topic>.md` (e.g. `smoke-test.md`). |
 | `docs/thesis/` | The KLTN thesis (`.pdf` / `.docx`). |
 | `docs/superpowers/` | Transient agent working files. `plans/` is git-ignored (`.gitignore` line 95); see `docs/superpowers/README.md`. Not authoritative — design docs live in `docs/specs/`. |
 

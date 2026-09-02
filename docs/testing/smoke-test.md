@@ -1,6 +1,6 @@
-# SMOKE-TEST.md
+# Smoke test — auth, security & rate limiting
 
-Run before merging `hardening/security-and-repo-reorg`. `$API` = server base URL (e.g. http://localhost:8000), `$WEB` = website base URL (e.g. http://localhost:3000).
+Run before merging changes to auth, JWT verification, rate limiting, or session enforcement. `$API` = server base URL (e.g. http://localhost:8000), `$WEB` = website base URL (e.g. http://localhost:3000).
 
 ## Registration & Authentication
 

@@ -118,10 +118,11 @@ Critical variables that must match across `apps/server` and `apps/assignments`:
 - **OpenAI** — fallback AI grading in assignments service
 - **Ollama** *(optional)* — local LLM for pronunciation coaching feedback
 
-## Docs
+## Documentation
 
-`/docs/` contains design documents for features not yet fully implemented:
-- `modules/game/` — gamification system (API, WebSocket gateway, game logic, DB schema)
-- `modules/progress-tracking/` — progress tracking system design
+**`docs/manifest.md` is the routing table** — every doc in this repo with a one-line
+"read this when…" trigger and its authority level. Consult it before deep work instead
+of grepping `docs/`. Product and design contracts are `PRODUCT.md` and `DESIGN.md` at
+the repo root.
 
-These include API contracts, acceptance criteria, and task breakdowns — refer to them when implementing those features.
+When you add, move, or retire a doc, update its row in `docs/manifest.md` in the same change.
