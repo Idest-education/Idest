@@ -6,8 +6,8 @@ const supabase_service_1 = require("../src/supabase/supabase.service");
 const user_service_1 = require("../src/user/user.service");
 const class_service_1 = require("../src/class/class.service");
 const prisma_service_1 = require("../src/prisma/prisma.service");
-const role_enum_1 = require("../src/common/enum/role.enum");
-const specialization_enum_1 = require("../src/common/enum/specialization.enum");
+const role_enum_1 = require("../src/common/enums/role.enum");
+const specialization_enum_1 = require("../src/common/enums/specialization.enum");
 async function createSupabaseAccounts(supabaseService) {
     console.log('- Creating Supabase accounts...');
     const students = [];

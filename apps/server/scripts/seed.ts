@@ -4,8 +4,8 @@ import { SupabaseService } from '../src/supabase/supabase.service';
 import { UserService } from '../src/user/user.service';
 import { ClassService } from '../src/class/class.service';
 import { PrismaService } from '../src/prisma/prisma.service';
-import { Role } from '../src/common/enum/role.enum';
-import { Specialization } from '../src/common/enum/specialization.enum';
+import { Role } from '../src/common/enums/role.enum';
+import { Specialization } from '../src/common/enums/specialization.enum';
 import { MedalCategory } from '@prisma/client';
 
 interface StudentData {
