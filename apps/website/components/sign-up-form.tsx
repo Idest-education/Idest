@@ -9,13 +9,6 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, useMemo } from "react";
 import Image from "next/image";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 
 import Carousel1 from "@/assets/carousel/1.png";
 import Carousel2 from "@/assets/carousel/2.png";
@@ -32,7 +25,6 @@ export function SignUpForm({
 }: React.ComponentPropsWithoutRef<"div">) {
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
-  const [role, setRole] = useState<"student" | "teacher" | "">("");
   const [password, setPassword] = useState("");
   const [repeatPassword, setRepeatPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -54,11 +46,14 @@ export function SignUpForm({
       return;
     }
     try {
-      const res = await fetch("https://ie-backend.fly.dev/user/serverside-create", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password, fullName, role }),
-      });
+      const res = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/user/serverside-create`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email, password, fullName }),
+        },
+      );
       if (!res.ok) {
         const msg = await res.json();
         throw new Error(msg.message || `Đăng ký thất bại (${res.status})`);
@@ -192,23 +187,6 @@ export function SignUpForm({
                     className="border-0 focus-visible:ring-1"
                     style={inputStyle}
                   />
-                </div>
-
-                <div className="space-y-1.5">
-                  <Label htmlFor="role" style={{ color: "#9a7060", fontSize: "13px" }}>Vai trò</Label>
-                  <Select onValueChange={(val) => setRole(val as "student" | "teacher")} disabled={isLoading}>
-                    <SelectTrigger
-                      id="role"
-                      className="border-0 focus:ring-1"
-                      style={{ ...inputStyle, outline: "1px solid #3d2610" }}
-                    >
-                      <SelectValue placeholder="Chọn vai trò của bạn" />
-                    </SelectTrigger>
-                    <SelectContent style={{ backgroundColor: "#1a1209", border: "1px solid #3d2610" }}>
-                      <SelectItem value="STUDENT" style={{ color: "#fffaf5" }}>Học sinh</SelectItem>
-                      <SelectItem value="TEACHER" style={{ color: "#fffaf5" }}>Giáo viên</SelectItem>
-                    </SelectContent>
-                  </Select>
                 </div>
 
                 <div className="space-y-1.5">

@@ -55,8 +55,7 @@ export class UserService {
       if (
         !credentials.email ||
         !credentials.password ||
-        !credentials.fullName ||
-        !credentials.role
+        !credentials.fullName
       ) {
         throw new UnprocessableEntityException(`Credentials insufficient`);
       }
@@ -74,7 +73,7 @@ export class UserService {
         options: {
           data: {
             full_name: credentials.fullName,
-            role: credentials.role,
+            role: Role.STUDENT,
           },
           emailRedirectTo: `localhost:3000/auth/callback`,
         },
@@ -89,7 +88,7 @@ export class UserService {
           id: supabaseUser.data.user.id,
           full_name: credentials.fullName,
           email: credentials.email,
-          role: credentials.role,
+          role: Role.STUDENT,
         },
       });
       return user;
