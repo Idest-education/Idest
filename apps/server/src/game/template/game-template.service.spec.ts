@@ -2,7 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { ForbiddenException, NotFoundException } from '@nestjs/common';
 import { GameTemplateService } from './game-template.service';
 import { PrismaService } from 'src/prisma/prisma.service';
-import { QuestionTypeDto } from './dto/create-game-template.dto';
+import { QuestionTypeDto } from '../dto/create-game-template.dto';
 
 const mockPrisma = {
   gameTemplate: {

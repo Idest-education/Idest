@@ -8,8 +8,8 @@ import {
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { GameSessionService } from './game-session.service';
 import { PrismaService } from 'src/prisma/prisma.service';
-import { ClassStatsService } from './class-stats.service';
-import { AchievementService } from './achievement.service';
+import { ClassStatsService } from '../stats/class-stats.service';
+import { AchievementService } from '../achievement/achievement.service';
 
 const mockPrisma = {
   gameSession: {

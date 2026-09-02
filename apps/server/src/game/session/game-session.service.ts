@@ -10,8 +10,8 @@ import { EventEmitter2 } from '@nestjs/event-emitter';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { checkClassAccessById } from 'src/class/class.util';
-import { ClassStatsService } from './class-stats.service';
-import { AchievementService } from './achievement.service';
+import { ClassStatsService } from '../stats/class-stats.service';
+import { AchievementService } from '../achievement/achievement.service';
 
 @Injectable()
 export class GameSessionService {

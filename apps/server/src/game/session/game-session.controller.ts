@@ -24,9 +24,9 @@ import { AuthGuard } from 'src/common/guards/auth.guard';
 import { CurrentUser } from 'src/common/decorators/currentUser.decorator';
 import { userPayload } from 'src/common/types/userPayload.interface';
 import { GameSessionService } from './game-session.service';
-import { SubmitAnswerDto } from './dto/submit-answer.dto';
-import { ExtendTimerDto } from './dto/extend-timer.dto';
-import { HideWordDto } from './dto/hide-word.dto';
+import { SubmitAnswerDto } from '../dto/submit-answer.dto';
+import { ExtendTimerDto } from '../dto/extend-timer.dto';
+import { HideWordDto } from '../dto/hide-word.dto';
 
 class StartSessionDto {
   @ApiProperty()

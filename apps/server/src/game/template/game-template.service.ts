@@ -4,8 +4,8 @@ import {
   ForbiddenException,
 } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
-import { CreateGameTemplateDto } from './dto/create-game-template.dto';
-import { UpdateGameTemplateDto } from './dto/update-game-template.dto';
+import { CreateGameTemplateDto } from '../dto/create-game-template.dto';
+import { UpdateGameTemplateDto } from '../dto/update-game-template.dto';
 
 @Injectable()
 export class GameTemplateService {

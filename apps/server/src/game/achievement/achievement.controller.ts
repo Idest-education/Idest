@@ -6,7 +6,7 @@ import { AuthGuard } from 'src/common/guards/auth.guard';
 import { CurrentUser } from 'src/common/decorators/currentUser.decorator';
 import { userPayload } from 'src/common/types/userPayload.interface';
 import { AchievementService } from './achievement.service';
-import { ClassStatsService } from './class-stats.service';
+import { ClassStatsService } from '../stats/class-stats.service';
 import { PrismaService } from 'src/prisma/prisma.service';
 
 @Controller('game-classes')

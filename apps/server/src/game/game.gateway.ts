@@ -11,7 +11,7 @@ import {
 import { Logger } from '@nestjs/common';
 import { OnEvent } from '@nestjs/event-emitter';
 import { Server, Socket } from 'socket.io';
-import { GameSessionService } from './game-session.service';
+import { GameSessionService } from './session/game-session.service';
 import { verifySupabaseJwt } from '@idest/shared';
 
 @WebSocketGateway({

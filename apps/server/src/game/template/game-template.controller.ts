@@ -21,8 +21,8 @@ import { AuthGuard } from 'src/common/guards/auth.guard';
 import { CurrentUser } from 'src/common/decorators/currentUser.decorator';
 import { userPayload } from 'src/common/types/userPayload.interface';
 import { GameTemplateService } from './game-template.service';
-import { CreateGameTemplateDto } from './dto/create-game-template.dto';
-import { UpdateGameTemplateDto } from './dto/update-game-template.dto';
+import { CreateGameTemplateDto } from '../dto/create-game-template.dto';
+import { UpdateGameTemplateDto } from '../dto/update-game-template.dto';
 
 @Controller('game-templates')
 @ApiTags('Game Templates')
