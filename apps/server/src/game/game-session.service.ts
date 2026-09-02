@@ -9,6 +9,7 @@ import {
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from 'src/prisma/prisma.service';
+import { checkClassAccessById } from 'src/class/class.util';
 import { ClassStatsService } from './class-stats.service';
 import { AchievementService } from './achievement.service';
 
@@ -341,6 +342,17 @@ export class GameSessionService {
     });
     if (!session) throw new NotFoundException('Game session not found');
     if (session.status !== 'IN_PROGRESS') throw new BadRequestException('No active question');
+
+    const meeting = await this.prisma.session.findUnique({
+      where: { id: session.sessionId },
+      select: { class_id: true },
+    });
+    if (
+      !meeting ||
+      !(await checkClassAccessById(meeting.class_id, userId, this.prisma))
+    ) {
+      throw new ForbiddenException('You are not a member of this class');
+    }
 
     const currentQuestion = session.template.questions[session.currentQuestionIndex];
 

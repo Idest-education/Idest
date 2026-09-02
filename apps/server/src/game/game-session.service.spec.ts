@@ -29,6 +29,8 @@ const mockPrisma = {
   },
   gameAnswer: { findUnique: jest.fn(), create: jest.fn(), findMany: jest.fn() },
   user: { findMany: jest.fn() },
+  session: { findUnique: jest.fn() },
+  class: { findUnique: jest.fn() },
 };
 const mockEventEmitter = { emit: jest.fn() };
 const mockClassStatsService = { updateStats: jest.fn().mockResolvedValue(undefined) };
@@ -115,6 +117,31 @@ describe('GameSessionService', () => {
         ],
       },
     };
+
+    beforeEach(() => {
+      mockPrisma.session.findUnique.mockResolvedValue({ class_id: 'c1' });
+      mockPrisma.class.findUnique.mockResolvedValue({
+        id: 'c1',
+        created_by: 'teacher-x',
+        teachers: [],
+        members: [{ student_id: 'user-1', status: 'active' }],
+      });
+    });
+
+    it('rejects a user who is not a member of the hosting class', async () => {
+      mockPrisma.gameSession.findUnique.mockResolvedValue(baseSession);
+      mockPrisma.session.findUnique.mockResolvedValue({ class_id: 'c1' });
+      mockPrisma.class.findUnique.mockResolvedValue({
+        id: 'c1',
+        created_by: 'other',
+        teachers: [],
+        members: [],
+      });
+
+      await expect(service.submitAnswer('session-1', 'intruder', 'A')).rejects.toBeInstanceOf(
+        ForbiddenException,
+      );
+    });
 
     it('returns isCorrect=true and points > 0 for a correct answer', async () => {
       mockPrisma.gameSession.findUnique.mockResolvedValue(baseSession);
@@ -535,6 +562,16 @@ describe('GameSessionService', () => {
   });
 
   describe('submitAnswer — new question types', () => {
+    beforeEach(() => {
+      mockPrisma.session.findUnique.mockResolvedValue({ class_id: 'c1' });
+      mockPrisma.class.findUnique.mockResolvedValue({
+        id: 'c1',
+        created_by: 'teacher-x',
+        teachers: [],
+        members: [{ student_id: 'u1', status: 'active' }],
+      });
+    });
+
     it('handles MULTI_CHOICE: exact set match scores points', async () => {
       const session = {
         id: 'gs1', status: 'IN_PROGRESS', currentQuestionIndex: 0,
