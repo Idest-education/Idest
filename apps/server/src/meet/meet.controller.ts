@@ -6,8 +6,8 @@ import {
   ApiTags,
 } from '@nestjs/swagger';
 import { MeetService } from './meet.service';
-import { AuthGuard } from 'src/common/guard/auth.guard';
-import { CurrentUser } from 'src/common/decorator/currentUser.decorator';
+import { AuthGuard } from 'src/common/guards/auth.guard';
+import { CurrentUser } from 'src/common/decorators/currentUser.decorator';
 import { userPayload } from 'src/common/types/userPayload.interface';
 import { LiveKitTokenResponseDto } from './dto/livekit-token-response.dto';
 import {

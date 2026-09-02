@@ -2,7 +2,7 @@ import { Controller, Get, Body, Post } from '@nestjs/common';
 import { AppService } from './app.service';
 import { ApiBody, ApiOperation, ApiProperty } from '@nestjs/swagger';
 import { IsString, IsNotEmpty } from 'class-validator';
-import { SkipEnvelope } from './common/decorator/skip-envelope.decorator';
+import { SkipEnvelope } from './common/decorators/skip-envelope.decorator';
 
 class JwtRequestDto {
   @ApiProperty({

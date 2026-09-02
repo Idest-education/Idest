@@ -2,7 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { ConflictException, ForbiddenException, NotFoundException } from '@nestjs/common';
 import { ClassCRUDService } from './class-CRUD.service';
 import { PrismaService } from 'src/prisma/prisma.service';
-import { Role } from 'src/common/enum/role.enum';
+import { Role } from 'src/common/enums/role.enum';
 
 const mockPrisma = {
   class: {

@@ -10,11 +10,11 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { SessionService } from './session.service';
-import { AuthGuard } from 'src/common/guard/auth.guard';
-import { RolesGuard } from 'src/common/guard/role.guard';
-import { Roles } from 'src/common/decorator/role.decorator';
-import { Role } from 'src/common/enum/role.enum';
-import { CurrentUser } from 'src/common/decorator/currentUser.decorator';
+import { AuthGuard } from 'src/common/guards/auth.guard';
+import { RolesGuard } from 'src/common/guards/role.guard';
+import { Roles } from 'src/common/decorators/role.decorator';
+import { Role } from 'src/common/enums/role.enum';
+import { CurrentUser } from 'src/common/decorators/currentUser.decorator';
 import { userPayload } from 'src/common/types/userPayload.interface';
 import { CreateSessionDto } from './dto/create-session.dto';
 import { UpdateSessionDto } from './dto/update-session.dto';

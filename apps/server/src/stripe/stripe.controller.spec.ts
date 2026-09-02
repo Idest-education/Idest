@@ -1,7 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { StripeController } from './stripe.controller';
 import { StripeService } from './stripe.service';
-import { AuthGuard } from 'src/common/guard/auth.guard';
+import { AuthGuard } from 'src/common/guards/auth.guard';
 
 const mockService = {
   createClassCheckoutSession: jest.fn(),

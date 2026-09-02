@@ -1,10 +1,10 @@
 import { Controller, Post, Body, UseGuards } from '@nestjs/common';
 import { User } from '@prisma/client';
-import { CurrentUser } from 'src/common/decorator/currentUser.decorator';
+import { CurrentUser } from 'src/common/decorators/currentUser.decorator';
 import { AiService } from './ai.service';
-import { AuthGuard } from 'src/common/guard/auth.guard';
-import { IsNotAvailableGuard } from 'src/common/guard/available.guard';
-import { IsNotAvailable } from 'src/common/decorator/is-not-available.decorator';
+import { AuthGuard } from 'src/common/guards/auth.guard';
+import { IsNotAvailableGuard } from 'src/common/guards/available.guard';
+import { IsNotAvailable } from 'src/common/decorators/is-not-available.decorator';
 
 @Controller('ai')
 @IsNotAvailable()

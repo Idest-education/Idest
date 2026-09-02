@@ -20,8 +20,8 @@ import {
 import { Response } from 'express';
 import { IsString, IsNotEmpty } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
-import { AuthGuard } from 'src/common/guard/auth.guard';
-import { CurrentUser } from 'src/common/decorator/currentUser.decorator';
+import { AuthGuard } from 'src/common/guards/auth.guard';
+import { CurrentUser } from 'src/common/decorators/currentUser.decorator';
 import { userPayload } from 'src/common/types/userPayload.interface';
 import { GameSessionService } from './game-session.service';
 import { SubmitAnswerDto } from './dto/submit-answer.dto';

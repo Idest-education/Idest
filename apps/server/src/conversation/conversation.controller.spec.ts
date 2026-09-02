@@ -1,8 +1,8 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { ConversationController } from './conversation.controller';
 import { ConversationService } from './conversation.service';
-import { AuthGuard } from 'src/common/guard/auth.guard';
-import { Role } from 'src/common/enum/role.enum';
+import { AuthGuard } from 'src/common/guards/auth.guard';
+import { Role } from 'src/common/enums/role.enum';
 import { userPayload } from 'src/common/types/userPayload.interface';
 
 const mockService = {

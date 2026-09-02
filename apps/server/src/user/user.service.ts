@@ -12,7 +12,7 @@ import { userPayload } from 'src/common/types/userPayload.interface';
 import { Prisma, User } from '@prisma/client';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { UpdateUserDto } from './dto/updateUser.dto';
-import { Role } from 'src/common/enum/role.enum';
+import { Role } from 'src/common/enums/role.enum';
 import { SupabaseService } from 'src/supabase/supabase.service';
 import { AllUsers } from './types/allUsers.type';
 import { CredDto } from './dto/cred.dto';

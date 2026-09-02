@@ -7,7 +7,7 @@ import {
 import { SchedulerRegistry } from '@nestjs/schedule';
 import { SessionService } from './session.service';
 import { PrismaService } from 'src/prisma/prisma.service';
-import { Role } from 'src/common/enum/role.enum';
+import { Role } from 'src/common/enums/role.enum';
 
 const mockPrisma = {
   session: {

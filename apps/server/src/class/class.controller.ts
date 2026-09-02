@@ -10,10 +10,10 @@ import {
   Query,
 } from '@nestjs/common';
 import { ClassService } from './class.service';
-import { AuthGuard } from 'src/common/guard/auth.guard';
-import { CurrentUser } from 'src/common/decorator/currentUser.decorator';
+import { AuthGuard } from 'src/common/guards/auth.guard';
+import { CurrentUser } from 'src/common/decorators/currentUser.decorator';
 import { userPayload } from 'src/common/types/userPayload.interface';
-import { ResponseDto } from 'src/common/dto/response.dto';
+import { ResponseDto } from 'src/common/dtos/response.dto';
 import { CreateClassDto } from './dto/create-class.dto';
 import { UpdateClassDto } from './dto/update-class.dto';
 import {
@@ -22,9 +22,9 @@ import {
   JoinClassDto,
 } from './dto/class-member.dto';
 import { BulkStudentIdsDto } from './dto/bulk-members.dto';
-import { RolesGuard } from 'src/common/guard/role.guard';
-import { Roles } from 'src/common/decorator/role.decorator';
-import { Role } from 'src/common/enum/role.enum';
+import { RolesGuard } from 'src/common/guards/role.guard';
+import { Roles } from 'src/common/decorators/role.decorator';
+import { Role } from 'src/common/enums/role.enum';
 import {
   ClassCalendarEventsResponseDto,
   ClassCalendarQueryDto,

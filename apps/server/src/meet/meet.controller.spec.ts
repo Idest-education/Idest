@@ -1,7 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { MeetController } from './meet.controller';
 import { MeetService } from './meet.service';
-import { AuthGuard } from 'src/common/guard/auth.guard';
+import { AuthGuard } from 'src/common/guards/auth.guard';
 
 const mockService = {
   validateSession: jest.fn(),

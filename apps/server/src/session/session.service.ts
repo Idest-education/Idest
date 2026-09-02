@@ -9,8 +9,8 @@ import {
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { userPayload } from 'src/common/types/userPayload.interface';
-import { Role } from 'src/common/enum/role.enum';
-import { ResponseDto } from 'src/common/dto/response.dto';
+import { Role } from 'src/common/enums/role.enum';
+import { ResponseDto } from 'src/common/dtos/response.dto';
 import { CreateSessionDto } from './dto/create-session.dto';
 import { UpdateSessionDto } from './dto/update-session.dto';
 import { Session } from '@prisma/client';

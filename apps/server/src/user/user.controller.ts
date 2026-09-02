@@ -10,18 +10,18 @@ import {
   UseGuards,
   UseInterceptors,
 } from '@nestjs/common';
-import { CurrentUser } from 'src/common/decorator/currentUser.decorator';
+import { CurrentUser } from 'src/common/decorators/currentUser.decorator';
 import { User } from '@prisma/client';
 import { userPayload } from 'src/common/types/userPayload.interface';
 import { CreateUserDto } from './dto/createUser.dto';
 import { UserService } from './user.service';
-import { ResponseDto } from 'src/common/dto/response.dto';
+import { ResponseDto } from 'src/common/dtos/response.dto';
 import { UpdateUserDto } from './dto/updateUser.dto';
-import { AuthGuard } from 'src/common/guard/auth.guard';
-import { RolesGuard } from 'src/common/guard/role.guard';
+import { AuthGuard } from 'src/common/guards/auth.guard';
+import { RolesGuard } from 'src/common/guards/role.guard';
 import { FileInterceptor } from '@nestjs/platform-express';
-import { Role } from 'src/common/enum/role.enum';
-import { Roles } from 'src/common/decorator/role.decorator';
+import { Role } from 'src/common/enums/role.enum';
+import { Roles } from 'src/common/decorators/role.decorator';
 import { AllUsers, AllUsersDto } from './types/allUsers.type';
 import {
   UserResponseDto,
@@ -43,7 +43,7 @@ import {
   ApiConflictResponse,
 } from '@nestjs/swagger';
 import { CredDto } from './dto/cred.dto';
-import { Public } from 'src/common/decorator/public.decorator';
+import { Public } from 'src/common/decorators/public.decorator';
 
 @Controller('user')
 @ApiTags('User')
