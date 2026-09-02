@@ -15,13 +15,19 @@ export class RabbitService implements OnModuleInit {
     this.channel.sendToQueue(queue, Buffer.from(JSON.stringify(data)));
   }
 
-  async consume(queue: string, callback: (data: any) => void) {
+  async consume(queue: string, callback: (data: any) => void | Promise<void>) {
     await this.channel.assertQueue(queue);
-    this.channel.consume(queue, (msg) => {
+    this.channel.consume(queue, async (msg) => {
       if (!msg) return;
-      const data = JSON.parse(msg.content.toString());
-      callback(data);
-      this.channel.ack(msg);
+      try {
+        const data = JSON.parse(msg.content.toString());
+        await callback(data);
+        this.channel.ack(msg);
+      } catch (err) {
+        // eslint-disable-next-line no-console
+        console.error(`rabbit consume error on "${queue}":`, err);
+        this.channel.nack(msg, false, false);
+      }
     });
   }
 }

@@ -16,3 +16,20 @@ describe('RabbitService', () => {
     expect(service).toBeDefined();
   });
 });
+
+describe('consume error handling', () => {
+  it('nacks (no requeue) when the callback throws', async () => {
+    const svc = new RabbitService();
+    const ch: any = {
+      assertQueue: jest.fn().mockResolvedValue(undefined),
+      consume: jest.fn().mockImplementation((_q, h) => { (ch as any)._h = h; }),
+      ack: jest.fn(),
+      nack: jest.fn(),
+    };
+    (svc as any).channel = ch;
+    await svc.consume('q', () => { throw new Error('boom'); });
+    await ch._h({ content: Buffer.from('{}') });
+    expect(ch.nack).toHaveBeenCalledWith(expect.anything(), false, false);
+    expect(ch.ack).not.toHaveBeenCalled();
+  });
+});
