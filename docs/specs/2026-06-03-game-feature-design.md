@@ -15,7 +15,7 @@ Teachers create reusable game templates (collections of questions) in a dedicate
 ## 2. Architecture
 
 ### Approach
-Separate `/game` WebSocket namespace (aligns with existing `docs/game-module/05-websocket-gateway.md` design) alongside the existing `/meet` namespace. Two concurrent socket connections from the client. Canvas-based automatic game capture for recording.
+Separate `/game` WebSocket namespace (aligns with existing `docs/modules/game/05-websocket-gateway.md` design) alongside the existing `/meet` namespace. Two concurrent socket connections from the client. Canvas-based automatic game capture for recording.
 
 ### New pieces
 
@@ -157,7 +157,7 @@ All endpoints are under `apps/server`. Auth via existing Supabase JWT guards.
 
 ## 5. WebSocket Gateway (`/game` namespace)
 
-Follows `EventEmitter2` bridge pattern from `docs/game-module/05-websocket-gateway.md`. `GameService` emits domain events; `GameGateway` subscribes with `@OnEvent()` and forwards to socket rooms. REST is authoritative; WS is push-only.
+Follows `EventEmitter2` bridge pattern from `docs/modules/game/05-websocket-gateway.md`. `GameService` emits domain events; `GameGateway` subscribes with `@OnEvent()` and forwards to socket rooms. REST is authoritative; WS is push-only.
 
 ### Server → Client
 

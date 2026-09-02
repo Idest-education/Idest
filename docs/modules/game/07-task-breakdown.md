@@ -216,7 +216,7 @@ flowchart TD
 - [ ] Cả 14 task merge vào `main`.
 - [ ] Acceptance criteria trong file 06 pass.
 - [ ] CI xanh.
-- [ ] Doc `docs/game-module/*` không bị outdated so với code (nếu có thay đổi, update song song).
+- [ ] Doc `docs/modules/game/*` không bị outdated so với code (nếu có thay đổi, update song parallel).
 - [ ] Demo end-to-end 1 lần cho lead.
 
 ---

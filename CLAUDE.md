@@ -121,7 +121,7 @@ Critical variables that must match across `apps/server` and `apps/assignments`:
 ## Docs
 
 `/docs/` contains design documents for features not yet fully implemented:
-- `game-module/` — gamification system (API, WebSocket gateway, game logic, DB schema)
-- `progress-tracking-module/` — progress tracking system design
+- `modules/game/` — gamification system (API, WebSocket gateway, game logic, DB schema)
+- `modules/progress-tracking/` — progress tracking system design
 
 These include API contracts, acceptance criteria, and task breakdowns — refer to them when implementing those features.
