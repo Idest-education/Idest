@@ -1,0 +1,17 @@
+name: Deploy assignments
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'apps/assignments/**'
+      - '.github/workflows/deploy-assignments.yml'
+concurrency: deploy-assignments
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: superfly/flyctl-actions/setup-flyctl@master
+      - run: flyctl deploy --remote-only --config apps/assignments/fly.toml --dockerfile apps/assignments/Dockerfile
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}

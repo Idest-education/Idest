@@ -6,7 +6,7 @@
     "build": "next build",
     "start": "next start",
     "prod": "NODE_ENV=production next build && next start",
-    "lint": "next lint"
+    "lint": "eslint ."
   },
   "dependencies": {
     "@excalidraw/excalidraw": "^0.18.0",
