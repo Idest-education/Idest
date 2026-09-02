@@ -49,3 +49,28 @@ describe('UserService.createUserWithCredentials', () => {
     );
   });
 });
+
+describe('UserService.updateUser HttpException propagation', () => {
+  it('updateUser: a non-admin editing another user gets 403, not 500', async () => {
+    const prismaLocal = {
+      user: {
+        findUnique: jest.fn().mockResolvedValue({ id: 'target', role: 'STUDENT' }),
+        update: jest.fn(),
+      },
+    };
+    const mod = await Test.createTestingModule({
+      providers: [
+        UserService,
+        { provide: PrismaService, useValue: prismaLocal },
+        { provide: SupabaseService, useValue: {} },
+      ],
+    }).compile();
+    const svc = mod.get(UserService);
+    await expect(
+      svc.updateUser('target', { fullName: 'x' } as any, {
+        id: 'someone-else',
+        role: 'STUDENT',
+      } as any),
+    ).rejects.toMatchObject({ status: 403 });
+  });
+});

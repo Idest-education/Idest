@@ -1,4 +1,4 @@
-import { Injectable, BadRequestException, InternalServerErrorException } from '@nestjs/common';
+import { Injectable, BadRequestException, HttpException, InternalServerErrorException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from 'src/prisma/prisma.service';
 import Stripe from 'stripe';
@@ -94,9 +94,7 @@ export class StripeService {
       };
     } catch (error) {
       console.error('Error creating checkout session:', error);
-      if (error instanceof BadRequestException) {
-        throw error;
-      }
+      if (error instanceof HttpException) throw error;
       throw new InternalServerErrorException('Failed to create checkout session');
     }
   }
@@ -172,9 +170,7 @@ export class StripeService {
       return { success: true, alreadyEnrolled: false };
     } catch (error) {
       console.error('Error verifying and completing enrollment:', error);
-      if (error instanceof BadRequestException) {
-        throw error;
-      }
+      if (error instanceof HttpException) throw error;
       throw new InternalServerErrorException('Failed to verify and complete enrollment');
     }
   }

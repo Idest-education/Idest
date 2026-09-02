@@ -1,5 +1,6 @@
 import {
   Injectable,
+  HttpException,
   NotFoundException,
   ForbiddenException,
   ConflictException,
@@ -130,9 +131,7 @@ export class ClassCRUDService {
       return newClass;
     } catch (error) {
       console.error('Error creating class:', error);
-      if (error instanceof ConflictException) {
-        throw error;
-      }
+      if (error instanceof HttpException) throw error;
       throw new InternalServerErrorException('Failed to create class');
     }
   }
@@ -170,12 +169,7 @@ export class ClassCRUDService {
       return toFullClassResponseDto(updatedClass);
     } catch (error) {
       console.error('Error updating class:', error);
-      if (
-        error instanceof NotFoundException ||
-        error instanceof ForbiddenException
-      ) {
-        throw error;
-      }
+      if (error instanceof HttpException) throw error;
       throw new InternalServerErrorException('Failed to update class');
     }
   }
@@ -207,7 +201,7 @@ export class ClassCRUDService {
       return updated.invite_code;
     } catch (error) {
       console.error('Error regenerating invite code:', error);
-      if (error instanceof ForbiddenException) throw error;
+      if (error instanceof HttpException) throw error;
       throw new InternalServerErrorException(
         'Failed to regenerate invite code',
       );
@@ -248,7 +242,7 @@ export class ClassCRUDService {
       return updated;
     } catch (error) {
       console.error('Error updating class settings:', error);
-      if (error instanceof ForbiddenException) throw error;
+      if (error instanceof HttpException) throw error;
       throw new InternalServerErrorException('Failed to update class settings');
     }
   }
@@ -277,12 +271,7 @@ export class ClassCRUDService {
       return;
     } catch (error) {
       console.error('Error deleting class:', error);
-      if (
-        error instanceof NotFoundException ||
-        error instanceof ForbiddenException
-      ) {
-        throw error;
-      }
+      if (error instanceof HttpException) throw error;
       throw new InternalServerErrorException('Failed to delete class');
     }
   }

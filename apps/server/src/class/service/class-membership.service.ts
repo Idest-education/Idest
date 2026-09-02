@@ -1,5 +1,6 @@
 import {
   Injectable,
+  HttpException,
   NotFoundException,
   ForbiddenException,
   ConflictException,
@@ -133,13 +134,7 @@ export class ClassMembershipService {
       return toFullClassResponseDto(updatedClass);
     } catch (error) {
       console.error('Error adding student:', error);
-      if (
-        error instanceof NotFoundException ||
-        error instanceof ForbiddenException ||
-        error instanceof ConflictException
-      ) {
-        throw error;
-      }
+      if (error instanceof HttpException) throw error;
       throw new InternalServerErrorException(`Failed to add student ${error}`);
     }
   }
@@ -263,13 +258,7 @@ export class ClassMembershipService {
       return toFullClassResponseDto(updatedClass);
     } catch (error) {
       console.error('Error adding teacher:', error);
-      if (
-        error instanceof NotFoundException ||
-        error instanceof ForbiddenException ||
-        error instanceof ConflictException
-      ) {
-        throw error;
-      }
+      if (error instanceof HttpException) throw error;
       throw new InternalServerErrorException('Failed to add teacher');
     }
   }
@@ -373,12 +362,7 @@ export class ClassMembershipService {
       return toFullClassResponseDto(updatedClass);
     } catch (error) {
       console.error('Error removing teacher:', error);
-      if (
-        error instanceof NotFoundException ||
-        error instanceof ForbiddenException
-      ) {
-        throw error;
-      }
+      if (error instanceof HttpException) throw error;
       throw new InternalServerErrorException('Failed to remove teacher');
     }
   }
@@ -549,12 +533,7 @@ export class ClassMembershipService {
       return toFullClassResponseDto(updatedClass);
     } catch (error) {
       console.error('Error joining class:', error);
-      if (
-        error instanceof NotFoundException ||
-        error instanceof ConflictException
-      ) {
-        throw error;
-      }
+      if (error instanceof HttpException) throw error;
       throw new InternalServerErrorException('Failed to join class');
     }
   }
@@ -593,12 +572,7 @@ export class ClassMembershipService {
       throw new NotFoundException('You are not a member of this class');
     } catch (error) {
       console.error('Error leaving class:', error);
-      if (
-        error instanceof NotFoundException ||
-        error instanceof ForbiddenException
-      ) {
-        throw error;
-      }
+      if (error instanceof HttpException) throw error;
       throw new InternalServerErrorException('Failed to leave class');
     }
   }
@@ -641,12 +615,7 @@ export class ClassMembershipService {
       return true;
     } catch (error) {
       console.error('Error removing student:', error);
-      if (
-        error instanceof NotFoundException ||
-        error instanceof ForbiddenException
-      ) {
-        throw error;
-      }
+      if (error instanceof HttpException) throw error;
       throw new InternalServerErrorException('Failed to remove student');
     }
   }
@@ -713,7 +682,7 @@ export class ClassMembershipService {
       return created.map((c) => c.student);
     } catch (error) {
       console.error('Error bulk adding students:', error);
-      if (error instanceof ForbiddenException) throw error;
+      if (error instanceof HttpException) throw error;
       throw new InternalServerErrorException('Failed to bulk add students');
     }
   }
@@ -750,7 +719,7 @@ export class ClassMembershipService {
       return { count: deleted.count };
     } catch (error) {
       console.error('Error bulk removing students:', error);
-      if (error instanceof ForbiddenException) throw error;
+      if (error instanceof HttpException) throw error;
       throw new InternalServerErrorException('Failed to bulk remove students');
     }
   }

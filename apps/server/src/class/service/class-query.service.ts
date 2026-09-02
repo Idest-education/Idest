@@ -1,5 +1,6 @@
 import {
   Injectable,
+  HttpException,
   BadRequestException,
   NotFoundException,
   ForbiddenException,
@@ -216,12 +217,7 @@ export class ClassQueryService {
       return toFullClassResponseDto(classData);
     } catch (error) {
       console.error('Error getting class by slug:', error);
-      if (
-        error instanceof NotFoundException ||
-        error instanceof ForbiddenException
-      ) {
-        throw error;
-      }
+      if (error instanceof HttpException) throw error;
       throw new InternalServerErrorException('Failed to retrieve class');
     }
   }
@@ -410,6 +406,7 @@ export class ClassQueryService {
       return classes;
     } catch (error) {
       console.error('Error getting user classes:', error);
+      if (error instanceof HttpException) throw error;
       throw new InternalServerErrorException('Failed to retrieve classes');
     }
   }
@@ -527,9 +524,7 @@ export class ClassQueryService {
         events,
       };
     } catch (error) {
-      if (error instanceof BadRequestException) {
-        throw error;
-      }
+      if (error instanceof HttpException) throw error;
       console.error('Error getting class calendar events:', error);
       throw new InternalServerErrorException('Failed to retrieve calendar events');
     }
@@ -610,12 +605,7 @@ export class ClassQueryService {
       return toFullClassResponseDto(classData);
     } catch (error) {
       console.error('Error getting class:', error);
-      if (
-        error instanceof NotFoundException ||
-        error instanceof ForbiddenException
-      ) {
-        throw error;
-      }
+      if (error instanceof HttpException) throw error;
       throw new InternalServerErrorException('Failed to retrieve class');
     }
   }
@@ -653,7 +643,7 @@ export class ClassQueryService {
       return mapUsersToDto(members);
     } catch (error) {
       console.error('Error getting class members:', error);
-      if (error instanceof ForbiddenException) throw error;
+      if (error instanceof HttpException) throw error;
       throw new InternalServerErrorException(
         'Failed to retrieve class members',
       );
@@ -692,7 +682,7 @@ export class ClassQueryService {
       return mapUsersToDto(teachers);
     } catch (error) {
       console.error('Error getting class teachers:', error);
-      if (error instanceof ForbiddenException) throw error;
+      if (error instanceof HttpException) throw error;
       throw new InternalServerErrorException(
         'Failed to retrieve class teachers',
       );
@@ -727,7 +717,7 @@ export class ClassQueryService {
       };
     } catch (error) {
       console.error('Error getting class statistics:', error);
-      if (error instanceof ForbiddenException) throw error;
+      if (error instanceof HttpException) throw error;
       throw new InternalServerErrorException(
         'Failed to retrieve class statistics',
       );
@@ -786,6 +776,7 @@ export class ClassQueryService {
       return results;
     } catch (error) {
       console.error('Error searching classes:', error);
+      if (error instanceof HttpException) throw error;
       throw new InternalServerErrorException('Failed to search classes');
     }
   }
@@ -820,6 +811,7 @@ export class ClassQueryService {
       return results;
     } catch (error) {
       console.error('Error getting public classes:', error);
+      if (error instanceof HttpException) throw error;
       throw new InternalServerErrorException(
         'Failed to retrieve public classes',
       );
@@ -884,6 +876,7 @@ export class ClassQueryService {
       return response;
     } catch (error) {
       console.error('Error getting all classes:', error);
+      if (error instanceof HttpException) throw error;
       throw new InternalServerErrorException('Failed to retrieve classes');
     }
   }
@@ -928,6 +921,7 @@ export class ClassQueryService {
       return { valid: !!existing, class: existing || null };
     } catch (error) {
       console.error('Error validating invite code:', error);
+      if (error instanceof HttpException) throw error;
       throw new InternalServerErrorException('Failed to validate invite code');
     }
   }
@@ -953,6 +947,7 @@ export class ClassQueryService {
         .sort(([a], [b]) => a.localeCompare(b))
         .map(([month, count]) => ({ month, count }));
     } catch (error) {
+      if (error instanceof HttpException) throw error;
       throw new InternalServerErrorException('Failed to get class monthly stats');
     }
   }

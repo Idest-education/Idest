@@ -1,6 +1,7 @@
 import {
   ConflictException,
   ForbiddenException,
+  HttpException,
   Injectable,
   InternalServerErrorException,
   NotFoundException,
@@ -44,9 +45,7 @@ export class UserService {
 
       return newUser;
     } catch (error) {
-      if (error instanceof UnprocessableEntityException) {
-        throw error;
-      }
+      if (error instanceof HttpException) throw error;
       throw new InternalServerErrorException(`Error creating user: ${error}`);
     }
   }
@@ -93,13 +92,7 @@ export class UserService {
       });
       return user;
     } catch (error) {
-      if (
-        error instanceof InternalServerErrorException ||
-        error instanceof ConflictException ||
-        error instanceof UnprocessableEntityException
-      ) {
-        throw error;
-      }
+      if (error instanceof HttpException) throw error;
       throw new InternalServerErrorException(`Error creating user: ${error}`);
     }
   }
@@ -150,9 +143,7 @@ export class UserService {
       }
       return user;
     } catch (error) {
-      if (error instanceof NotFoundException) {
-        throw error;
-      }
+      if (error instanceof HttpException) throw error;
       throw new InternalServerErrorException(
         `Error fetching user by ID: ${error}`,
       );
@@ -220,12 +211,7 @@ export class UserService {
 
       return newUser;
     } catch (error) {
-      if (
-        error instanceof UnprocessableEntityException ||
-        error instanceof NotFoundException
-      ) {
-        throw error;
-      }
+      if (error instanceof HttpException) throw error;
       throw new InternalServerErrorException(`Error updating user: ${error}`);
     }
   }
@@ -297,12 +283,7 @@ export class UserService {
 
       return true;
     } catch (error) {
-      if (
-        error instanceof UnprocessableEntityException ||
-        error instanceof NotFoundException
-      ) {
-        throw error;
-      }
+      if (error instanceof HttpException) throw error;
       throw new InternalServerErrorException(`Error banning user: ${error}`);
     }
   }
@@ -335,12 +316,7 @@ export class UserService {
 
       return true;
     } catch (error) {
-      if (
-        error instanceof UnprocessableEntityException ||
-        error instanceof NotFoundException
-      ) {
-        throw error;
-      }
+      if (error instanceof HttpException) throw error;
       throw new InternalServerErrorException(`Error unbanning user: ${error}`);
     }
   }
@@ -461,9 +437,7 @@ export class UserService {
         hasMore,
       };
     } catch (error) {
-      if (error instanceof UnprocessableEntityException) {
-        throw error;
-      }
+      if (error instanceof HttpException) throw error;
       throw new InternalServerErrorException(`Error fetching users: ${error}`);
     }
   }
@@ -493,6 +467,7 @@ export class UserService {
         .sort(([a], [b]) => a.localeCompare(b))
         .map(([month, counts]) => ({ month, ...counts }));
     } catch (error) {
+      if (error instanceof HttpException) throw error;
       throw new InternalServerErrorException(`Error fetching user monthly stats: ${error}`);
     }
   }
@@ -547,12 +522,7 @@ export class UserService {
         role: user.role,
       };
     } catch (error) {
-      if (
-        error instanceof UnprocessableEntityException ||
-        error instanceof NotFoundException
-      ) {
-        throw error;
-      }
+      if (error instanceof HttpException) throw error;
       throw new InternalServerErrorException(
         `Failed to get user details for ${userId}: ${error}`,
       );
@@ -571,9 +541,7 @@ export class UserService {
 
       return { role: user.role };
     } catch (error) {
-      if (error instanceof NotFoundException) {
-        throw error;
-      }
+      if (error instanceof HttpException) throw error;
       throw new InternalServerErrorException(
         `Error fetching user role: ${error}`,
       );
@@ -624,12 +592,7 @@ export class UserService {
 
       return true;
     } catch (error) {
-      if (
-        error instanceof UnprocessableEntityException ||
-        error instanceof NotFoundException
-      ) {
-        throw error;
-      }
+      if (error instanceof HttpException) throw error;
       throw new InternalServerErrorException(
         `Error deleting account: ${error}`,
       );
@@ -684,6 +647,7 @@ export class UserService {
 
       return { users, total };
     } catch (error) {
+      if (error instanceof HttpException) throw error;
       throw new InternalServerErrorException(`Error searching users: ${error}`);
     }
   }

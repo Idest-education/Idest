@@ -1,5 +1,6 @@
 import {
   Injectable,
+  HttpException,
   NotFoundException,
   ForbiddenException,
   ConflictException,
@@ -192,14 +193,7 @@ export class ConversationService {
       return fullConversation as ConversationDto;
     } catch (error) {
       console.error('Error creating conversation:', error);
-      if (
-        error instanceof ConflictException ||
-        error instanceof ForbiddenException ||
-        error instanceof NotFoundException ||
-        error instanceof InternalServerErrorException
-      ) {
-        throw error;
-      }
+      if (error instanceof HttpException) throw error;
       throw new InternalServerErrorException('Failed to create conversation');
     }
   }
@@ -265,6 +259,7 @@ export class ConversationService {
       };
     } catch (error) {
       console.error('Error getting user conversations:', error);
+      if (error instanceof HttpException) throw error;
       throw new InternalServerErrorException(
         'Failed to retrieve conversations',
       );
@@ -361,12 +356,7 @@ export class ConversationService {
       };
     } catch (error) {
       console.error('Error getting conversation:', error);
-      if (
-        error instanceof NotFoundException ||
-        error instanceof ForbiddenException
-      ) {
-        throw error;
-      }
+      if (error instanceof HttpException) throw error;
       throw new InternalServerErrorException('Failed to retrieve conversation');
     }
   }
@@ -454,12 +444,7 @@ export class ConversationService {
       return message as MessageDto;
     } catch (error) {
       console.error('Error sending message:', error);
-      if (
-        error instanceof ForbiddenException ||
-        error instanceof NotFoundException
-      ) {
-        throw error;
-      }
+      if (error instanceof HttpException) throw error;
       throw new InternalServerErrorException('Failed to send message');
     }
   }
@@ -534,13 +519,7 @@ export class ConversationService {
       return participant as ConversationParticipantDto;
     } catch (error) {
       console.error('Error adding participant:', error);
-      if (
-        error instanceof NotFoundException ||
-        error instanceof ForbiddenException ||
-        error instanceof ConflictException
-      ) {
-        throw error;
-      }
+      if (error instanceof HttpException) throw error;
       throw new InternalServerErrorException('Failed to add participant');
     }
   }
@@ -627,12 +606,7 @@ export class ConversationService {
       return true;
     } catch (error) {
       console.error('Error removing participant:', error);
-      if (
-        error instanceof NotFoundException ||
-        error instanceof ForbiddenException
-      ) {
-        throw error;
-      }
+      if (error instanceof HttpException) throw error;
       throw new InternalServerErrorException('Failed to remove participant');
     }
   }
@@ -702,9 +676,7 @@ export class ConversationService {
       return true;
     } catch (error) {
       console.error('Error deleting conversation:', error);
-      if (error instanceof NotFoundException || error instanceof ForbiddenException) {
-        throw error;
-      }
+      if (error instanceof HttpException) throw error;
       throw new InternalServerErrorException('Failed to delete conversation');
     }
   }
@@ -804,9 +776,7 @@ export class ConversationService {
       return updated as ConversationDto;
     } catch (error) {
       console.error('Error updating conversation:', error);
-      if (error instanceof NotFoundException || error instanceof ForbiddenException) {
-        throw error;
-      }
+      if (error instanceof HttpException) throw error;
       throw new InternalServerErrorException('Failed to update conversation');
     }
   }
@@ -835,6 +805,7 @@ export class ConversationService {
       return this.createConversation({ id: userId } as userPayload, dto);
     } catch (error) {
       console.error('Error getting or creating direct conversation:', error);
+      if (error instanceof HttpException) throw error;
       throw new InternalServerErrorException(
         'Failed to get or create conversation',
       );
@@ -950,9 +921,7 @@ export class ConversationService {
       };
     } catch (error) {
       console.error('Error getting conversation messages:', error);
-      if (error instanceof ForbiddenException) {
-        throw error;
-      }
+      if (error instanceof HttpException) throw error;
       throw new InternalServerErrorException('Failed to retrieve messages');
     }
   }

@@ -219,9 +219,7 @@ export class SessionService {
       };
     } catch (error) {
       console.error('Error getting class sessions:', error);
-      if (error instanceof ForbiddenException) {
-        throw error;
-      }
+      if (error instanceof HttpException) throw error;
       throw new InternalServerErrorException('Failed to retrieve sessions');
     }
   }
@@ -290,12 +288,7 @@ export class SessionService {
       return session;
     } catch (error) {
       console.error('Error getting session:', error);
-      if (
-        error instanceof NotFoundException ||
-        error instanceof ForbiddenException
-      ) {
-        throw error;
-      }
+      if (error instanceof HttpException) throw error;
       throw new InternalServerErrorException('Failed to retrieve session');
     }
   }
@@ -401,12 +394,7 @@ export class SessionService {
       return updatedSession;
     } catch (error) {
       console.error('Error updating session:', error);
-      if (
-        error instanceof NotFoundException ||
-        error instanceof ForbiddenException
-      ) {
-        throw error;
-      }
+      if (error instanceof HttpException) throw error;
       throw new InternalServerErrorException('Failed to update session');
     }
   }
@@ -440,12 +428,7 @@ export class SessionService {
       return true;
     } catch (error) {
       console.error('Error deleting session:', error);
-      if (
-        error instanceof NotFoundException ||
-        error instanceof ForbiddenException
-      ) {
-        throw error;
-      }
+      if (error instanceof HttpException) throw error;
       throw new InternalServerErrorException('Failed to delete session');
     }
   }
@@ -561,12 +544,7 @@ export class SessionService {
       return updatedSession;
     } catch (error) {
       console.error('Error ending session:', error);
-      if (
-        error instanceof NotFoundException ||
-        error instanceof ForbiddenException
-      ) {
-        throw error;
-      }
+      if (error instanceof HttpException) throw error;
       throw new InternalServerErrorException('Failed to end session');
     }
   }
@@ -810,9 +788,7 @@ export class SessionService {
       };
     } catch (error) {
       console.error('Error getting all sessions:', error);
-      if (error instanceof ForbiddenException) {
-        throw error;
-      }
+      if (error instanceof HttpException) throw error;
       throw new InternalServerErrorException('Failed to retrieve all sessions');
     }
   }
@@ -890,6 +866,7 @@ export class SessionService {
       };
     } catch (error) {
       console.error('Error getting all user sessions:', error);
+      if (error instanceof HttpException) throw error;
       throw new InternalServerErrorException(
         'Failed to retrieve user sessions',
       );
@@ -989,12 +966,7 @@ export class SessionService {
         user: attendance.user,
       };
     } catch (error) {
-      if (
-        error instanceof NotFoundException ||
-        error instanceof ForbiddenException
-      ) {
-        throw error;
-      }
+      if (error instanceof HttpException) throw error;
       throw new InternalServerErrorException('Failed to record attendance');
     }
   }
@@ -1153,12 +1125,7 @@ export class SessionService {
         attendees: attendeeRecords,
       };
     } catch (error) {
-      if (
-        error instanceof NotFoundException ||
-        error instanceof ForbiddenException
-      ) {
-        throw error;
-      }
+      if (error instanceof HttpException) throw error;
       throw new InternalServerErrorException('Failed to get attendance');
     }
   }
@@ -1229,6 +1196,7 @@ export class SessionService {
         },
       };
     } catch (error) {
+      if (error instanceof HttpException) throw error;
       throw new InternalServerErrorException('Failed to get user attendance');
     }
   }
@@ -1254,6 +1222,7 @@ export class SessionService {
         .sort(([a], [b]) => a.localeCompare(b))
         .map(([month, count]) => ({ month, count }));
     } catch (error) {
+      if (error instanceof HttpException) throw error;
       throw new InternalServerErrorException('Failed to get session stats');
     }
   }
