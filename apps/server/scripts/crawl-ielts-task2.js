@@ -333,7 +333,9 @@ async function crawlBlogs(metadataRows, concurrency) {
 
 function parseArgs(argv) {
   const args = {
-    output: path.resolve(process.cwd(), "data/ielts_task2_dataset.json"),
+    // Dataset now lives under apps/ai/data/ (read by apps/ai via ielts_ai/paths.py).
+    // Run from apps/server/, this resolves to apps/ai/data/ielts_task2_dataset.json.
+    output: path.resolve(process.cwd(), "../ai/data/ielts_task2_dataset.json"),
     concurrency: 3,
     maxPages: null,
     maxItems: null,

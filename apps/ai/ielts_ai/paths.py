@@ -8,6 +8,6 @@ _IELTS_AI_DIR = Path(__file__).resolve().parent
 APPS_AI_DIR = _IELTS_AI_DIR.parent
 REPO_ROOT = APPS_AI_DIR.parent.parent
 
-CRAWLED_DATA_PATH = APPS_AI_DIR.parent / "server" / "data" / "ielts_task2_dataset.json"
+CRAWLED_DATA_PATH = APPS_AI_DIR / "data" / "ielts_task2_dataset.json"
 ARTIFACT_DIR = REPO_ROOT / "models" / "rubric_catboost"
 TASK1_ARTIFACT_DIR = REPO_ROOT / "models" / "rubric_catboost_task1"
